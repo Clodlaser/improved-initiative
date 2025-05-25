@@ -97,31 +97,33 @@ export function SpellEditor(props: SpellEditorProps) {
 
 function StandardEditor() {
   return (
-    <div className="stats">
+    <div className="c-spell-editor-fields">
       <FieldRow label="Name" name="Name" />
       <FieldRow label="Source" name="Source" />
       <FieldRow label="Level" name="Level" />
       <FieldRow label="School" name="School" />
       <FieldRow label="Casting Time" name="CastingTime" />
-      <label className="field-row">
-        <span>Ritual</span>
+      <label className="inline">
+        <span className="c-spell-editor__label">Ritual</span>
         <ToggleButton fieldName="Ritual" />
       </label>
       <FieldRow label="Range" name="Range" />
       <FieldRow label="Components" name="Components" />
       <FieldRow label="Duration" name="Duration" />
       <FieldRow label="Classes" name="AllClasses" />
-      <label>Description</label>
+      <label className="c-spell-editor__label">Description</label>
       <Field component="textarea" name="Description" />
     </div>
   );
 }
 
-function FieldRow(props: { label: string; name: string; type?: string }) {
+function FieldRow(props: { label: string; name: string }) {
   return (
-    <label className="field-row">
-      <span>{props.label}</span>
-      <Field name={props.name} type={props.type} />
+    <label className="c-spell-editor__field">
+      <span className="c-spell-editor__label">{props.label}</span>
+      <div className="c-spell-editor__input">
+        <Field type="text" className="notes" name={`${props.name}`} />
+      </div>
     </label>
   );
 }
