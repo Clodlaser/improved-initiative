@@ -39,6 +39,7 @@ import { Metrics } from "./Utility/Metrics";
 import { EventLog } from "./Widgets/EventLog";
 import { SpellEditorProps } from "./StatBlockEditor/SpellEditor";
 import axios from "axios";
+import { Spell } from "../common/Spell";
 
 const codec = compression("lzma");
 
@@ -213,14 +214,15 @@ export class TrackerViewModel {
     }
   };
 
-  public ImportStatBlockIfAvailable = async (): Promise<void> => {
+  public ImportFromQueryParamIfAvailable = async (): Promise<void> => {
     if (!URLSearchParams) {
       return;
     }
     const urlParams = new URLSearchParams(window.location.search);
-    const compressedStatBlockJSONv1 = urlParams.get("s");
-    const compressedStatBlockJSONv2 = urlParams.get("i");
-    if (!compressedStatBlockJSONv1 && !compressedStatBlockJSONv2) {
+    const compressedJSONv1 = urlParams.get("s");
+    const compressedJSONv2 = urlParams.get("i");
+    const entityType = urlParams.get("t");
+    if (!compressedJSONv1 && !compressedJSONv2) {
       return;
     }
 
@@ -238,7 +240,7 @@ export class TrackerViewModel {
             <a href={env.PatreonLoginUrl} target="_blank">
               Patreon
             </a>
-            {" to use the StatBlock Importer"}
+            {" to use the D&D Beyond Importer."}
             <SubmitButton />
           </span>
         )
@@ -252,7 +254,7 @@ export class TrackerViewModel {
         onSubmit: () => true,
         children: (
           <span className="no-epic-initiative-for-import">
-            {"The D&D Beyond StatBlock Importer is available for "}
+            {"The D&D Beyond Importer is available for "}
             <a
               href={"https://www.patreon.com/join/improvedinitiative"}
               target="_blank"
@@ -269,22 +271,29 @@ export class TrackerViewModel {
     }
 
     let json = "";
-    if (compressedStatBlockJSONv1) {
-      json = await codec.decompress(compressedStatBlockJSONv1);
+    if (compressedJSONv1) {
+      json = await codec.decompress(compressedJSONv1);
     }
-    if (compressedStatBlockJSONv2) {
-      json = lzString.decompressFromEncodedURIComponent(
-        compressedStatBlockJSONv2
-      );
+    if (compressedJSONv2) {
+      json = lzString.decompressFromEncodedURIComponent(compressedJSONv2);
     }
     if (!json.length) {
       return;
     }
 
-    const parsedStatBlock = ParseJSONOrDefault(json, {});
+    const parsedPayload = ParseJSONOrDefault(json, {});
+
+    if (entityType === "sp") {
+      this.editImportedSpell(parsedPayload);
+    } else {
+      this.editImportedStatBlock(parsedPayload);
+    }
+  };
+
+  private editImportedStatBlock(parsedPayload: {}) {
     const statBlock: StatBlock = {
       ...StatBlock.Default(),
-      ...parsedStatBlock
+      ...parsedPayload
     };
 
     Metrics.TrackEvent("StatBlockImported", {
@@ -324,7 +333,22 @@ export class TrackerViewModel {
         });
       }
     }
-  };
+  }
+
+  private editImportedSpell(parsedPayload: {}) {
+    const spell: Spell = {
+      ...Spell.Default(),
+      ...parsedPayload
+    };
+    Metrics.TrackEvent("SpellImported", {
+      Name: spell.Name
+    });
+    this.EditSpell({
+      onSave: this.Libraries.Spells.SaveNewListing,
+      spell,
+      onDelete: () => {}
+    });
+  }
 
   public GetWhatsNewIfAvailable = (): void => {
     axios.get<PatreonPost>("/whatsnew/").then(response => {

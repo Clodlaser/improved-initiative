@@ -38,7 +38,7 @@ window.onload = async () => {
     renderReact(React.createElement(App, { tracker: viewModel }), container);
 
     viewModel.ImportEncounterIfAvailable();
-    viewModel.ImportStatBlockIfAvailable();
+    viewModel.ImportFromQueryParamIfAvailable();
     viewModel.GetWhatsNewIfAvailable();
     Metrics.TrackLoad();
   }
