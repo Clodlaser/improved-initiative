@@ -12,7 +12,7 @@ export const useRequest = (url: string, method: "get" | "post" = "get") => {
         setData(res.data);
       })
       .catch(err => {
-        setError(err);
+        setError(err.message ?? JSON.stringify(err, null, 2));
       })
       .finally(() => {
         setloading(false);
