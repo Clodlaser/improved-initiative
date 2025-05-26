@@ -248,7 +248,7 @@ export function startNewsUpdates(app: express.Application): void {
 
   updateLatestPost(latest);
 
-  app.get("/updatenews/", (req: Req, res: Res) => {
+  app.all("/updatenews/", (req: Req, res: Res) => {
     updateLatestPost(latest);
     res.sendStatus(200);
   });
