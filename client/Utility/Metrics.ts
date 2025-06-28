@@ -5,6 +5,8 @@ import { Store } from "./Store";
 
 declare let gtag: Gtag.Gtag | undefined;
 
+let didSetConsent = false;
+
 export class Metrics {
   public static async TrackLoad(): Promise<void> {
     const counts = {
@@ -49,6 +51,13 @@ export class Metrics {
 
     if (typeof gtag == "function") {
       try {
+        if (!didSetConsent) {
+          gtag("consent", "update", {
+            analytics_storage: "granted"
+          });
+          didSetConsent = true;
+        }
+
         gtag("event", name, eventData);
       } catch (e) {}
     }
