@@ -12,7 +12,7 @@ import {
   toModifierString
 } from "../../common/Toolbox";
 import { Listing } from "../Library/Listing";
-import { Conditions2014 } from "../Rules/Conditions";
+import { Conditions2025 } from "../Rules/Conditions";
 import { Dice } from "../Rules/Dice";
 import { IRules, DefaultRules } from "../Rules/Rules";
 import { BeanCounter, Counter } from "./Counter";
@@ -134,7 +134,7 @@ export class TextEnricher {
         )
       },
       conditions: {
-        pattern: concatenatedStringRegex(_.keys(Conditions2014)),
+        pattern: concatenatedStringRegex(_.keys(Conditions2025)),
         matcherFn: (rawText, processed, key) => (
           <span
             className="condition-reference"
