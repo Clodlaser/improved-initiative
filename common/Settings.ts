@@ -43,6 +43,7 @@ export interface Settings {
   };
   PlayerView: PlayerViewSettings;
   PreloadedStatBlockSources: Record<string, boolean | undefined>;
+  PreloadedSpellSources: Record<string, boolean | undefined>;
   RecentItemIds: string[];
   Version: string;
 }
@@ -97,6 +98,9 @@ export function getDefaultSettings(): Settings {
       CustomEncounterId: ""
     },
     PreloadedStatBlockSources: {
+      "wotc-srd": true
+    },
+    PreloadedSpellSources: {
       "wotc-srd": true
     },
     RecentItemIds: [],

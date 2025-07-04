@@ -12,7 +12,10 @@ import { SavedEncounter } from "../../common/SavedEncounter";
 import { PersistentCharacter } from "../../common/PersistentCharacter";
 import { Library, useLibrary } from "./useLibrary";
 import { Listable, ListingMeta } from "../../common/Listable";
-import { ImportOpen5eStatBlock } from "../Importers/Open5eImporter";
+import {
+  ImportOpen5eSpell,
+  ImportOpen5eStatBlock
+} from "../Importers/Open5eImporter";
 import { Settings } from "../../common/Settings";
 
 export type UpdatePersistentCharacter = (
@@ -141,7 +144,7 @@ export function useLibraries(
   };
 
   React.useEffect(() => {
-    preloadSpells(Spells);
+    preloadSpells(Spells, settings);
     preloadStatBlocks(StatBlocks, settings);
 
     getAccountOrSampleCharacters(
@@ -178,11 +181,23 @@ async function preloadStatBlocks(
   }
 }
 
-async function preloadSpells(Spells: Library<Spell>) {
-  const serverResponse = await axios.get<ListingMeta[]>("../spells/");
-  if (serverResponse && serverResponse.data) {
-    const listings = serverResponse.data;
-    Spells.AddListings(listings, "server");
+async function preloadSpells(Spells: Library<Spell>, settings: Settings) {
+  const enabledSources = _.pickBy(
+    settings.PreloadedSpellSources,
+    isEnabled => isEnabled
+  );
+  for (const sourceSlug in enabledSources) {
+    try {
+      const response = await axios.get(`/open5e-spells/${sourceSlug}/`);
+      const open5eListings: ListingMeta[] = response.data;
+      Spells.AddListings(
+        open5eListings,
+        sourceSlug === "wotc-srd" ? "open5e" : "open5e-additional",
+        ImportOpen5eSpell
+      );
+    } catch (error) {
+      console.warn(`Problem loading Spells from ${sourceSlug}: ${error}`);
+    }
   }
 }
 

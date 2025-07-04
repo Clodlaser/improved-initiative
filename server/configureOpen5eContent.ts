@@ -10,20 +10,44 @@ import { normalizeChallengeRating } from "../common/Toolbox";
 export async function configureOpen5eContent(
   app: express.Application
 ): Promise<void> {
-  const includeFields =
+  const includeMonsterFields =
     "name,slug,size,type,subtype,alignment,challenge_rating,document__title,document__slug";
+  const includeSpellFields =
+    "name,slug,level,school,document__title,document__slug";
 
-  const sourceUrl = `https://api.open5e.com/monsters/?limit=500&fields=${includeFields}`;
+  const monstersSourceUrl = `https://api.open5e.com/monsters/?limit=500&fields=${includeMonsterFields}`;
+  const spellsSourceUrl = `https://api.open5e.com/spells/?limit=500&fields=${includeSpellFields}`;
 
-  const listingsBySource = await getAllListings(sourceUrl);
+  const monsterListingsBySource = await getAllListings(
+    monstersSourceUrl,
+    getMetaForMonster
+  );
+  const spellListingsBySource = await getAllListings(
+    spellsSourceUrl,
+    getMetaForSpell
+  );
 
   app.get("/open5e/", (req: Req, res: Res) => {
-    res.json(_.mapValues(listingsBySource, v => v.sourceTitle));
+    const monsterSources = _.mapValues(
+      monsterListingsBySource,
+      v => v.sourceTitle
+    );
+    const spellSources = _.mapValues(spellListingsBySource, v => v.sourceTitle);
+    res.json({
+      monsterSources,
+      spellSources
+    });
   });
 
-  for (const sourceSlug in listingsBySource) {
+  for (const sourceSlug in monsterListingsBySource) {
     app.get(`/open5e/${sourceSlug}/`, (req: Req, res: Res) => {
-      res.json(listingsBySource[sourceSlug].listings);
+      res.json(monsterListingsBySource[sourceSlug].listings);
+    });
+  }
+
+  for (const sourceSlug in spellListingsBySource) {
+    app.get(`/open5e-spells/${sourceSlug}/`, (req: Req, res: Res) => {
+      res.json(spellListingsBySource[sourceSlug].listings);
     });
   }
 }
@@ -34,7 +58,8 @@ type ListingsWithSourceTitle = {
 };
 
 async function getAllListings(
-  sourceUrl: string
+  sourceUrl: string,
+  createListingMeta: (r: any) => ListingMeta
 ): Promise<Record<string, ListingsWithSourceTitle>> {
   let nextUrl = sourceUrl;
   const listingsBySource: Record<string, ListingsWithSourceTitle> = {};
@@ -49,7 +74,7 @@ async function getAllListings(
       );
 
       for (const slug in newListingsBySlug) {
-        const listingMetas = newListingsBySlug[slug].map(getMeta);
+        const listingMetas = newListingsBySlug[slug].map(createListingMeta);
         if (listingsBySource[slug]) {
           listingsBySource[slug].listings.push(...listingMetas);
         } else if (listingMetas.length) {
@@ -70,7 +95,7 @@ async function getAllListings(
   return listingsBySource;
 }
 
-function getMeta(r: any): ListingMeta {
+function getMetaForMonster(r: any): ListingMeta {
   const listingMeta: ListingMeta = {
     Id: "open5e-" + r.slug,
     Name: r.name,
@@ -84,6 +109,25 @@ function getMeta(r: any): ListingMeta {
       Level: normalizeChallengeRating(r.challenge_rating),
       Source: r.document__title,
       Type: `${r.type}` + (r.subtype ? ` (${r.subtype})` : ``)
+    }
+  };
+  return listingMeta;
+}
+
+function getMetaForSpell(r: any): ListingMeta {
+  const listingMeta: ListingMeta = {
+    Id: "open5e-spell-" + r.slug,
+    Name: r.name,
+    Path: "",
+    Link: `https://api.open5e.com/spells/${r.slug}`,
+    LastUpdateMs: 0,
+    SearchHint: `${r.name} ${r.level} ${r.school}`
+      .toLocaleLowerCase()
+      .replace(/[^\w\s]/g, ""),
+    FilterDimensions: {
+      Level: r.level,
+      Source: r.document__title,
+      Type: r.school
     }
   };
   return listingMeta;

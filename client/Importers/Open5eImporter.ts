@@ -6,6 +6,7 @@ import {
   StatBlock
 } from "../../common/StatBlock";
 import { normalizeChallengeRating } from "../../common/Toolbox";
+import { Spell } from "../../common/Spell";
 
 export function ImportOpen5eStatBlock(
   open5eStatBlock: Record<string, any>
@@ -57,6 +58,25 @@ export function ImportOpen5eStatBlock(
     MythicActions: nameAndDescArrays(sb.mythic_actions),
     Reactions: nameAndDescArrays(sb.reactions)
   };
+}
+
+export function ImportOpen5eSpell(open5eSpell: Record<string, any>): Spell {
+  const spell = {
+    ...Spell.Default(),
+    Name: open5eSpell.name,
+    Source: open5eSpell.document__title,
+    Level: open5eSpell.level_int,
+    School: open5eSpell.school,
+    CastingTime: open5eSpell.casting_time,
+    Range: open5eSpell.range,
+    Components: open5eSpell.components,
+    Duration: open5eSpell.duration,
+    Classes: open5eSpell.dnd_class.split(", "),
+    Description: open5eSpell.desc + "\n\n" + open5eSpell.higher_level,
+    Ritual: open5eSpell.ritual === "yes" || open5eSpell.ritual === true
+  };
+
+  return spell;
 }
 
 function parenthesizeOrEmpty(input: string | undefined) {
