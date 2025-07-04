@@ -18,10 +18,13 @@ export async function configureOpen5eContent(
   const monstersSourceUrl = `https://api.open5e.com/monsters/?limit=500&fields=${includeMonsterFields}`;
   const spellsSourceUrl = `https://api.open5e.com/spells/?limit=500&fields=${includeSpellFields}`;
 
+  console.log("Loading Open5e monsters");
   const monsterListingsBySource = await getAllListings(
     monstersSourceUrl,
     getMetaForMonster
   );
+
+  console.log("Loading Open5e spells");
   const spellListingsBySource = await getAllListings(
     spellsSourceUrl,
     getMetaForSpell
@@ -63,7 +66,6 @@ async function getAllListings(
 ): Promise<Record<string, ListingsWithSourceTitle>> {
   let nextUrl = sourceUrl;
   const listingsBySource: Record<string, ListingsWithSourceTitle> = {};
-  console.log("Loading listings from Open5e.");
   do {
     console.log("Loading " + nextUrl);
     try {
