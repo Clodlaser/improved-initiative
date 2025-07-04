@@ -25,7 +25,7 @@ async function improvedInitiativeServer() {
   const session = await GetSessionMiddleware(process.env.REDIS_URL);
   app.use(session);
 
-  ConfigureRoutes(app, playerViews);
+  await ConfigureRoutes(app, playerViews);
 
   const defaultPort = parseInt(process.env.PORT || "80");
 

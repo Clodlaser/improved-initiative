@@ -85,10 +85,10 @@ function getAccountLevel(session) {
   return "EpicInitiative";
 }
 
-export default function (
+export default async function (
   app: express.Application,
   playerViews: PlayerViewManager
-): void {
+): Promise<void> {
   const mustacheEngine = mustacheExpress();
 
   let cacheMaxAge = moment.duration(7, "days").asMilliseconds();
@@ -172,7 +172,7 @@ export default function (
   });
 
   configureBasicRulesContent(app);
-  configureOpen5eContent(app);
+  const configureOpen5eContentPromise = configureOpen5eContent(app);
 
   configureImportRoutes(app, playerViews);
   app.get("/transferlocalstorage/", (req: Req, res: Res) => {
@@ -184,6 +184,8 @@ export default function (
   configurePatreonWebhookReceiver(app);
   configureStorageRoutes(app);
   startNewsUpdates(app);
+
+  return configureOpen5eContentPromise;
 }
 
 async function setupLocalDefaultUser(session: Express.Session) {
