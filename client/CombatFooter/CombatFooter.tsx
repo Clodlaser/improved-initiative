@@ -4,6 +4,7 @@ import { Encounter } from "../Encounter/Encounter";
 import { SettingsContext } from "../Settings/SettingsContext";
 import { useSubscription } from "../Combatant/linkComponentToObservables";
 import { EncounterDifficulty } from "../Widgets/DifficultyCalculator";
+import ReactMarkdown from "react-markdown";
 
 type CombatFooterProps = {
   eventLog: EventLog;
@@ -29,10 +30,9 @@ export function CombatFooter(props: CombatFooterProps) {
           className={"fa-clickable " + togglerButtonCSS}
           onClick={() => setFullLogVisible(!fullLogVisible)}
         ></i>
-        <span
-          className="latest-event"
-          dangerouslySetInnerHTML={{ __html: allEvents[0] }}
-        />
+        <span className="latest-event">
+          <EventLogItem eventMarkdown={allEvents[0]} />
+        </span>
         {settingsContext.TrackerView.DisplayTurnTimer && (
           <TurnTimerReadout
             observableReadout={props.encounter.EncounterFlow.TurnTimerReadout}
@@ -70,8 +70,10 @@ function FullEventLog(props: { eventsTail: string[] }) {
 
   return (
     <ul className="event-log">
-      {props.eventsTail.reverse().map((eventHtml, index) => (
-        <li key={index} dangerouslySetInnerHTML={{ __html: eventHtml }} />
+      {props.eventsTail.reverse().map((eventMarkdown, index) => (
+        <li key={index}>
+          <EventLogItem eventMarkdown={eventMarkdown} />
+        </li>
       ))}
       <div ref={eventsEndRef} />
     </ul>
@@ -84,4 +86,18 @@ function TurnTimerReadout(props: {
   const turnTimerReadout = useSubscription(props.observableReadout);
 
   return <span className="turn-timer">{turnTimerReadout}</span>;
+}
+
+function EventLogItem(props: { eventMarkdown: string }) {
+  return (
+    <ReactMarkdown
+      components={{
+        a: ({ node, ...props }) => (
+          <a {...props} target="_blank" rel="noopener" />
+        )
+      }}
+    >
+      {props.eventMarkdown}
+    </ReactMarkdown>
+  );
 }

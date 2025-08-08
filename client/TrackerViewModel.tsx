@@ -354,7 +354,7 @@ export class TrackerViewModel {
     axios.get<PatreonPost>("/whatsnew/").then(response => {
       const latestPost = response.data;
       this.EventLog.AddEvent(
-        `Welcome to Improved Initiative! Here's what's new: <a href="${latestPost.attributes.url}" target="_blank">${latestPost.attributes.title}</a>`
+        `Welcome to Improved Initiative! Here's what's new: [${latestPost.attributes.title}](${latestPost.attributes.url})`
       );
     });
   };
