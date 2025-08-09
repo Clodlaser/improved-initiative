@@ -10,6 +10,13 @@ import { normalizeChallengeRating } from "../common/Toolbox";
 export async function configureOpen5eContent(
   app: express.Application
 ): Promise<void> {
+  if (process.env.SKIP_OPEN5E_API) {
+    console.log(
+      "Skipping Open5e API configuration due to environment setting."
+    );
+    return;
+  }
+
   const includeMonsterFields =
     "name,slug,size,type,subtype,alignment,challenge_rating,document__title,document__slug";
   const includeSpellFields =
