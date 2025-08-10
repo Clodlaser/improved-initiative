@@ -4,6 +4,7 @@ import { CombatantState } from "../../common/CombatantState";
 import { EncounterState } from "../../common/EncounterState";
 import { CombatantRow } from "./CombatantRow";
 import { InitiativeListHeader } from "./InitiativeListHeader";
+import { CommandContext } from "./CommandContext";
 
 export function InitiativeList(props: {
   encounterState: EncounterState<CombatantState>;
@@ -11,6 +12,8 @@ export function InitiativeList(props: {
   combatantCountsByName: { [name: string]: number };
 }) {
   const encounterState = props.encounterState;
+  const { RemovedCombatants, RestoreCombatants } =
+    React.useContext(CommandContext);
 
   return (
     <div className="initiative-list">
@@ -41,6 +44,21 @@ export function InitiativeList(props: {
           })}
         </tbody>
       </table>
+      {RemovedCombatants.length > 0 && (
+        <div className="removed-combatants">
+          <h3>Removed Combatants</h3>
+          <ul>
+            {RemovedCombatants.map(combatant => (
+              <li
+                key={combatant.Id}
+                onClick={() => RestoreCombatants([combatant.Id])}
+              >
+                {combatant.Alias || combatant.StatBlock.Name}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

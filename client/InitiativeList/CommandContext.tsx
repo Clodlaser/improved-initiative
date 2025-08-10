@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { TagState } from "../../common/CombatantState";
+import { CombatantState, TagState } from "../../common/CombatantState";
 import { Command } from "../Commands/Command";
 
 export const CommandContext = React.createContext({
@@ -13,5 +13,7 @@ export const CommandContext = React.createContext({
   ) => {},
   SetCombatantColor: (combatantId: string, color: string) => {},
   ToggleCombatantSpentReaction: (combatantId: string) => {},
+  RemovedCombatants: [] as CombatantState[],
+  RestoreCombatants: (combatantIds: string[]) => {},
   CombatantCommands: [] as Command[]
 });

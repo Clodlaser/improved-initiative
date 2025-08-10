@@ -91,6 +91,10 @@ export function InitiativeListHost(props: { tracker: TrackerViewModel }) {
     [tracker]
   );
 
+  const removedCombatants = useSubscription(
+    tracker.CombatantCommander.RemovedCombatants
+  );
+
   return (
     <CommandContext.Provider
       value={{
@@ -100,7 +104,9 @@ export function InitiativeListHost(props: { tracker: TrackerViewModel }) {
         CombatantCommands: tracker.CombatantCommander.Commands,
         MoveCombatantFromDrag: moveCombatantFromDrag,
         SetCombatantColor: setCombatantColor,
-        ToggleCombatantSpentReaction: toggleCombatantSpentReaction
+        ToggleCombatantSpentReaction: toggleCombatantSpentReaction,
+        RestoreCombatants: tracker.CombatantCommander.RestoreCombatants,
+        RemovedCombatants: removedCombatants
       }}
     >
       <InitiativeList

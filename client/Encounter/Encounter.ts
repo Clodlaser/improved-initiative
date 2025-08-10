@@ -271,6 +271,14 @@ export class Encounter {
     }
   };
 
+  public RestoreCombatants = (combatantStates: CombatantState[]) => {
+    combatantStates.forEach(combatantState => {
+      const combatant = new Combatant(combatantState, this);
+      this.combatants.push(combatant);
+    });
+    this.SortByInitiative(true);
+  };
+
   public UpdatePersistentCharacterStatBlock(
     persistentCharacterId: string,
     newStatBlock: StatBlock

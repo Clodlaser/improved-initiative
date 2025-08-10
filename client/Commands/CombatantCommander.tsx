@@ -1,7 +1,7 @@
 import * as ko from "knockout";
 import * as React from "react";
 
-import { TagState } from "../../common/CombatantState";
+import { CombatantState, TagState } from "../../common/CombatantState";
 import { probablyUniqueString } from "../../common/Toolbox";
 import { Combatant } from "../Combatant/Combatant";
 import { CombatantDetails } from "../Combatant/CombatantDetails";
@@ -34,6 +34,7 @@ interface PendingLinkInitiative {
 
 export class CombatantCommander {
   private selectedCombatantIds = ko.observableArray<string>([]);
+  private removedCombatants = ko.observableArray<CombatantState>([]);
   private latestRoll: RollResult;
 
   constructor(private tracker: TrackerViewModel) {
@@ -139,6 +140,11 @@ export class CombatantCommander {
       c => c.Combatant.StatBlock().Name
     );
 
+    const removedCombatantStates = combatantsToRemove.map(c =>
+      c.Combatant.GetState()
+    );
+    this.removedCombatants.push(...removedCombatantStates);
+
     if (this.tracker.CombatantViewModels().length > combatantsToRemove.length) {
       let activeCombatant =
         this.tracker.Encounter.EncounterFlow.ActiveCombatant();
@@ -168,6 +174,19 @@ export class CombatantCommander {
       `${deletedCombatantNames.join(", ")} removed from encounter.`
     );
     Metrics.TrackEvent("CombatantsRemoved", { Names: deletedCombatantNames });
+  };
+
+  public RemovedCombatants = ko.computed(() => this.removedCombatants());
+
+  public RestoreCombatants = (combatantIds: string[]) => {
+    const combatantStates = this.removedCombatants().filter(c =>
+      combatantIds.includes(c.Id)
+    );
+    if (combatantStates.length === 0) {
+      return;
+    }
+    this.removedCombatants.removeAll(combatantStates);
+    this.tracker.Encounter.RestoreCombatants(combatantStates);
   };
 
   public Deselect = () => {
@@ -524,7 +543,7 @@ export class CombatantCommander {
         Id: probablyUniqueString()
       });
     });
-    
+
     this.tracker.EventLog.AddEvent(
       `${selectedCombatants.map(c => c.Name()).join(", ")} duplicated.`
     );
