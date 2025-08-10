@@ -72,6 +72,7 @@ export class TrackerViewModel {
   public LibraryManagerPane = ko.observable<LibraryType | null>(null);
   public ToggleLibraryManager = (): void => {
     if (this.LibraryManagerPane() === null) {
+      Metrics.TrackEvent("LibraryManagerOpened");
       this.LibraryManagerPane("StatBlocks");
     } else {
       this.LibraryManagerPane(null);

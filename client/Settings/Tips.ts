@@ -14,6 +14,7 @@ export const tips = [
   "The Player View will only display a colored, qualitative indicator for NPC HP. You can change this in the settings tab.",
   "You can create Tags that disappear after a set amount of rounds in order to automatically remove conditions at the end of a Combatant's turn.",
   "You can get automatic Concentration reminders by using the tag 'Concentrating.' You can disable this feature in the settings.",
+  "The Library Manager allows you to move, delete, or export multiple items at the same time. You can enable it in the Encounter Commands tab.",
   "Want to contribute? Improved Initiative is written in TypeScript and runs on node.js. Fork it on <a href='http://github.com/cynicaloptimist/improved-initiative' target='_blank'>GitHub.</a>",
   "Account Sync will let you access your Characters and Encounters from any device. <a href='https://www.patreon.com/join/improvedinitiative' target='_blank'>Pledge on Patreon</a> to unlock this benefit!",
   "Epic Initiative lets you enhance your Player View with combatant portraits and custom colors. <a href='https://www.patreon.com/join/improvedinitiative' target='_blank'>Pledge on Patreon</a> to support the app and get Epic Initiative!",
