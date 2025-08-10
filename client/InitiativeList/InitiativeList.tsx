@@ -5,6 +5,7 @@ import { EncounterState } from "../../common/EncounterState";
 import { CombatantRow } from "./CombatantRow";
 import { InitiativeListHeader } from "./InitiativeListHeader";
 import { CommandContext } from "./CommandContext";
+import { Button } from "../Components/Button";
 
 export function InitiativeList(props: {
   encounterState: EncounterState<CombatantState>;
@@ -46,17 +47,11 @@ export function InitiativeList(props: {
       </table>
       {RemovedCombatants.length > 0 && (
         <div className="removed-combatants">
-          <h3>Removed Combatants</h3>
-          <ul>
-            {RemovedCombatants.map(combatant => (
-              <li
-                key={combatant.Id}
-                onClick={() => RestoreCombatants([combatant.Id])}
-              >
-                {combatant.Alias || combatant.StatBlock.Name}
-              </li>
-            ))}
-          </ul>
+          <span>{RemovedCombatants.length} combatants removed.</span>
+          <Button
+            onClick={() => RestoreCombatants(RemovedCombatants.map(c => c.Id))}
+            text="Restore"
+          />
         </div>
       )}
     </div>
