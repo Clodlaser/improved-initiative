@@ -2,10 +2,12 @@ import * as React from "react";
 import { CommandContext } from "./CommandContext";
 import { Button } from "../Components/Button";
 import Mousetrap = require("mousetrap");
+import { SettingsContext } from "../Settings/SettingsContext";
 
 export const RestoreCombatants = () => {
   const { RemovedCombatants, RestoreCombatants, ClearRemovedCombatants } =
     React.useContext(CommandContext);
+  const { TrackerView } = React.useContext(SettingsContext);
 
   const restoreCombatants = React.useCallback(() => {
     RestoreCombatants(RemovedCombatants.map(c => c.Id));
@@ -25,29 +27,34 @@ export const RestoreCombatants = () => {
     return () => clearTimeout(timer);
   }, [ClearRemovedCombatants, RemovedCombatants.length]);
 
+  if (
+    RemovedCombatants.length === 0 ||
+    TrackerView.DisplayRestoreCombatants === false
+  ) {
+    return null;
+  }
+
   return (
-    RemovedCombatants.length > 0 && (
-      <div className="removed-combatants">
-        {RemovedCombatants.length == 1 && (
-          <span>
-            {RemovedCombatants[0].StatBlock.Name} removed from encounter.
-          </span>
-        )}
-        {RemovedCombatants.length > 1 && (
-          <span>
-            {RemovedCombatants[0].StatBlock.Name} and{" "}
-            {RemovedCombatants.length - 1} other combatants removed from
-            encounter.
-          </span>
-        )}
-        <Button onClick={restoreCombatants} text="Restore" />
-        <Button
-          onClick={() => ClearRemovedCombatants()}
-          text="Dismiss"
-          key={RemovedCombatants.join("-")}
-          additionalClassNames="button-expires"
-        />
-      </div>
-    )
+    <div className="removed-combatants">
+      {RemovedCombatants.length == 1 && (
+        <span>
+          {RemovedCombatants[0].StatBlock.Name} removed from encounter.
+        </span>
+      )}
+      {RemovedCombatants.length > 1 && (
+        <span>
+          {RemovedCombatants[0].StatBlock.Name} and{" "}
+          {RemovedCombatants.length - 1} other combatants removed from
+          encounter.
+        </span>
+      )}
+      <Button onClick={restoreCombatants} text="Restore" />
+      <Button
+        onClick={() => ClearRemovedCombatants()}
+        text="Dismiss"
+        key={RemovedCombatants.join("-")}
+        additionalClassNames="button-expires"
+      />
+    </div>
   );
 };

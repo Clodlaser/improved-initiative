@@ -102,6 +102,13 @@ export function OptionsSettings(props: {
           as for the currently-active combatant.
         </Info>
       </Toggle>
+      <Toggle fieldName="TrackerView.DisplayRestoreCombatants">
+        Display Restore Combatants prompt
+        <Info>
+          This prompt appears when combatants are removed from the encounter,
+          allowing you to restore them easily.
+        </Info>
+      </Toggle>
       <Dropdown
         fieldName="TrackerView.PostCombatStats"
         options={PostCombatStatsOption}

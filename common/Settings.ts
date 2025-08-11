@@ -40,6 +40,7 @@ export interface Settings {
     DisplayCombatantColor: boolean;
     DisplayReactionTracker: boolean;
     PostCombatStats: PostCombatStatsOption;
+    DisplayRestoreCombatants: boolean;
   };
   PlayerView: PlayerViewSettings;
   PreloadedStatBlockSources: Record<string, boolean | undefined>;
@@ -68,7 +69,8 @@ export function getDefaultSettings(): Settings {
       DisplayHPBar: false,
       DisplayCombatantColor: false,
       DisplayReactionTracker: false,
-      PostCombatStats: PostCombatStatsOption.None
+      PostCombatStats: PostCombatStatsOption.None,
+      DisplayRestoreCombatants: true
     },
     PlayerView: {
       ActiveCombatantOnTop: false,
