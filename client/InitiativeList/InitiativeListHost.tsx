@@ -106,7 +106,9 @@ export function InitiativeListHost(props: { tracker: TrackerViewModel }) {
         SetCombatantColor: setCombatantColor,
         ToggleCombatantSpentReaction: toggleCombatantSpentReaction,
         RestoreCombatants: tracker.CombatantCommander.RestoreCombatants,
-        RemovedCombatants: removedCombatants
+        RemovedCombatants: removedCombatants,
+        ClearRemovedCombatants:
+          tracker.CombatantCommander.ClearRemovedCombatants
       }}
     >
       <InitiativeList

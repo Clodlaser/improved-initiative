@@ -3,7 +3,8 @@ import { CommandContext } from "./CommandContext";
 import { Button } from "../Components/Button";
 
 export const RestoreCombatants = () => {
-  const { RemovedCombatants, RestoreCombatants } = React.useContext(CommandContext);
+  const { RemovedCombatants, RestoreCombatants, ClearRemovedCombatants } =
+    React.useContext(CommandContext);
 
   return (
     RemovedCombatants.length > 0 && (
@@ -22,7 +23,13 @@ export const RestoreCombatants = () => {
         )}
         <Button
           onClick={() => RestoreCombatants(RemovedCombatants.map(c => c.Id))}
-          text="Restore" />
+          text="Restore"
+        />
+        <Button
+          onClick={() => ClearRemovedCombatants()}
+          text="Dismiss"
+          additionalClassNames="button-expires"
+        />
       </div>
     )
   );

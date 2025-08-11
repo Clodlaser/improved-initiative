@@ -15,5 +15,6 @@ export const CommandContext = React.createContext({
   ToggleCombatantSpentReaction: (combatantId: string) => {},
   RemovedCombatants: [] as CombatantState[],
   RestoreCombatants: (combatantIds: string[]) => {},
+  ClearRemovedCombatants: () => {},
   CombatantCommands: [] as Command[]
 });

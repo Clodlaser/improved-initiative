@@ -178,6 +178,10 @@ export class CombatantCommander {
 
   public RemovedCombatants = ko.computed(() => this.removedCombatants());
 
+  public ClearRemovedCombatants = () => {
+    this.removedCombatants.removeAll();
+  };
+
   public RestoreCombatants = (combatantIds: string[]) => {
     const combatantStates = this.removedCombatants().filter(c =>
       combatantIds.includes(c.Id)
