@@ -11,12 +11,6 @@ export function BannerHost(): JSX.Element {
 
   const banner = Banners[bannerIndex];
 
-  React.useEffect(() => {
-    if (banner?.href) {
-      fetch(banner.href, { mode: "no-cors" });
-    }
-  }, [bannerIndex]);
-
   if (bannerIndex === null) {
     return null;
   }
