@@ -18,6 +18,13 @@ export const RestoreCombatants = () => {
     };
   }, [restoreCombatants]);
 
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      ClearRemovedCombatants();
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [ClearRemovedCombatants, RemovedCombatants.length]);
+
   return (
     RemovedCombatants.length > 0 && (
       <div className="removed-combatants">
@@ -37,6 +44,7 @@ export const RestoreCombatants = () => {
         <Button
           onClick={() => ClearRemovedCombatants()}
           text="Dismiss"
+          key={RemovedCombatants.join("-")}
           additionalClassNames="button-expires"
         />
       </div>
