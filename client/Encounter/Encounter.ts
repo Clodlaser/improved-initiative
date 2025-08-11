@@ -253,18 +253,18 @@ export class Encounter {
   public RemoveCombatant = (combatant: Combatant) => {
     this.combatants.remove(combatant);
 
-    const removedCombatantName = combatant.StatBlock().Name;
-    const remainingCombatants = this.combatants();
+    // const removedCombatantName = combatant.StatBlock().Name;
+    // const remainingCombatants = this.combatants();
 
-    const allMyFriendsAreGone = remainingCombatants.every(
-      c => c.StatBlock().Name != removedCombatantName
-    );
+    // const allMyFriendsAreGone = remainingCombatants.every(
+    //   c => c.StatBlock().Name != removedCombatantName
+    // );
 
-    if (allMyFriendsAreGone) {
-      const combatantCountsByName = this.CombatantCountsByName();
-      delete combatantCountsByName[removedCombatantName];
-      this.CombatantCountsByName(combatantCountsByName);
-    }
+    // if (allMyFriendsAreGone) {
+    //   const combatantCountsByName = this.CombatantCountsByName();
+    //   delete combatantCountsByName[removedCombatantName];
+    //   this.CombatantCountsByName(combatantCountsByName);
+    // }
 
     if (this.combatants().length == 0) {
       this.EncounterFlow.EndEncounter();
