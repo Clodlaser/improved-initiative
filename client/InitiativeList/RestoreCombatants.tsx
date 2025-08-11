@@ -1,10 +1,22 @@
 import * as React from "react";
 import { CommandContext } from "./CommandContext";
 import { Button } from "../Components/Button";
+import Mousetrap = require("mousetrap");
 
 export const RestoreCombatants = () => {
   const { RemovedCombatants, RestoreCombatants, ClearRemovedCombatants } =
     React.useContext(CommandContext);
+
+  const restoreCombatants = React.useCallback(() => {
+    RestoreCombatants(RemovedCombatants.map(c => c.Id));
+  }, [RemovedCombatants, RestoreCombatants]);
+
+  React.useEffect(() => {
+    Mousetrap.bind("ctrl+z", restoreCombatants);
+    return () => {
+      Mousetrap.unbind("ctrl+z");
+    };
+  }, [restoreCombatants]);
 
   return (
     RemovedCombatants.length > 0 && (
@@ -21,10 +33,7 @@ export const RestoreCombatants = () => {
             encounter.
           </span>
         )}
-        <Button
-          onClick={() => RestoreCombatants(RemovedCombatants.map(c => c.Id))}
-          text="Restore"
-        />
+        <Button onClick={restoreCombatants} text="Restore" />
         <Button
           onClick={() => ClearRemovedCombatants()}
           text="Dismiss"
