@@ -132,7 +132,9 @@ export class TrackerViewModel {
 
   public CombatantViewModels: ko.PureComputed<CombatantViewModel[]> =
     ko.pureComputed(() =>
-      this.Encounter.Combatants().map(this.buildCombatantViewModel)
+      this.Encounter.Combatants()
+        .filter(c => !c.IsPendingRemoval())
+        .map(this.buildCombatantViewModel)
     );
 
   public StatBlockEditorProps = ko.observable<StatBlockEditorProps>(null);
