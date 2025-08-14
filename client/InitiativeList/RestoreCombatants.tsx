@@ -36,7 +36,7 @@ export const RestoreCombatants = () => {
 
   return (
     <div className="removed-combatants">
-      {CombatantsPendingRemove.length == 1 && (
+      {CombatantsPendingRemove.length === 1 && (
         <span>
           {CombatantsPendingRemove[0].DisplayName()} removed from encounter.
         </span>
