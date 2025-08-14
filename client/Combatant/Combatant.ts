@@ -60,6 +60,7 @@ export class Combatant {
   public IndexLabel = ko.observable(0);
   public Color = ko.observable("");
   public ReactionsSpent = ko.observable(0);
+  public IsPendingRemoval = ko.observable(false);
 
   public CombatTimer = new CombatTimer();
 

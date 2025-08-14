@@ -5,12 +5,12 @@ import Mousetrap = require("mousetrap");
 import { SettingsContext } from "../Settings/SettingsContext";
 
 export const RestoreCombatants = () => {
-  const { RemovedCombatants, RestoreCombatants, ClearRemovedCombatants } =
+  const { CombatantsPendingRemove: RemovedCombatants, RestoreCombatants, FlushCombatants: ClearRemovedCombatants } =
     React.useContext(CommandContext);
   const { TrackerView } = React.useContext(SettingsContext);
 
   const restoreCombatants = React.useCallback(() => {
-    RestoreCombatants(RemovedCombatants.map(c => c.Id));
+    RestoreCombatants();
   }, [RemovedCombatants, RestoreCombatants]);
 
   React.useEffect(() => {
@@ -38,12 +38,12 @@ export const RestoreCombatants = () => {
     <div className="removed-combatants">
       {RemovedCombatants.length == 1 && (
         <span>
-          {RemovedCombatants[0].StatBlock.Name} removed from encounter.
+          {RemovedCombatants[0].DisplayName()} removed from encounter.
         </span>
       )}
       {RemovedCombatants.length > 1 && (
         <span>
-          {RemovedCombatants[0].StatBlock.Name} and{" "}
+          {RemovedCombatants[0].DisplayName()} and{" "}
           {RemovedCombatants.length - 1} other combatants removed from
           encounter.
         </span>

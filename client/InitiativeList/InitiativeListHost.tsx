@@ -91,8 +91,8 @@ export function InitiativeListHost(props: { tracker: TrackerViewModel }) {
     [tracker]
   );
 
-  const removedCombatants = useSubscription(
-    tracker.CombatantCommander.RemovedCombatants
+  const combatantsPendingRemove = useSubscription(
+    tracker.Encounter.CombatantsPendingRemove
   );
 
   return (
@@ -105,10 +105,10 @@ export function InitiativeListHost(props: { tracker: TrackerViewModel }) {
         MoveCombatantFromDrag: moveCombatantFromDrag,
         SetCombatantColor: setCombatantColor,
         ToggleCombatantSpentReaction: toggleCombatantSpentReaction,
+        CombatantsPendingRemove: combatantsPendingRemove,
         RestoreCombatants: tracker.CombatantCommander.RestoreCombatants,
-        RemovedCombatants: removedCombatants,
-        ClearRemovedCombatants:
-          tracker.CombatantCommander.ClearRemovedCombatants
+        FlushCombatants:
+          tracker.CombatantCommander.FlushCombatants
       }}
     >
       <InitiativeList

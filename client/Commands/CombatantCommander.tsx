@@ -34,7 +34,6 @@ interface PendingLinkInitiative {
 
 export class CombatantCommander {
   private selectedCombatantIds = ko.observableArray<string>([]);
-  private removedCombatants = ko.observableArray<CombatantState>([]);
   private latestRoll: RollResult;
 
   constructor(private tracker: TrackerViewModel) {
@@ -140,11 +139,6 @@ export class CombatantCommander {
       c => c.Combatant.StatBlock().Name
     );
 
-    const removedCombatantStates = combatantsToRemove.map(c =>
-      c.Combatant.GetState()
-    );
-    this.removedCombatants.push(...removedCombatantStates);
-
     if (this.tracker.CombatantViewModels().length > combatantsToRemove.length) {
       let activeCombatant =
         this.tracker.Encounter.EncounterFlow.ActiveCombatant();
@@ -176,21 +170,12 @@ export class CombatantCommander {
     Metrics.TrackEvent("CombatantsRemoved", { Names: deletedCombatantNames });
   };
 
-  public RemovedCombatants = ko.computed(() => this.removedCombatants());
-
-  public ClearRemovedCombatants = () => {
-    this.removedCombatants.removeAll();
+  public FlushCombatants = () => {
+    this.tracker.Encounter.FlushCombatants();
   };
 
-  public RestoreCombatants = (combatantIds: string[]) => {
-    const combatantStates = this.removedCombatants().filter(c =>
-      combatantIds.includes(c.Id)
-    );
-    if (combatantStates.length === 0) {
-      return;
-    }
-    this.removedCombatants.removeAll(combatantStates);
-    this.tracker.Encounter.RestoreCombatants(combatantStates);
+  public RestoreCombatants = () => {
+    this.tracker.Encounter.RestoreCombatants();
   };
 
   public Deselect = () => {

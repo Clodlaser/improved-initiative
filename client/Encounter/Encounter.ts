@@ -251,32 +251,52 @@ export class Encounter {
   }
 
   public RemoveCombatant = (combatant: Combatant) => {
+    combatant.IsPendingRemoval(true);
+  };
+
+  private flushCombatant = (combatant: Combatant) => {
+    if (!combatant.IsPendingRemoval()) {
+      console.warn("Cannot flush combatant that is not pending removal");
+      return;
+    }
     this.combatants.remove(combatant);
 
-    // const removedCombatantName = combatant.StatBlock().Name;
-    // const remainingCombatants = this.combatants();
+    const removedCombatantName = combatant.StatBlock().Name;
+    const remainingCombatants = this.combatants();
 
-    // const allMyFriendsAreGone = remainingCombatants.every(
-    //   c => c.StatBlock().Name != removedCombatantName
-    // );
+    const allMyFriendsAreGone = remainingCombatants.every(
+      c => c.StatBlock().Name != removedCombatantName
+    );
 
-    // if (allMyFriendsAreGone) {
-    //   const combatantCountsByName = this.CombatantCountsByName();
-    //   delete combatantCountsByName[removedCombatantName];
-    //   this.CombatantCountsByName(combatantCountsByName);
-    // }
+    if (allMyFriendsAreGone) {
+      const combatantCountsByName = this.CombatantCountsByName();
+      delete combatantCountsByName[removedCombatantName];
+      this.CombatantCountsByName(combatantCountsByName);
+    }
 
     if (this.combatants().length == 0) {
       this.EncounterFlow.EndEncounter();
     }
   };
 
-  public RestoreCombatants = (combatantStates: CombatantState[]) => {
-    combatantStates.forEach(combatantState => {
-      const combatant = new Combatant(combatantState, this);
-      this.combatants.push(combatant);
-    });
-    this.SortByInitiative(true);
+  public CombatantsPendingRemove = ko.computed(() =>
+    this.combatants().filter(c => c.IsPendingRemoval())
+  );
+
+  public FlushCombatants = () => {
+    for (const combatant of this.combatants()) {
+      if (combatant.IsPendingRemoval()) {
+        this.flushCombatant(combatant);
+      }
+    }
+  };
+
+  public RestoreCombatants = () => {
+    for (const combatant of this.combatants()) {
+      if (combatant.IsPendingRemoval()) {
+        combatant.IsPendingRemoval(false);
+      }
+    }
   };
 
   public UpdatePersistentCharacterStatBlock(
@@ -355,7 +375,9 @@ export class Encounter {
         ActiveCombatantId: activeCombatant ? activeCombatant.Id : null,
         RoundCounter: this.EncounterFlow.CombatTimer.ElapsedRounds(),
         //ElapsedSeconds: omitted to avoid repeated re-renders,
-        Combatants: this.combatants().map<CombatantState>(c => c.GetState()),
+        Combatants: this.combatants()
+          .filter(c => !c.IsPendingRemoval())
+          .map<CombatantState>(c => c.GetState()),
         BackgroundImageUrl: this.TemporaryBackgroundImageUrl()
       };
     }

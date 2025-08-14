@@ -1,7 +1,8 @@
 import * as React from "react";
 
-import { CombatantState, TagState } from "../../common/CombatantState";
+import { TagState } from "../../common/CombatantState";
 import { Command } from "../Commands/Command";
+import { Combatant } from "../Combatant/Combatant";
 
 export const CommandContext = React.createContext({
   SelectCombatant: (combatantId: string, appendSelection: boolean) => {},
@@ -13,8 +14,8 @@ export const CommandContext = React.createContext({
   ) => {},
   SetCombatantColor: (combatantId: string, color: string) => {},
   ToggleCombatantSpentReaction: (combatantId: string) => {},
-  RemovedCombatants: [] as CombatantState[],
-  RestoreCombatants: (combatantIds: string[]) => {},
-  ClearRemovedCombatants: () => {},
+  CombatantsPendingRemove: [] as Combatant[],
+  RestoreCombatants: () => {},
+  FlushCombatants: () => {},
   CombatantCommands: [] as Command[]
 });
