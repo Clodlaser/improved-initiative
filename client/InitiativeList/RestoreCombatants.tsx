@@ -36,17 +36,9 @@ export const RestoreCombatants = () => {
 
   return (
     <div className="removed-combatants">
-      {CombatantsPendingRemove.length === 1 && (
-        <span>
-          {CombatantsPendingRemove[0].DisplayName()} removed from encounter.
-        </span>
-      )}
-      {CombatantsPendingRemove.length > 1 && (
-        <span>
-          {CombatantsPendingRemove[0].DisplayName()} and{" "}
-          {CombatantsPendingRemove.length - 1} other combatants removed from
-          encounter.
-        </span>
+      {getCombatantsRemovedMessage(
+        CombatantsPendingRemove[0].DisplayName(),
+        CombatantsPendingRemove.length
       )}
       <Button onClick={restoreCombatants} text="Restore" />
       <Button
@@ -58,3 +50,23 @@ export const RestoreCombatants = () => {
     </div>
   );
 };
+
+function getCombatantsRemovedMessage(
+  combatantName: string,
+  combatantsCount: number
+) {
+  if (combatantsCount === 1) {
+    return (
+      <span>
+        <strong>{combatantName}</strong> removed from encounter.
+      </span>
+    );
+  } else {
+    return (
+      <span>
+        <strong>{combatantName}</strong> and {combatantsCount - 1} other
+        combatants removed from encounter.
+      </span>
+    );
+  }
+}
