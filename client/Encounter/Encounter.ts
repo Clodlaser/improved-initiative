@@ -509,6 +509,10 @@ export class Encounter {
       if (c.Hidden()) {
         return false;
       }
+      if (c.IsPendingRemoval()) {
+        return false;
+      }
+
       if (
         hideMonstersOutsideEncounter &&
         this.EncounterFlow.State() == "inactive" &&
