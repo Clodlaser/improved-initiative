@@ -11,9 +11,13 @@ export async function configureOpen5eContent(
   app: express.Application
 ): Promise<void> {
   if (process.env.SKIP_OPEN5E_API) {
-    console.log(
-      "Skipping Open5e API configuration due to environment setting."
-    );
+    console.log("Skipping Open5e API requests due to environment setting.");
+    app.get("/open5e/", (req: Req, res: Res) => {
+      res.json({
+        monsterSources: {},
+        spellSources: {}
+      });
+    });
     return;
   }
 
