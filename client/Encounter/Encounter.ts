@@ -32,6 +32,7 @@ import { UpdatePersistentCharacter } from "../Library/Libraries";
 import { Library } from "../Library/useLibrary";
 import axios from "axios";
 import { AutoPopulatedNotes } from "./AutoPopulatedNotes";
+import { ConvertStringsToNumbersWhereNeeded } from "../StatBlockEditor/ConvertStringsToNumbersWhereNeeded";
 
 export class Encounter {
   public TemporaryBackgroundImageUrl = ko.observable<string>(null);
@@ -120,7 +121,9 @@ export class Encounter {
       if (statBlock.TotalInitiativeModifier !== undefined) {
         statBlock.InitiativeModifier = statBlock.TotalInitiativeModifier;
       }
-      this.AddCombatantFromStatBlock(deepMerge(StatBlock.Default(), statBlock));
+      const mergedStatBlock = deepMerge(StatBlock.Default(), statBlock);
+      ConvertStringsToNumbersWhereNeeded(mergedStatBlock);
+      this.AddCombatantFromStatBlock(mergedStatBlock);
     };
     if (encounter.Combatants) {
       encounter.Combatants.forEach(c => {
@@ -139,6 +142,7 @@ export class Encounter {
                 statBlockFromLibrary,
                 statBlock
               );
+              ConvertStringsToNumbersWhereNeeded(modifiedStatBlockFromLibrary);
               this.AddCombatantFromStatBlock(modifiedStatBlockFromLibrary);
             })
             .catch(_ => defaultAdd(statBlock));

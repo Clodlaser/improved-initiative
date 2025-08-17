@@ -17,9 +17,13 @@ function castToNumberOrZero(value?: any) {
   if (!value) {
     return 0;
   }
-  const parsedValue = parseInt(value.toString(), 10);
-  if (isNaN(parsedValue)) {
+  try {
+    const parsedValue = parseInt(value.toString(), 10);
+    if (isNaN(parsedValue)) {
+      return 0;
+    }
+    return parsedValue;
+  } catch {
     return 0;
   }
-  return parsedValue;
 }
