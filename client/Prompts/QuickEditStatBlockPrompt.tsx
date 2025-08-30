@@ -25,7 +25,7 @@ export function QuickEditStatBlockPrompt(
         className="p-quick-add"
         label="Quick Edit Combatant"
       >
-        Name <Field name="Name" type="text" />
+        Name <Field name="Name" type="text" autoComplete="off" />
         Max HP <Field name="MaxHP" type="number" />
         AC <Field name="AC" type="number" />
       </StandardPromptLayout>

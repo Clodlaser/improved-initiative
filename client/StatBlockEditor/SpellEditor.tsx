@@ -122,7 +122,12 @@ function FieldRow(props: { label: string; name: string }) {
     <label className="c-spell-editor__field">
       <span className="c-spell-editor__label">{props.label}</span>
       <div className="c-spell-editor__input">
-        <Field type="text" className="notes" name={`${props.name}`} />
+        <Field
+          type="text"
+          className="notes"
+          name={`${props.name}`}
+          autoComplete="off"
+        />
       </div>
     </label>
   );

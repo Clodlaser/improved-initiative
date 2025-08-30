@@ -19,7 +19,7 @@ export function QuickAddPrompt(
     autoFocusSelector: "input[name='Name']",
     children: (
       <StandardPromptLayout className="p-quick-add" label="Quick Add Combatant">
-        <Field name="Name" type="text" placeholder="Name" />
+        <Field name="Name" type="text" placeholder="Name" autoComplete="off" />
         <Field name="MaxHP" type="number" placeholder="HP" />
         <Field name="AC" type="number" placeholder="AC" />
         <Field name="Initiative" type="number" placeholder="Init" />

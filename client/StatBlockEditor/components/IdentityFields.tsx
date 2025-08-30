@@ -39,7 +39,7 @@ export class IdentityFields extends React.Component<IdentityFieldsProps> {
             <label className="label" htmlFor="name">
               Name
             </label>
-            <Field type="text" name="Name" id="name" />
+            <Field type="text" name="Name" id="name" autoComplete="off" />
           </div>
         </div>
         {showSaveAs && (

@@ -29,6 +29,7 @@ function SaveEncounterPromptComponent(props: { autocompletePaths: string[] }) {
               name="Name"
               className="response"
               type="text"
+              autoComplete="off"
             />
           </label>
           <Button
