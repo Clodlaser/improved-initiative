@@ -243,10 +243,12 @@ export class EncounterCommander {
             await persistentCharacterListing.GetWithTemplate(
               PersistentCharacter.Default()
             );
-          this.tracker.Encounter.AddCombatantFromPersistentCharacter(
-            persistentCharacter,
-            this.tracker.LibrariesCommander.UpdatePersistentCharacter
-          );
+          const combatant =
+            this.tracker.Encounter.AddCombatantFromPersistentCharacter(
+              persistentCharacter,
+              this.tracker.LibrariesCommander.UpdatePersistentCharacter
+            );
+          combatant.Initiative(pc.Initiative);
           resolve();
         })
     );
