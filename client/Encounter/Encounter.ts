@@ -223,7 +223,8 @@ export class Encounter {
   public AddCombatantFromPersistentCharacter(
     persistentCharacter: PersistentCharacter,
     updatePersistentCharacter: UpdatePersistentCharacter,
-    hideOnAdd = false
+    hideOnAdd = false,
+    initiativeValue = 0
   ): Combatant | null {
     if (!this.CanAddCombatant(persistentCharacter.Id)) {
       return null;
@@ -240,7 +241,7 @@ export class Encounter {
       TemporaryHP: 0,
       Hidden: hideOnAdd,
       RevealedAC: false,
-      Initiative: 0,
+      Initiative: initiativeValue,
       Tags: [],
       RoundCounter: 0,
       ElapsedSeconds: 0,

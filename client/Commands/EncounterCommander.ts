@@ -212,7 +212,7 @@ export class EncounterCommander {
 
   public LoadSavedEncounter = async (
     legacySavedEncounter: Record<string, any>
-  ): Promise<void[]> => {
+  ): Promise<void> => {
     const savedEncounter = UpdateLegacySavedEncounter(legacySavedEncounter);
 
     const nonCharacterCombatants = savedEncounter.Combatants.filter(
@@ -243,12 +243,12 @@ export class EncounterCommander {
             await persistentCharacterListing.GetWithTemplate(
               PersistentCharacter.Default()
             );
-          const combatant =
-            this.tracker.Encounter.AddCombatantFromPersistentCharacter(
-              persistentCharacter,
-              this.tracker.LibrariesCommander.UpdatePersistentCharacter
-            );
-          combatant.Initiative(pc.Initiative);
+          this.tracker.Encounter.AddCombatantFromPersistentCharacter(
+            persistentCharacter,
+            this.tracker.LibrariesCommander.UpdatePersistentCharacter,
+            pc.Hidden,
+            pc.Initiative
+          );
           resolve();
         })
     );
@@ -262,7 +262,9 @@ export class EncounterCommander {
       Combatants: savedEncounter.Combatants.map(c => c.StatBlock.Name)
     });
 
-    return Promise.all(persistentCharactersPromise);
+    await Promise.all(persistentCharactersPromise);
+
+    this.tracker.Encounter.SortByInitiative(true);
   };
 
   public NextTurn = async (): Promise<boolean> => {
