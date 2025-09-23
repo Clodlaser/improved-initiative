@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>II Overlay HUD</title>
+<style>
+  html,body{height:100%;margin:0;background:transparent}
+  #hud{position:fixed;bottom:16px;left:16px;z-index:1;width:640px;max-width:80vw;min-width:420px;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.45);font:600 14px/1.25 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;background:rgba(0,0,0,.60);backdrop-filter:blur(4px)}
+  .content{padding:14px 16px 12px}
+  .head{display:flex;gap:8px;align-items:baseline;margin-bottom:8px}
+  .title{font-weight:900;font-size:22px}
+  .sp{flex:1}.chan{font-weight:800;opacity:.95}
+  .rows{margin-top:4px}
+  .row{display:flex;align-items:center;gap:12px;margin:10px 0;padding:8px 10px;border-radius:10px}
+  .name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hpWrap{display:flex;align-items:center;gap:10px}
+  .hpBar{height:8px;background:rgba(20,20,20,.7);border-radius:6px;overflow:hidden;width:300px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+  .hpBar>i{display:block;height:100%}
+  .hpTxt{width:80px;text-align:right;opacity:.98;font-size:16px}
+  .row.current .name::before{content:"▶ ";opacity:.95}
+  .hint{opacity:.85;font-weight:600;font-size:12px;margin-top:6px}
+  .enemy{box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);padding:4px 10px}
+  .enemy.critical{background:#000!important;color:#fff;box-shadow:0 0 0 2px #a3082a, inset 0 0 0 1px rgba(255,255,255,.06);animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 2px #a3082a, inset 0 0 0 1px rgba(255,255,255,.06)}50%{box-shadow:0 0 0 6px rgba(163,8,42,.4), inset 0 0 0 1px rgba(255,255,255,.06)}100%{box-shadow:0 0 0 2px #a3082a, inset 0 0 0 1px rgba(255,255,255,.06)}}
+  .enemy.deadRow{background:#3c3c3c!important;color:#fff;opacity:.85;animation:none!important}
+  .dead{font-size:18px}
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="content">
+    <div class="head">
+      <div class="title">Initiative</div><div class="sp"></div><div class="chan" id="ch">—</div>
+    </div>
+    <div class="rows" id="rows"><div class="hint">En attente de données…</div></div>
+    <div class="hint" id="foot">—</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const rowsEl=document.getElementById('rows'), footEl=document.getElementById('foot'), chEl=document.getElementById('ch');
+  const qs=new URLSearchParams(location.search);
+  const CHANNEL=qs.get('ch')||'session-1';
+  const WS_URL = qs.get('ws') || 'ws://127.0.0.1:8091/hud';
+  chEl.textContent=CHANNEL;
+
+  const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+  function enemyBg(p){
+    if (!isFinite(p)) return 'rgba(255,255,255,.06)';
+    if (p<=5)  return 'black';
+    if (p<=20) return '#a3082a';
+    if (p<=40) return '#ff5d5d';
+    if (p<=60) return '#ff9f43';
+    if (p<=80) return '#ffd257';
+    return '#42d07c';
+  }
+
+  function render(state){
+    const turn = Number(state?.turn||0);
+    const list = Array.isArray(state?.list)? state.list : [];
+    const ord  = turn>0? list.slice(turn).concat(list.slice(0,turn)) : list;
+    const view = ord.slice(0,10);
+    rowsEl.innerHTML = view.length ? view.map((c,idx)=>{
+      const name = esc(c?.name ?? '?');
+      const cur  = Number(c?.cur), max = Number(c?.max);
+      const hasHP = isFinite(cur) && isFinite(max) && max>0;
+      const pct = hasHP ? Math.max(0, Math.min(100, Math.round(cur*100/max))) : NaN;
+      if (c?.isPlayer){
+        if (hasHP && cur<=0) return `<div class="row ${idx===0?'current':''}"><div class="name">${name}</div><div class="dead">💀</div></div>`;
+        const clr = pct<25?'#ff5d5d':(pct<60?'#ffd257':'#42d07c');
+        return `<div class="row ${idx===0?'current':''}">
+                  <div class="name">${name}</div>
+                  <div class="hpWrap"><div class="hpBar"><i style="width:${isNaN(pct)?0:pct}%;background:${clr}"></i></div><div class="hpTxt">${hasHP?`${cur}/${max}`:'—'}</div></div>
+                </div>`;
+      } else {
+        const bg = enemyBg(pct);  /* <- correction: plus de "en emyBg" */
+        const dead = hasHP && cur<=0;
+        const critical = hasHP && pct<=5 && !dead;
+        const cls = `row enemy ${idx===0?'current':''}` + (dead?' deadRow':(critical?' critical':''));
+        const style = (bg==='black'&&!dead)?'background:black;color:white':`background:${dead?'#3c3c3c':bg}`;
+        if (dead) return `<div class="${cls}" style="${style}"><div class="name">${name}</div><div class="dead">💀</div></div>`;
+        return `<div class="${cls}" style="${style}"><div class="name">${name}</div></div>`;
+      }
+    }).join('') : '<div class="hint">Aucun combattant…</div>';
+    footEl.textContent='Overlay connecté au canal : '+CHANNEL;
+  }
+
+  function normalizeFrame(ev){
+    if (typeof ev.data==='string') return Promise.resolve(ev.data);
+    if (ev.data instanceof Blob) return ev.data.text();
+    if (ev.data instanceof ArrayBuffer) return Promise.resolve(new TextDecoder().decode(ev.data));
+    try { return Promise.resolve(String(ev.data)); } catch { return Promise.resolve(''); }
+  }
+
+  function connect(){
+    const ws=new WebSocket(WS_URL);
+    ws.onopen =()=>console.log('[overlay] open');
+    ws.onerror=e=>console.log('[overlay] error',e);
+    ws.onclose =()=>setTimeout(connect,1000);
+    ws.onmessage=ev=>{
+      normalizeFrame(ev).then(txt=>{
+        let msg; try{ msg=JSON.parse(txt);}catch{return;}
+        if(msg?.type==='ii_state' && msg.channel===CHANNEL){ render(msg.data); }
+      });
+    };
+  }
+  connect();
+})();
+</script>
+</body>
+</html>
