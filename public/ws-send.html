@@ -1,0 +1,38 @@
+<!doctype html><meta charset="utf-8">
+<title>WS Sender</title>
+<style>body{font:14px system-ui;margin:0;background:#111;color:#eee}
+#bar{display:flex;gap:8px;padding:8px;background:#222;position:sticky;top:0}
+label{opacity:.8} input,textarea{background:#000;color:#eee;border:1px solid #333;border-radius:6px;padding:6px}
+#log{white-space:pre-wrap;font-family:ui-monospace,consolas,monaco;padding:8px}</style>
+<div id="bar">
+  <label>URL <input id="u" size="40"></label>
+  <label>Channel <input id="ch" value="session-1" size="10"></label>
+  <button id="go">Connect</button>
+  <button id="send">Send sample</button>
+  <span id="st"></span>
+</div>
+<textarea id="payload" rows="8" style="width:100%"></textarea>
+<div id="log"></div>
+<script>
+const qs=new URLSearchParams(location.search);
+const DEFAULT='ws://127.0.0.1:8091/hud';
+const u=document.getElementById('u'), ch=document.getElementById('ch'), logEl=document.getElementById('log'), st=document.getElementById('st');
+u.value=qs.get('ws')||DEFAULT; ch.value=qs.get('ch')||'session-1';
+const tpl=()=>JSON.stringify({type:'ii_state',channel:ch.value,at:Date.now(),data:{turn:0,list:[{name:'Ping',cur:10,max:10,isPlayer:true,active:true,img:null}]}},null,2);
+document.getElementById('payload').value=tpl();
+
+let ws;
+function log(m){ const t=new Date().toLocaleTimeString(); logEl.textContent+=`[${t}] ${m}\n`; }
+function connect(){
+  try{
+    if(ws) try{ws.close()}catch{};
+    ws=new WebSocket(u.value);
+    ws.onopen =()=>{ log('OPEN '+u.value); st.textContent='OPEN'; };
+    ws.onerror=e=>{ log('ERROR '+(e.message||e)); st.textContent='ERROR'; };
+    ws.onclose =e=>{ log('CLOSE '+e.code+' '+e.reason); st.textContent='CLOSED'; };
+  }catch(e){ log('EXC '+e); }
+}
+document.getElementById('go').onclick=connect;
+document.getElementById('send').onclick=()=>{ try{ ws.send(document.getElementById('payload').value); log('SENT'); } catch(e){ log('SEND ERROR '+e); } };
+connect();
+</script>

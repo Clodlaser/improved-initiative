@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Dice — Player Controller (Touch)</title>
+<style>
+:root { --bg:#0f141a; --fg:#e6eef5; --muted:#97a6b2; --card:#121a22; --line:#202b36; --accent:#4da3ff; }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.45 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.wrapper{max-width:1100px;margin:0 auto;padding:16px}
+.card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 10px 28px rgba(0,0,0,.28); }
+
+/* --- En-tête: deux gros blocs + grille de dés + ligne formule --- */
+.controls{display:grid;grid-template-columns:1fr;gap:14px}
+.knobrow{display:grid;grid-template-columns:repeat(2, minmax(280px, 1fr));gap:14px}
+@media (max-width: 700px){ .knobrow{grid-template-columns:1fr} }
+
+.box{display:flex;align-items:center;justify-content:space-between;background:#0e151d;border:1px solid var(--line);padding:12px 14px;border-radius:14px}
+.box .label{font-weight:700;color:#cfe1f6}
+.spin{display:flex;align-items:stretch;border-radius:10px;overflow:hidden}
+.spin button{min-width:56px;font-size:1.4rem;background:#101821;border:1px solid var(--line);color:var(--fg)}
+.spin input{width:104px;text-align:center;font-size:1.25rem;padding:10px;background:#0b1117;border:1px solid var(--line);color:var(--fg)}
+button{cursor:pointer;user-select:none;touch-action:manipulation;border-radius:12px}
+button:active{transform:scale(.98)}
+button.primary{background:var(--accent);border:1px solid #2f87e6;color:#041222;font-weight:900;padding:14px 16px}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--fg)}
+
+/* Grille de dés — lisible, contrastée */
+.btnbar{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media (max-width: 700px){ .btnbar{grid-template-columns:repeat(3,1fr)} }
+.btn{
+  padding:22px 0; min-height:88px;
+  border-radius:16px; background:#0f1b27; border:1px solid #2b3b4d;
+  text-align:center; font-weight:900; font-size:1.35rem; letter-spacing:.3px;
+  color:#eaf2ff; text-shadow:0 2px 8px rgba(0,0,0,.6), 0 0 1px rgba(255,255,255,.15);
+}
+
+/* Corps: dernier jet + journal */
+.grid{display:grid;grid-template-columns:360px 1fr;gap:16px;margin-top:16px}
+@media (max-width: 1024px){ .grid{grid-template-columns:1fr} }
+
+.dieMini{
+  width:200px;height:200px;border-radius:22px;border:1px solid var(--line);
+  background:radial-gradient(120% 120% at 30% 30%, #2c3947 0%, #18222d 60%, #121b24 100%);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:inset 0 14px 38px rgba(0,0,0,.35), 0 14px 28px rgba(0,0,0,.25);
+  margin:10px auto;
+}
+.dieMini .value{font-size:100px;font-weight:900;letter-spacing:-.02em}
+@keyframes pop{0%{transform:scale(.85)}55%{transform:scale(1.08)}100%{transform:scale(1)}}
+.pop{animation:pop .34s ease-out}
+.small{color:#b3c3d2;text-align:center}
+.hint{color:var(--muted)}
+
+/* Journal: tableau desktop / cartes mobile */
+.log table{width:100%;border-collapse:collapse}
+.log th,.log td{border-top:1px solid var(--line);padding:10px 12px;text-align:left;color:#d5e2ee}
+.log th{color:#9eb1c5;font-weight:700}
+#loglist{display:none}
+@media (max-width: 900px){
+  .log table{display:none}
+  #loglist{display:grid;gap:10px}
+  .logCard{border:1px solid var(--line);border-radius:12px;padding:10px;background:#0f1b27}
+  .logCard .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .logCard .meta{color:#9eb1c5}
+}
+
+/* Inputs */
+input[type="number"]{appearance:textfield}
+input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button{appearance:none;margin:0}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="controls card">
+    <div class="knobrow">
+      <div class="box">
+        <span class="label">Nb dés</span>
+        <div class="spin">
+          <button id="dcountMinus" aria-label="Moins">−</button>
+          <input id="dcount" type="number" min="1" value="1" inputmode="numeric" />
+          <button id="dcountPlus" aria-label="Plus">+</button>
+        </div>
+      </div>
+      <div class="box">
+        <span class="label">Bonus/Malus</span>
+        <div class="spin">
+          <button id="modMinus" aria-label="Diminuer">−</button>
+          <input id="mod" type="number" value="0" inputmode="numeric"/>
+          <button id="modPlus" aria-label="Augmenter">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="btnbar" aria-label="Dés rapides">
+      <button class="btn" data-d="d20">d20</button>
+      <button class="btn" data-d="d4">d4</button>
+      <button class="btn" data-d="d6">d6</button>
+      <button class="btn" data-d="d8">d8</button>
+      <button class="btn" data-d="d10">d10</button>
+      <button class="btn" data-d="d12">d12</button>
+      <button class="btn" data-d="d100">d100</button>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <span>Formule libre :</span>
+      <input id="formula" value="1d20+0" aria-label="Formule" style="flex:1;min-width:240px"/>
+      <button class="primary" id="btnFormula" style="min-width:240px">Lancer (formule)</button>
+      <span class="hint">Raccourcis : <b>E</b> = d20 · <b>R</b> = relancer dernier</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start">
+      <div class="small">Dernier jet</div>
+      <div class="dieMini" id="miniDie" title="Balayer pour relancer">
+        <div class="value" id="miniVal">—</div>
+      </div>
+      <div class="small" id="lastFormula">Formule : —</div>
+    </div>
+
+    <div class="card log">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="small" style="text-align:left">Journal des jets</div>
+        <button id="clear" class="ghost">Effacer</button>
+      </div>
+      <table id="logtbl" aria-label="Historique">
+        <thead><tr><th>Heure</th><th>Formule</th><th>Total</th><th>Détails</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div id="loglist" aria-label="Historique (mobile)"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- Params ---------- */
+const qs = new URLSearchParams(location.search);
+const WS_URL  = qs.get("ws")   || "ws://127.0.0.1:8091/hud";
+const ROOM    = qs.get("room") || "session-1";
+const PLAYER  = qs.get("player") || "1";
+const TARGET  = qs.get("target") || "table"; // cible figée
+
+/* ---------- UI refs ---------- */
+const dcountEl  = document.getElementById("dcount");
+const modEl     = document.getElementById("mod");
+const miniDie   = document.getElementById("miniDie");
+const miniVal   = document.getElementById("miniVal");
+const lastFormula = document.getElementById("lastFormula");
+const logTbody  = document.querySelector("#logtbl tbody");
+const logList   = document.getElementById("loglist");
+
+/* ---------- WS + BC ---------- */
+let ws, wsReady=false, bc=null;
+function connectWS(){
+  try { ws = new WebSocket(WS_URL); } catch { openBC(); return; }
+  ws.onopen = ()=>{ wsReady=true; };
+  ws.onclose= ()=>{ wsReady=false; setTimeout(connectWS, 800); if(!bc) openBC(); };
+  ws.onmessage = ev => { try{ onIncoming(JSON.parse(ev.data)); }catch{} };
+}
+connectWS();
+setTimeout(()=>{ if(!wsReady && !bc) openBC(); }, 1200);
+function openBC(){
+  try {
+    if(bc) bc.close();
+    bc = new BroadcastChannel("dice_room_" + ROOM);
+    bc.onmessage = ev => onIncoming(ev.data);
+  } catch {}
+}
+function send(msg){
+  const data = JSON.stringify(msg);
+  if(wsReady && ws && ws.readyState===1) ws.send(data);
+  else if(bc) bc.postMessage(msg);
+}
+
+/* ---------- Roll core ---------- */
+function parseFormula(str){
+  const m = String(str).replace(/\s+/g,'').match(/^(\d*)d(\d+)([+-]\d+)?$/i);
+  if(!m) return null;
+  const n = Math.max(1, parseInt(m[1]||'1',10));
+  const faces = parseInt(m[2],10);
+  const mod = parseInt(m[3]||'0',10);
+  return {n,faces,mod,formula:`${n}d${faces}${mod>=0?`+${mod}`:mod}`};
+}
+function roll(formula){
+  const p = parseFormula(formula);
+  if(!p) return null;
+  const rolls = Array.from({length:p.n}, _ => 1 + Math.floor(Math.random()*p.faces));
+  const subtotal = rolls.reduce((a,b)=>a+b,0);
+  const total = subtotal + p.mod;
+  return { ...p, rolls, subtotal, total };
+}
+
+/* ---------- UI helpers ---------- */
+function addLogToTable({payload}){
+  const tr = document.createElement("tr");
+  const now = new Date().toLocaleTimeString();
+  const details = `[${payload.rolls.join(', ')}]` + (payload.mod ? ` ${payload.mod>=0?'+':''}${payload.mod}` : '');
+  tr.innerHTML = `<td>${now}</td><td>${payload.formula}</td><td>${payload.total}</td><td>${details}</td>`;
+  logTbody.prepend(tr);
+}
+function addLogToCards({payload}){
+  const now = new Date().toLocaleTimeString();
+  const details = `[${payload.rolls.join(', ')}]` + (payload.mod ? ` ${payload.mod>=0?'+':''}${payload.mod}` : '');
+  const card = document.createElement('div');
+  card.className = 'logCard';
+  card.innerHTML = `<div class="top"><span class="meta">${now}</span><b>${payload.total}</b></div>
+    <div>${payload.formula}</div>
+    <div class="meta">${details}</div>`;
+  logList.prepend(card);
+}
+function addLog(msg){ addLogToTable(msg); addLogToCards(msg); }
+function showMini(payload){
+  miniVal.textContent = payload.total;
+  miniDie.classList.remove('pop'); void miniDie.offsetWidth; miniDie.classList.add('pop');
+  lastFormula.textContent = 'Formule : ' + payload.formula;
+}
+
+/* ---------- Outgoing ---------- */
+let lastDieType = "d20";
+function buildFormula(dieType){
+  const n = Math.max(1, parseInt(dcountEl.value||'1',10));
+  const mod = parseInt(modEl.value||'0',10);
+  return `${n}${dieType}${mod ? (mod>0?`+${mod}`:mod) : ''}`;
+}
+document.querySelectorAll(".btn[data-d]").forEach(b=>{
+  b.addEventListener('click', ()=>{ lastDieType = b.dataset.d; doRollAndSend(buildFormula(lastDieType)); });
+});
+document.getElementById("btnFormula").addEventListener('click', ()=>{
+  const f = document.getElementById("formula").value.trim();
+  if(!f) return; doRollAndSend(f);
+});
+window.addEventListener('keydown', (e)=>{
+  const k = e.key.toLowerCase();
+  if(k==='e') doRollAndSend(`${dcountEl.value||1}d20${(+modEl.value||0)? (modEl.value>0?`+${modEl.value}`:modEl.value):''}`);
+  if(k==='r') doRollAndSend(buildFormula(lastDieType));
+});
+document.getElementById("dcountMinus").onclick = ()=> dcountEl.value = Math.max(1, (+dcountEl.value||1)-1);
+document.getElementById("dcountPlus").onclick  = ()=> dcountEl.value = Math.max(1, (+dcountEl.value||1)+1);
+document.getElementById("modMinus").onclick    = ()=> modEl.value = (+modEl.value||0)-1;
+document.getElementById("modPlus").onclick     = ()=> modEl.value = (+modEl.value||0)+1;
+document.getElementById("clear").onclick       = ()=> { logTbody.innerHTML=''; logList.innerHTML=''; };
+
+function doRollAndSend(formula){
+  const payload = roll(formula);
+  if(!payload) return;
+  const msg = {
+    type: "roll",
+    room: ROOM,
+    player: PLAYER,
+    target: TARGET,
+    payload,
+    ts: Date.now()
+  };
+  showMini(payload);
+  addLog(msg);
+  send(msg);
+}
+
+/* ---------- Incoming ---------- */
+function onIncoming(msg){
+  if(!msg || msg.type!=='roll') return;
+  if(msg.room && msg.room!==ROOM) return;
+  addLog(msg); showMini(msg.payload);
+}
+
+/* ---------- Touch: swipe pour relancer le dernier type ---------- */
+(function enableSwipe(){
+  let sx=null, sy=null;
+  const start = e=>{ const p = e.touches? e.touches[0]: e; sx=p.clientX; sy=p.clientY; };
+  const end = e=>{
+    if(sx==null) return; const p = e.changedTouches? e.changedTouches[0]: e;
+    const dx = p.clientX - sx; const dy = p.clientY - sy; sx=sy=null;
+    if(Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)){
+      doRollAndSend(buildFormula(lastDieType));
+    }
+  };
+  miniDie.addEventListener('pointerdown', start, {passive:true});
+  miniDie.addEventListener('pointerup', end, {passive:true});
+  miniDie.addEventListener('touchstart', start, {passive:true});
+  miniDie.addEventListener('touchend', end, {passive:true});
+})();
+</script>
+</body>
+</html>

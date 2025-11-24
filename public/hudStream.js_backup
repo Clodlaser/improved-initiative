@@ -1,0 +1,297 @@
+// public/hudStream.js
+(function () {
+  'use strict';
+
+  // ---------------- HUD → WS (ne rien casser ici) ----------------
+  const LS_PJS='__iiHUD_PJs', LS_CH='__iiHUD_Channel';
+  const DEFAULT_CHANNEL='session-1', POLL_MS=5000, DEBOUNCE_MS=200;
+
+  // WS hub (param ?ws=… ou défaut 8091/hud)
+  const sp = new URLSearchParams(location.search);
+  const WS_URL = sp.get('ws') || (location.protocol==='https:'?'wss':'ws')+'://127.0.0.1:8091/hud';
+  console.log('[HUD] WS_URL =', WS_URL);
+
+  const $  = (s,r=document)=>r.querySelector(s);
+  const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+  const qFirst=(arr,root)=>{ for(const s of arr){ const el=$(s,root); if(el) return el; } return null; };
+
+  const pjSetFromLS = ()=>{
+    const raw = localStorage.getItem(LS_PJS) || '';
+    return new Set(raw.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));
+  };
+  const getChannel = ()=>{
+    let ch = localStorage.getItem(LS_CH);
+    if (!ch) { ch = DEFAULT_CHANNEL; localStorage.setItem(LS_CH, ch); }
+    return ch;
+  };
+
+  function isActiveRow(tr){
+    const cls = tr?.className || '';
+    if (['active','combatant--active','is-active'].some(m=>cls.includes(m))) return true;
+    return !!tr?.querySelector?.('.active,.combatant--active,.is-active');
+  }
+
+  function resolvePortraitSrc(tr){
+    try{
+      const img = tr.querySelector('td.combatant__image-cell img, td:nth-child(3) img');
+      if (img && (img.currentSrc || img.src)) return img.currentSrc || img.src;
+      const cell = tr.querySelector('td.combatant__image-cell, td:nth-child(3)');
+      if (cell) {
+        const bg = getComputedStyle(cell).backgroundImage || '';
+        const m = bg.match(/url\(["']?(.+?)["']?\)/i);
+        if (m && m[1]) return m[1];
+      }
+    }catch{}
+    return null;
+  }
+
+  function collectState(){
+    try{
+      const rows = $$('.combatants tbody tr');
+      const PJS  = pjSetFromLS();
+      const list = rows.map(tr=>{
+        const nameEl = qFirst(['td.combatant__name','td:nth-child(4)'], tr);
+        const hpEl   = qFirst(['td.combatant__hp','td:nth-child(5)'], tr);
+        const name   = (nameEl?.textContent||'?').trim();
+        const hpTxt  = (hpEl?.textContent||'').trim().replace(/\s+/g,'');
+        const nums   = hpTxt.match(/\d+/g) || [];
+        const cur    = Number(nums[0] ?? NaN);
+        const max    = Number(nums[1] ?? NaN);
+        const img    = resolvePortraitSrc(tr) || null; // URL directe
+        const isPlayer = tr?.classList?.contains('combatant--player') || PJS.has(name.toLowerCase());
+        const active   = isActiveRow(tr);
+        return { name, cur, max, isPlayer, active, img };
+      });
+      const turn = Math.max(0, list.findIndex(x=>x.active));
+      return { turn, list };
+    }catch(e){
+      console.log('[HUD] collectState error:', e);
+      return { turn:0, list:[] };
+    }
+  }
+
+  // Indicateur
+  const IND_ID='__iiHUD_Indicator';
+  if (!document.getElementById(IND_ID)) {
+    const style=document.createElement('style');
+    style.textContent=`#${IND_ID}{position:fixed;right:16px;bottom:16px;z-index:99999;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 10px;font:600 12px/1.2 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;backdrop-filter:blur(4px);box-shadow:0 8px 22px rgba(0,0,0,.35);display:flex;align-items:center;gap:8px;user-select:none}
+    #${IND_ID} .dot{width:10px;height:10px;border-radius:50%;border:2px solid rgba(255,255,255,.25)}
+    #${IND_ID} .dot.off{background:#8a8a8a} #${IND_ID} .dot.reco{background:#ffb257} #${IND_ID} .dot.ok{background:#42d07c}
+    #${IND_ID} .pill{background:rgba(255,255,255,.10); padding:4px 6px; border-radius:7px; font-weight:700}`;
+    document.head.appendChild(style);
+    const ind=document.createElement('div');
+    ind.id=IND_ID;
+    ind.innerHTML=`<span class="dot off" id="iiDot"></span><span class="pill" id="iiChan">—</span>`;
+    document.body.appendChild(ind);
+  }
+  const setDot=k=>{ const el=document.getElementById('iiDot'); if(el) el.className='dot '+(k||'off'); };
+  const updateIndicator=()=>{ const el=document.getElementById('iiChan'); if(el) el.textContent = getChannel(); };
+  updateIndicator();
+
+  // Emetteur WS robuste
+  let ws=null, lastSent='', reconnectTimer=0;
+  function openWS(){
+    try{
+      setDot('reco');
+      ws = new WebSocket(WS_URL);
+      console.log('[HUD] connecting…');
+      ws.onopen  = ()=>{ console.log('[HUD] OPEN'); setDot('ok'); sendSnapshot(true); };
+      ws.onclose = e  =>{ console.log('[HUD] CLOSE', e.code, e.reason); setDot('reco'); clearTimeout(reconnectTimer); reconnectTimer=setTimeout(openWS,1000); };
+      ws.onerror = e  =>{ console.log('[HUD] ERROR', e); try{ws.close();}catch{} };
+    }catch(err){ console.log('[HUD] WS ctor failed', err); }
+  }
+
+  function sendSnapshot(force=false){
+    try{
+      const payload = { type:'ii_state', channel:getChannel(), at:Date.now(), data:collectState() };
+      const blob = JSON.stringify(payload);
+      if (!force && blob===lastSent) return;
+      lastSent = blob;
+      if (ws && ws.readyState === 1) {
+        ws.send(blob);
+        // console.log('[HUD] send ii_state', payload);
+      } else {
+        // console.log('[HUD] WS not ready');
+      }
+    }catch(e){ console.log('[HUD] send error', e); }
+  }
+
+  // Heartbeat debug (nouvelles lignes côté serveur toutes 15s)
+  setInterval(()=> {
+    try{
+      const hb = { type:'ii_debug', channel:getChannel(), at:Date.now(), note:'mj-heartbeat' };
+      if (ws && ws.readyState===1) ws.send(JSON.stringify(hb));
+    }catch{}
+  }, 15000);
+
+  // Déclencheurs d’envoi
+  try{
+    new MutationObserver(()=>setTimeout(()=>sendSnapshot(false),DEBOUNCE_MS))
+      .observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true});
+  }catch{}
+  setInterval(()=>sendSnapshot(false),POLL_MS);
+
+  if (!localStorage.getItem(LS_CH)) localStorage.setItem(LS_CH, DEFAULT_CHANNEL);
+  openWS();
+  setTimeout(()=>sendSnapshot(true),400);
+
+  // ---------------- DICE DOCK (isolé pour ne pas casser le HUD) ----------------
+  try{
+    (function(){
+      if (window.__diceDockLoaded__) return; window.__diceDockLoaded__ = true;
+
+      // CSS
+      const css = `
+      #diceDock{
+        position:fixed; right:18px; bottom:18px; z-index:100001;
+        width: 520px; height: 420px; border-radius:14px; overflow:hidden;
+        background:#111; border:1px solid rgba(255,255,255,.18);
+        box-shadow:0 12px 30px rgba(0,0,0,.45); display:none;
+      }
+      #diceDockHeader{
+        height:36px; background:rgba(0,0,0,.6); color:#fff; display:flex; align-items:center;
+        justify-content:space-between; padding:0 10px; user-select:none; cursor:move;
+        font:700 13px/1 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;
+      }
+      #diceDockHeader .btn{ background:none;border:none;color:#fff;opacity:.85;cursor:pointer;font-size:18px; }
+      #diceDock iframe{ width:100%; height:calc(100% - 36px); border:0; background:#000; pointer-events:auto; }
+      #diceToggle{
+        position:fixed; left:18px; bottom:18px; z-index:100002;
+        background:#111;color:#fff;border:1px solid rgba(255,255,255,.18);
+        border-radius:12px; padding:10px 14px; cursor:pointer; box-shadow:0 10px 22px rgba(0,0,0,.35);
+        font:700 13px/1 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;
+      }`;
+      const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+
+      // UI
+      const btn = document.createElement('button');
+      btn.id = 'diceToggle'; btn.title = 'Afficher/Masquer les dés (Alt+G)';
+      btn.textContent = '🎲 Dés';
+      const dock = document.createElement('div'); dock.id='diceDock';
+      dock.innerHTML = `
+        <div id="diceDockHeader" tabindex="0">
+          <span>🎲 Lancers</span>
+          <div>
+            <button class="btn" id="diceUndock" title="Ouvrir dans un nouvel onglet">⤢</button>
+            <button class="btn" id="diceClose"  title="Fermer">✕</button>
+          </div>
+        </div>
+        <iframe id="diceFrame" src="about:blank" allow="autoplay; clipboard-read; clipboard-write"></iframe>
+      `;
+      document.body.appendChild(btn);
+      document.body.appendChild(dock);
+
+      // Params
+      const ROOM   = localStorage.getItem('__iiHUD_Channel') || 'session-1';
+      const WS_HUB = (location.protocol==='https:'?'wss':'ws')+'://127.0.0.1:8091/hud';
+
+      const frame  = dock.querySelector('#diceFrame');
+      const header = dock.querySelector('#diceDockHeader');
+      let   isOpen = false;
+
+      function buildUrl(){
+        // dice_all_in_one (avec contrôles intégrés)
+        const base = `/dice_all_in_one.html?mode=controller&player=1&target=table&overlay=1&size=720`;
+        return `${base}&room=${encodeURIComponent(ROOM)}&ws=${encodeURIComponent(WS_HUB)}`;
+      }
+
+      function openDock(){
+        if (!isOpen) {
+          dock.style.display = 'block';
+          if (frame.src === 'about:blank') frame.src = buildUrl(); // lazy load
+          header.focus();
+          isOpen = true;
+          btn.textContent = '🎲 Masquer';
+          btn.title = 'Masquer les dés (Alt+G)';
+        }
+      }
+      function closeDock(){
+        if (isOpen) {
+          dock.style.display = 'none';
+          isOpen = false;
+          btn.textContent = '🎲 Dés';
+          btn.title = 'Afficher les dés (Alt+G)';
+        }
+      }
+      function toggleDock(){
+        isOpen ? closeDock() : openDock();
+        localStorage.setItem('__diceDockOpen', isOpen ? '1' : '0');
+      }
+
+      // Boutons
+      dock.querySelector('#diceClose').addEventListener('click', closeDock);
+      dock.querySelector('#diceUndock').addEventListener('click', ()=> window.open(buildUrl(), '_blank'));
+      btn.addEventListener('click', toggleDock);
+
+      // Raccourcis parent
+      function onKey(e){
+        const k = (e.key||'').toLowerCase();
+        if (e.altKey && !e.shiftKey && k==='g'){ e.preventDefault(); toggleDock(); }
+        if (k==='escape' && isOpen){ e.preventDefault(); closeDock(); }
+      }
+      window.addEventListener('keydown', onKey, {capture:true});
+      document.addEventListener('keydown', onKey, {capture:true});
+
+      header.addEventListener('dblclick', closeDock);
+
+      // --- Drag (souris + tactile) + persistance ---
+      (function enableDrag(el, handle){
+        let sx=0, sy=0, ox=0, oy=0, dragging=false;
+        const save = () => {
+          localStorage.setItem('__diceDockXY', JSON.stringify({
+            left: el.style.left || '',
+            top: el.style.top || '',
+            right: el.style.right || '',
+            bottom: el.style.bottom || ''
+          }));
+        };
+        const getPoint = (e) => ('touches' in e ? e.touches[0] : e);
+        const onDown = (e) => {
+          const pt = getPoint(e);
+          dragging = true;
+          sx = pt.clientX; sy = pt.clientY;
+          el.style.right = ''; el.style.bottom = '';
+          ox = el.offsetLeft; oy = el.offsetTop;
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+          document.addEventListener('touchmove', onMove, { passive:false });
+          document.addEventListener('touchend', onUp);
+          e.preventDefault();
+        };
+        const onMove = (e) => {
+          if (!dragging) return;
+          const pt = getPoint(e);
+          el.style.left = (ox + pt.clientX - sx) + 'px';
+          el.style.top  = (oy + pt.clientY - sy) + 'px';
+          e.preventDefault();
+        };
+        const onUp = () => {
+          if (!dragging) return;
+          dragging = false;
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          document.removeEventListener('touchmove', onMove);
+          document.removeEventListener('touchend', onUp);
+          save();
+        };
+        handle.addEventListener('mousedown', onDown);
+        handle.addEventListener('touchstart', onDown, { passive:false });
+        try {
+          const s = JSON.parse(localStorage.getItem('__diceDockXY') || '{}');
+          if (s.left || s.top || s.right || s.bottom) {
+            el.style.left   = s.left   || '';
+            el.style.top    = s.top    || '';
+            el.style.right  = s.right  || '';
+            el.style.bottom = s.bottom || '';
+          }
+        } catch {}
+      })(dock, header);
+
+      // Auto-open si précédemment ouvert
+      if (localStorage.getItem('__diceDockOpen') === '1') openDock();
+    })();
+  }catch(e){
+    console.log('[DICE-DOCK] init error (non-bloquant):', e);
+  }
+
+})();

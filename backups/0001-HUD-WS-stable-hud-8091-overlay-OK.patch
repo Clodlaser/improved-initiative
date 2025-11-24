@@ -1,0 +1,415 @@
+From 64c9b3d2b92a6350ce5cfae9799c4249323bba50 Mon Sep 17 00:00:00 2001
+From: Chris <dolarcles@gmail.com>
+Date: Tue, 23 Sep 2025 18:43:07 +0200
+Subject: [PATCH] HUD WS stable: /hud @8091 + overlay OK
+
+---
+ public/hudStream.js | 113 +++++++++++++++++++++++++++++++++++++++++++
+ public/overlay.html | 114 ++++++++++++++++++++++++++++++++++++++++++++
+ server/server.ts    |  99 +++++++++++++++++++++++++++++++++-----
+ start-ii-min.ps1    |  22 +++++++++
+ 4 files changed, 335 insertions(+), 13 deletions(-)
+ create mode 100644 public/hudStream.js
+ create mode 100644 public/overlay.html
+ create mode 100644 start-ii-min.ps1
+
+diff --git a/public/hudStream.js b/public/hudStream.js
+new file mode 100644
+index 00000000..487e6c59
+--- /dev/null
++++ b/public/hudStream.js
+@@ -0,0 +1,113 @@
++// public/hudStream.js
++(function () {
++  'use strict';
++
++  const LS_PJS='__iiHUD_PJs', LS_CH='__iiHUD_Channel';
++  const DEFAULT_CHANNEL='session-1', POLL_MS=5000, DEBOUNCE_MS=200;
++
++  // Par défaut on pousse vers le WS dédié (8091). Override possible via ?ws=
++  const p = new URLSearchParams(location.search);
++  const WS_URL = p.get('ws') || 'ws://127.0.0.1:8091/hud';
++  console.log('[HUD] WS_URL =', WS_URL);
++
++  const $=(s,r=document)=>r.querySelector(s);
++  const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
++  const qFirst=(arr,root)=>{ for(const s of arr){ const el=$(s,root); if(el) return el; } return null; };
++
++  const pjSetFromLS = ()=>{
++    const raw = localStorage.getItem(LS_PJS) || '';
++    return new Set(raw.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));
++  };
++  const getChannel = ()=>{
++    let ch = localStorage.getItem(LS_CH);
++    if (!ch) { ch = DEFAULT_CHANNEL; localStorage.setItem(LS_CH, ch); }
++    return ch;
++  };
++
++  function isActiveRow(tr){
++    const cls = tr.className || '';
++    if (['active','combatant--active','is-active'].some(m=>cls.includes(m))) return true;
++    return !!tr.querySelector('.active,.combatant--active,.is-active');
++  }
++
++  function resolvePortraitSrc(tr){
++    const img = tr.querySelector('td.combatant__image-cell img, td:nth-child(3) img');
++    if (img && (img.currentSrc || img.src)) return img.currentSrc || img.src;
++    const cell = tr.querySelector('td.combatant__image-cell, td:nth-child(3)');
++    if (cell) {
++      const bg = getComputedStyle(cell).backgroundImage || '';
++      const m = bg.match(/url\(["']?(.+?)["']?\)/i);
++      if (m && m[1]) return m[1];
++    }
++    return null;
++  }
++
++  function collectState(){
++    const rows = $$('.combatants tbody tr');
++    const PJS  = pjSetFromLS();
++    const list = rows.map(tr=>{
++      const nameEl = qFirst(['td.combatant__name','td:nth-child(4)'], tr);
++      const hpEl   = qFirst(['td.combatant__hp','td:nth-child(5)'], tr);
++      const name   = (nameEl?.textContent||'?').trim();
++      const hpTxt  = (hpEl?.textContent||'').trim().replace(/\s+/g,'');
++      const nums   = hpTxt.match(/\d+/g) || [];
++      const cur    = Number(nums[0] ?? NaN);
++      const max    = Number(nums[1] ?? NaN);
++      const img    = resolvePortraitSrc(tr) || null; // URL (pas de base64)
++      const isPlayer = tr.classList?.contains('combatant--player') || PJS.has(name.toLowerCase());
++      const active   = isActiveRow(tr);
++      return { name, cur, max, isPlayer, active, img };
++    });
++    const turn = Math.max(0, list.findIndex(x=>x.active));
++    return { turn, list };
++  }
++
++  // petit indicateur
++  const IND_ID='__iiHUD_Indicator';
++  if (!document.getElementById(IND_ID)) {
++    const style=document.createElement('style');
++    style.textContent=`#${IND_ID}{position:fixed;right:16px;bottom:16px;z-index:99999;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 10px;font:600 12px/1.2 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;backdrop-filter:blur(4px);box-shadow:0 8px 22px rgba(0,0,0,.35);display:flex;align-items:center;gap:8px;user-select:none}
++    #${IND_ID} .dot{width:10px;height:10px;border-radius:50%;border:2px solid rgba(255,255,255,.25)}
++    #${IND_ID} .dot.off{background:#8a8a8a} #${IND_ID} .dot.reco{background:#ffb257} #${IND_ID} .dot.ok{background:#42d07c}
++    #${IND_ID} .pill{background:rgba(255,255,255,.10); padding:4px 6px; border-radius:7px; font-weight:700}`;
++    document.head.appendChild(style);
++    const ind=document.createElement('div');
++    ind.id=IND_ID;
++    ind.innerHTML=`<span class="dot off" id="iiDot"></span><span class="pill" id="iiChan">—</span>`;
++    document.body.appendChild(ind);
++  }
++  const setDot=k=>{ document.getElementById('iiDot').className='dot '+(k||'off'); };
++  const updateIndicator=()=>{ document.getElementById('iiChan').textContent = getChannel(); };
++  updateIndicator();
++
++  let ws=null, lastSent='', reconnectTimer=0;
++
++  function openWS(){
++    try{
++      setDot('reco');
++      ws = new WebSocket(WS_URL);
++      console.log('[HUD] connecting…');
++
++      ws.onopen = ()=>{ console.log('[HUD] OPEN'); setDot('ok'); sendSnapshot(true); };
++      ws.onclose= e  =>{ console.log('[HUD] CLOSE', e.code, e.reason); setDot('reco'); clearTimeout(reconnectTimer); reconnectTimer=setTimeout(openWS,1000); };
++      ws.onerror= e  =>{ console.log('[HUD] ERROR', e); try{ws.close();}catch{} };
++    }catch(err){ console.log('[HUD] WS ctor failed', err); }
++  }
++
++  function sendSnapshot(force=false){
++    const payload = { type:'ii_state', channel:getChannel(), at:Date.now(), data:collectState() };
++    const blob = JSON.stringify(payload);
++    if (!force && blob===lastSent) return;
++    lastSent = blob;
++    if (ws && ws.readyState === 1) { console.log('[HUD] send ii_state', payload); ws.send(blob); }
++    else { console.log('[HUD] WS not ready'); }
++  }
++
++  new MutationObserver(()=>setTimeout(()=>sendSnapshot(false),DEBOUNCE_MS))
++    .observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true});
++  setInterval(()=>sendSnapshot(false),POLL_MS);
++
++  if (!localStorage.getItem(LS_CH)) localStorage.setItem(LS_CH, DEFAULT_CHANNEL);
++  openWS();
++  setTimeout(()=>sendSnapshot(true),400);
++})();
+diff --git a/public/overlay.html b/public/overlay.html
+new file mode 100644
+index 00000000..fd44b60a
+--- /dev/null
++++ b/public/overlay.html
+@@ -0,0 +1,114 @@
++<!doctype html>
++<html lang="fr">
++<head>
++<meta charset="utf-8" />
++<meta name="viewport" content="width=device-width,initial-scale=1" />
++<title>II Overlay HUD</title>
++<style>
++  html,body{height:100%;margin:0;background:transparent}
++  #hud{position:fixed;bottom:16px;left:16px;z-index:1;width:640px;max-width:80vw;min-width:420px;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.45);font:600 14px/1.25 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;background:rgba(0,0,0,.60);backdrop-filter:blur(4px)}
++  .content{padding:14px 16px 12px}
++  .head{display:flex;gap:8px;align-items:baseline;margin-bottom:8px}
++  .title{font-weight:900;font-size:22px}
++  .sp{flex:1}.chan{font-weight:800;opacity:.95}
++  .rows{margin-top:4px}
++  .row{display:flex;align-items:center;gap:12px;margin:10px 0;padding:8px 10px;border-radius:10px}
++  .name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
++  .hpWrap{display:flex;align-items:center;gap:10px}
++  .hpBar{height:8px;background:rgba(20,20,20,.7);border-radius:6px;overflow:hidden;width:300px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
++  .hpBar>i{display:block;height:100%}
++  .hpTxt{width:80px;text-align:right;opacity:.98;font-size:16px}
++  .row.current .name::before{content:"▶ ";opacity:.95}
++  .hint{opacity:.85;font-weight:600;font-size:12px;margin-top:6px}
++  .enemy{box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);padding:4px 10px}
++  .enemy.critical{background:#000!important;color:#fff;box-shadow:0 0 0 2px #a3082a, inset 0 0 0 1px rgba(255,255,255,.06);animation:pulse 1.2s ease-in-out infinite}
++  @keyframes pulse{0%{box-shadow:0 0 0 2px #a3082a, inset 0 0 0 1px rgba(255,255,255,.06)}50%{box-shadow:0 0 0 6px rgba(163,8,42,.4), inset 0 0 0 1px rgba(255,255,255,.06)}100%{box-shadow:0 0 0 2px #a3082a, inset 0 0 0 1px rgba(255,255,255,.06)}}
++  .enemy.deadRow{background:#3c3c3c!important;color:#fff;opacity:.85;animation:none!important}
++  .dead{font-size:18px}
++</style>
++</head>
++<body>
++<div id="hud">
++  <div class="content">
++    <div class="head">
++      <div class="title">Initiative</div><div class="sp"></div><div class="chan" id="ch">—</div>
++    </div>
++    <div class="rows" id="rows"><div class="hint">En attente de données…</div></div>
++    <div class="hint" id="foot">—</div>
++  </div>
++</div>
++
++<script>
++(function(){
++  const rowsEl=document.getElementById('rows'), footEl=document.getElementById('foot'), chEl=document.getElementById('ch');
++  const qs=new URLSearchParams(location.search);
++  const CHANNEL=qs.get('ch')||'session-1';
++  const WS_URL = qs.get('ws') || 'ws://127.0.0.1:8091/hud';
++  chEl.textContent=CHANNEL;
++
++  const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
++
++  function enemyBg(p){
++    if (!isFinite(p)) return 'rgba(255,255,255,.06)';
++    if (p<=5)  return 'black';
++    if (p<=20) return '#a3082a';
++    if (p<=40) return '#ff5d5d';
++    if (p<=60) return '#ff9f43';
++    if (p<=80) return '#ffd257';
++    return '#42d07c';
++  }
++
++  function render(state){
++    const turn = Number(state?.turn||0);
++    const list = Array.isArray(state?.list)? state.list : [];
++    const ord  = turn>0? list.slice(turn).concat(list.slice(0,turn)) : list;
++    const view = ord.slice(0,10);
++    rowsEl.innerHTML = view.length ? view.map((c,idx)=>{
++      const name = esc(c?.name ?? '?');
++      const cur  = Number(c?.cur), max = Number(c?.max);
++      const hasHP = isFinite(cur) && isFinite(max) && max>0;
++      const pct = hasHP ? Math.max(0, Math.min(100, Math.round(cur*100/max))) : NaN;
++      if (c?.isPlayer){
++        if (hasHP && cur<=0) return `<div class="row ${idx===0?'current':''}"><div class="name">${name}</div><div class="dead">💀</div></div>`;
++        const clr = pct<25?'#ff5d5d':(pct<60?'#ffd257':'#42d07c');
++        return `<div class="row ${idx===0?'current':''}">
++                  <div class="name">${name}</div>
++                  <div class="hpWrap"><div class="hpBar"><i style="width:${isNaN(pct)?0:pct}%;background:${clr}"></i></div><div class="hpTxt">${hasHP?`${cur}/${max}`:'—'}</div></div>
++                </div>`;
++      } else {
++        const bg = enemyBg(pct);  /* <- correction: plus de "en emyBg" */
++        const dead = hasHP && cur<=0;
++        const critical = hasHP && pct<=5 && !dead;
++        const cls = `row enemy ${idx===0?'current':''}` + (dead?' deadRow':(critical?' critical':''));
++        const style = (bg==='black'&&!dead)?'background:black;color:white':`background:${dead?'#3c3c3c':bg}`;
++        if (dead) return `<div class="${cls}" style="${style}"><div class="name">${name}</div><div class="dead">💀</div></div>`;
++        return `<div class="${cls}" style="${style}"><div class="name">${name}</div></div>`;
++      }
++    }).join('') : '<div class="hint">Aucun combattant…</div>';
++    footEl.textContent='Overlay connecté au canal : '+CHANNEL;
++  }
++
++  function normalizeFrame(ev){
++    if (typeof ev.data==='string') return Promise.resolve(ev.data);
++    if (ev.data instanceof Blob) return ev.data.text();
++    if (ev.data instanceof ArrayBuffer) return Promise.resolve(new TextDecoder().decode(ev.data));
++    try { return Promise.resolve(String(ev.data)); } catch { return Promise.resolve(''); }
++  }
++
++  function connect(){
++    const ws=new WebSocket(WS_URL);
++    ws.onopen =()=>console.log('[overlay] open');
++    ws.onerror=e=>console.log('[overlay] error',e);
++    ws.onclose =()=>setTimeout(connect,1000);
++    ws.onmessage=ev=>{
++      normalizeFrame(ev).then(txt=>{
++        let msg; try{ msg=JSON.parse(txt);}catch{return;}
++        if(msg?.type==='ii_state' && msg.channel===CHANNEL){ render(msg.data); }
++      });
++    };
++  }
++  connect();
++})();
++</script>
++</body>
++</html>
+diff --git a/server/server.ts b/server/server.ts
+index 9cb8fd8e..d5e9aab1 100644
+--- a/server/server.ts
++++ b/server/server.ts
+@@ -1,9 +1,8 @@
++// server/server.ts
+ import * as express from "express";
+-
+-import * as SocketIO from "socket.io";
+ import * as http from "http";
+-
+-import * as cluster from "cluster";
++import * as SocketIO from "socket.io";
++import { WebSocketServer, WebSocket } from "ws";
+ 
+ import * as DB from "./dbconnection";
+ import { getDbConnectionString } from "./getDbConnectionString";
+@@ -15,29 +14,103 @@ import ConfigureSockets from "./sockets";
+ async function improvedInitiativeServer() {
+   const app = express();
+   app.set("trust proxy", true);
+-  const server = new http.Server(app);
+ 
++  // Sert /public (overlay/sniffer/sender/hudStream si présents)
++  app.use(express.static("public"));
++
++  const server = http.createServer(app);
++
++  // --- II standard (DB + routes + sessions)
+   const dbConnectionString = await getDbConnectionString();
+   await DB.initialize(dbConnectionString);
+ 
+   const playerViews = await GetPlayerViewManager();
+-
+   const session = await GetSessionMiddleware(process.env.REDIS_URL);
+   app.use(session);
+-
+   await ConfigureRoutes(app, playerViews);
+ 
+-  const defaultPort = parseInt(process.env.PORT || "80");
++  // --- HTTP (IPv4) : 8090 par défaut
++  const defaultPort = Number(process.env.PORT) || 8090;
++  server.listen(defaultPort, "127.0.0.1", () => {
++    console.log(`HTTP listening on ${defaultPort} (IPv4)`);
++  });
++
++  // ---------- WebSocket HUD dédié (port séparé) ----------
++  const WS_PORT = Number(process.env.WS_PORT) || 8091;
++  const wss = new WebSocketServer({
++    port: WS_PORT,
++    path: "/hud",
++    perMessageDeflate: false,
++  });
++  console.log(`WS /hud listening on ws://127.0.0.1:${WS_PORT}/hud`);
++
++  // Registre de clients
++  const clients = new Set<WebSocket>();
++
++  wss.on("connection", (ws, req) => {
++    console.log("WS /hud connected from", req?.socket?.remoteAddress);
++    clients.add(ws);
++
++    ws.on("close", () => {
++      clients.delete(ws);
++      console.log("WS /hud closed. clients now:", clients.size);
++    });
++
++    // Diffusion (string) + logs — SANS callback, SANS Set.forEach
++    ws.on("message", (data) => {
++      const text = typeof data === "string" ? data : (data as Buffer).toString();
++
++      // snapshot en array (pas d'itération directe du Set)
++      const arr: WebSocket[] = [];
++      clients.forEach((c) => arr.push(c));
++
++      const states = arr.map((c: any, i) => `${i}:${c.readyState}`);
++      console.log(
++        `WS /hud recv: len=${text.length} | clients=${arr.length} | states=[${states.join(", ")}] | BROADCAST=v3`
++      );
++
++      let sent = 0, errors = 0;
++      for (let i = 0; i < arr.length; i++) {
++        const c: any = arr[i];
++        try {
++          c.send(text);
++          sent++;
++        } catch (e: any) {
++          errors++;
++          console.log(`  send[${i}] -> THROW (state=${c.readyState}):`, e?.message || e);
++        }
++      }
++      console.log(`  broadcast result: sent=${sent} errors=${errors}`);
++    });
++  });
++
++  // Heartbeat (debug) — même mécanique (array snapshot + envoi sync)
++  setInterval(() => {
++    const hb = JSON.stringify({ type: "debug", at: Date.now(), note: "hb" });
++
++    const arr: WebSocket[] = [];
++    clients.forEach((c) => arr.push(c));
++
++    const states = arr.map((c: any, i) => `${i}:${c.readyState}`);
++    let sent = 0, errors = 0;
++    for (let i = 0; i < arr.length; i++) {
++      const c: any = arr[i];
++      try {
++        c.send(hb);
++        sent++;
++      } catch (e: any) {
++        errors++;
++        console.log(`  hb[${i}] -> THROW (state=${c.readyState}):`, e?.message || e);
++      }
++    }
++    console.log(`WS /hud hb: clients=${arr.length} states=[${states.join(", ")}] sent=${sent} errors=${errors}`);
++  }, 4000);
+ 
+-  await server.listen(defaultPort);
+   console.log("Launched server.");
+ 
++  // --- Socket.IO natif de II (inchangé)
+   const io = new SocketIO.Server(server);
+   ConfigureSockets(io, session, playerViews);
+-
+-  if (cluster.worker) {
+-    console.log("Improved Initiative node %s running", cluster.worker.id);
+-  }
+ }
+ 
+ improvedInitiativeServer();
+diff --git a/start-ii-min.ps1 b/start-ii-min.ps1
+new file mode 100644
+index 00000000..77cb36d4
+--- /dev/null
++++ b/start-ii-min.ps1
+@@ -0,0 +1,22 @@
++# start-ii-min.ps1
++param([int]$Port = 8090)
++
++# Vars propres et stables
++$env:NODE_ENV = "development"
++$env:PORT     = "$Port"
++$env:BASE_URL = "http://localhost:$Port"
++$env:WEB_CONCURRENCY = "1"
++$env:WEB_CONCURRENCY_OVERRIDE = "1"   # au cas où le code regarde un autre nom
++
++# Rewards actifs / Patreon out
++$env:DEFAULT_ACCOUNT_LEVEL = "epicinitiative"
++$env:DEFAULT_PATREON_ID    = "local-dev"
++
++# 1) Ouvre le watcher (Grunt) dans une 2e fenêtre
++Start-Process powershell -ArgumentList @(
++  "-NoExit",
++  "-Command", "Set-Location `"$PSScriptRoot`"; npx grunt"
++)
++
++# 2) Lance le serveur dans la fenêtre courante
++npm run start
+-- 
+2.44.0.windows.1
+

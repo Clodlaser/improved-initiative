@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>II Overlay HUD — ajusté</title>
+<style>
+  html,body{height:100%;margin:0;background:transparent}
+  #hud{
+    position:fixed;bottom:16px;left:16px;z-index:1;
+    width:640px;max-width:80vw;min-width:420px;
+    color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:14px;
+    overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.45);
+    font:600 14px/1.25 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;
+    background:rgba(0,0,0,.60);backdrop-filter:blur(4px);
+  }
+  .content{position:relative;z-index:2;padding:14px 16px 12px 16px}
+  .head{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+  .title{font-weight:900;font-size:22px;letter-spacing:.2px}
+  .sp{flex:1}
+  .chan{font-weight:800;opacity:.95}
+  .rows{margin-top:4px}
+
+  .row{
+    display:flex;align-items:center;gap:12px;
+    margin:12px 0;padding:8px 10px;border-radius:10px
+  }
+  .name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* Joueurs */
+  .hpWrap{display:flex;align-items:center;gap:12px}
+  .hpBar{height:8px;background:rgba(20,20,20,.7);border-radius:6px;overflow:hidden;width:300px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+  .hpBar>i{display:block;height:100%}
+  .hpTxt{width:80px;text-align:right;opacity:.98;font-size:16px}
+  .row.current .name::before{content:"▶ ";opacity:.95}
+
+  .hint{opacity:.85;font-weight:600;font-size:12px;margin-top:6px}
+
+  /* Ennemis */
+  .enemy{
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
+    padding:4px 10px;          /* plus compact que les joueurs */
+    min-height:28px;
+  }
+  .enemy.critical{
+    background:#000 !important;
+    color:#fff;
+    box-shadow:0 0 0 2px #a3082a, inset 0 0 0 1px rgba(255,255,255,.06);
+    animation:pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%  { box-shadow:0 0 0 2px #a3082a, inset 0 0 0 1px rgba(255,255,255,.06) }
+    50% { box-shadow:0 0 0 6px rgba(163,8,42,.4), inset 0 0 0 1px rgba(255,255,255,.06) }
+    100%{ box-shadow:0 0 0 2px #a3082a, inset 0 0 0 1px rgba(255,255,255,.06) }
+  }
+  .enemy.deadRow{
+    background:#3c3c3c !important;  /* gris désaturé pour morts */
+    color:#fff;
+    opacity:.85;
+    animation:none !important;       /* pas de pulse une fois mort */
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
+  }
+
+  .dead{font-size:18px;line-height:1}
+  .muted{opacity:.65}
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="content">
+    <div class="head">
+      <div class="title">Initiative</div>
+      <div class="sp"></div>
+      <div class="chan" id="ch">—</div>
+    </div>
+    <div class="rows" id="rows">
+      <div class="hint">En attente de données…</div>
+    </div>
+    <div class="hint" id="foot">—</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const rowsEl = document.getElementById('rows');
+  const footEl = document.getElementById('foot');
+  const chEl   = document.getElementById('ch');
+
+  const qs = new URLSearchParams(location.search);
+  const CHANNEL = qs.get('ch') || 'default';
+  const WS_URL  = qs.get('ws') || 'ws://localhost:8090';
+  const DEBUG   = qs.get('debug') === '1';
+
+  function log(){ if (DEBUG) console.log.apply(console, arguments); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m])); }
+
+  // Palette ennemis en fonction des PV restants (en %)
+  // Vert → Jaune → Orange → Rouge → Carmin ; ≤5% = noir (mode critique)
+  function enemyBg(pct){
+    if (!isFinite(pct)) return 'rgba(255,255,255,0.06)';
+    if (pct <= 5)   return 'black';     // critique: noir (texte inversé)
+    if (pct <= 20)  return '#a3082a';   // carmin
+    if (pct <= 40)  return '#ff5d5d';   // rouge
+    if (pct <= 60)  return '#ff9f43';   // orange
+    if (pct <= 80)  return '#ffd257';   // jaune
+    return '#42d07c';                   // vert
+  }
+
+  chEl.textContent = CHANNEL;
+
+  function render(state){
+    const { turn=0, list=[] } = state || {};
+    const ord  = turn>0 ? list.slice(turn).concat(list.slice(0,turn)) : list;
+    const view = ord.slice(0, 10);
+
+    rowsEl.innerHTML = view.length ? view.map((c,idx)=>{
+      const isDead = isFinite(c.cur) && c.cur <= 0;
+      const hasHP  = isFinite(c.cur) && isFinite(c.max) && c.max>0;
+      const pct    = hasHP ? Math.max(0, Math.min(100, Math.round(c.cur*100/c.max))) : NaN;
+
+      // JOUEURS
+      if (c.isPlayer) {
+        if (isDead) {
+          return '<div class="row '+(idx===0?'current':'')+'">'
+               +   '<div class="name">'+esc(c.name)+'</div>'
+               +   '<div class="dead" title="À 0 PV">💀</div>'
+               + '</div>';
+        }
+        const clr = pct<25?'#ff5d5d':(pct<60?'#ffd257':'#42d07c');
+        return '<div class="row '+(idx===0?'current':'')+'">'
+             +   '<div class="name">'+esc(c.name)+'</div>'
+             +   '<div class="hpWrap">'
+             +     '<div class="hpBar"><i style="width:'+pct+'%;background:'+clr+'"></i></div>'
+             +     '<div class="hpTxt">'+(c.cur+'/'+c.max)+'</div>'
+             +   '</div>'
+             + '</div>';
+      }
+
+      // ENNEMIS
+      const bg = enemyBg(pct);
+      const isCritical = hasHP && pct <= 5 && !isDead; // pas de pulse si mort
+      const baseCls = 'row enemy ' + (idx===0 ? 'current' : '');
+      const cls = baseCls + (isDead ? ' deadRow' : (isCritical ? ' critical' : ''));
+      const style = (bg==='black' && !isDead) ? 'background:'+bg+';color:white' : 'background:'+ (isDead ? '#3c3c3c' : bg);
+
+      if (isDead) {
+        return '<div class="'+cls+'" style="'+style+'">'
+             +   '<div class="name muted">'+esc(c.name)+'</div>'
+             +   '<div class="dead" title="À 0 PV">💀</div>'
+             + '</div>';
+      }
+
+      // Ennemi vivant: fond coloré selon PV restants, pas d’affichage numérique du %
+      return '<div class="'+cls+'" style="'+style+'">'
+           +   '<div class="name">'+esc(c.name)+'</div>'
+           + '</div>';
+    }).join('') : '<div class="hint">Aucun combattant…</div>';
+
+    footEl.textContent = 'Overlay connecté au canal : ' + CHANNEL;
+  }
+
+  // WebSocket
+  let ws=null, timer=null;
+  function connect(){
+    try{
+      ws = new WebSocket(WS_URL);
+      log('[overlay] connect', WS_URL);
+      ws.onopen = ()=>log('[overlay] open');
+      ws.onclose= ()=>{ log('[overlay] close'); clearTimeout(timer); timer=setTimeout(connect,1000); };
+      ws.onerror= (e)=>{ log('[overlay] error', e); try{ws.close();}catch{} };
+      ws.onmessage = (ev)=>{
+        let msg; try{ msg = JSON.parse(ev.data); }catch{ return; }
+        if (msg && msg.type==='ii_state' && msg.channel===CHANNEL) {
+          log('[overlay] recv', msg);
+          render(msg.data);
+        }
+      };
+    }catch(e){ log('[overlay] fail', e); }
+  }
+  connect();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,261 @@
+  <!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Dice — Touch Controller</title>
+<style>
+:root{
+  --bg:#0b1117; --card:#121a22; --fg:#ebf3fa; --muted:#a6b3c2; --line:#1f2a36; --accent:#4da3ff;
+  --btn:#0f1822; --btnH:#172230;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+.wrap{max-width:960px;margin:0 auto;padding:12px}
+.hint{color:var(--muted);font-size:14px}
+.card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; box-shadow:0 10px 26px rgba(0,0,0,.3)}
+.row{display:flex; gap:12px; flex-wrap:wrap}
+.gap8{gap:8px}
+.select, .knob, .btn{
+  background:var(--btn); border:1px solid var(--line); color:var(--fg);
+  border-radius:14px;
+}
+.select, .knob{ padding:12px 14px; }
+.select select{ background:transparent; color:var(--fg); border:0; font-size:18px; width:100% }
+.knob{ display:flex; align-items:center; justify-content:space-between; gap:10px }
+.knob .val{ font-weight:800; font-size:20px; min-width:64px; text-align:center }
+.knob button{
+  width:56px; height:56px; border-radius:12px; font-size:28px; font-weight:900; border:1px solid var(--line);
+  background:var(--btn); color:var(--fg);
+}
+.knob button:active{ background:var(--btnH) }
+
+.grid-dice{
+  display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-top:12px;
+}
+.btn{
+  height:88px; font-size:28px; font-weight:900; display:flex; align-items:center; justify-content:center;
+}
+.btn:active{ background:var(--btnH) }
+.btn.primary{ background:var(--accent); color:#041221; border-color:#2c84e4 }
+
+.formula{
+  display:flex; gap:8px; margin-top:12px;
+}
+.formula input{
+  flex:1; padding:14px 16px; background:#0f151d; border:1px solid var(--line); color:var(--fg);
+  border-radius:14px; font-size:20px;
+}
+.formula .btn{ width:220px }
+
+.footer{
+  display:flex; justify-content:space-between; align-items:center; margin-top:10px;
+}
+.last{
+  font-size:28px; font-weight:900;
+}
+.small{ color:var(--muted); font-size:14px }
+
+.log{
+  margin-top:12px; max-height:32vh; overflow:auto; border-radius:12px; border:1px solid var(--line);
+}
+.log table{ width:100%; border-collapse:collapse; font-size:16px }
+.log th,.log td{ padding:10px 12px; border-top:1px solid var(--line) }
+.log th{ position:sticky; top:0; background:#0e151d; z-index:1; color:#c8d6e5; }
+.pill{ padding:2px 10px; border-radius:999px; border:1px solid var(--line); background:#0e1822; color:#cfe2f7; font-size:14px }
+.toast{
+  position:fixed; top:12px; left:50%; transform:translateX(-50%);
+  background:#0e151d; border:1px solid var(--line); color:#cfe2f7; padding:8px 12px; border-radius:10px; display:none;
+}
+.show{ display:block }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="row">
+    <div class="select" style="flex:1; min-width:180px">
+      <div class="small">Envoyer vers</div>
+      <select id="target">
+        <option value="table">table</option>
+        <option value="combat">combat</option>
+        <option value="mj">mj</option>
+      </select>
+    </div>
+    <div class="knob" style="flex:1; min-width:180px">
+      <button id="countMinus">−</button>
+      <div>
+        <div class="small">Nb dés</div>
+        <div class="val" id="countVal">1</div>
+      </div>
+      <button id="countPlus">+</button>
+    </div>
+    <div class="knob" style="flex:1; min-width:200px">
+      <button id="modMinus">−</button>
+      <div>
+        <div class="small">Bonus/Malus</div>
+        <div class="val" id="modVal">0</div>
+      </div>
+      <button id="modPlus">+</button>
+    </div>
+  </div>
+
+  <div class="grid-dice">
+    <div class="btn" data-d="d20">d20</div>
+    <div class="btn" data-d="d12">d12</div>
+    <div class="btn" data-d="d10">d10</div>
+    <div class="btn" data-d="d8">d8</div>
+    <div class="btn" data-d="d6">d6</div>
+    <div class="btn" data-d="d4">d4</div>
+    <div class="btn" data-d="d100">d100</div>
+    <div class="btn primary" id="repeat">Relancer</div>
+    <div class="btn" id="reset">Reset</div>
+  </div>
+
+  <div class="formula">
+    <input id="formula" placeholder="Formule (ex: 2d6+3)" />
+    <div class="btn primary" id="go">Lancer</div>
+  </div>
+
+  <div class="footer">
+    <div class="last" id="lastTotal">—</div>
+    <div class="small" id="lastMeta">Prêt</div>
+  </div>
+
+  <div class="card log">
+    <table>
+      <thead><tr><th>Heure</th><th>Cible</th><th>Formule</th><th>Total</th><th>Détails</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="toast" class="toast">Envoyé</div>
+
+<script>
+/* ---------- Params ---------- */
+const qs = new URLSearchParams(location.search);
+const ROOM   = qs.get("room") || "session-1";
+const PLAYER = qs.get("player") || "1";
+const defaultHost = location.hostname || "127.0.0.1";
+const WS_URL = qs.get("ws") || `ws://${defaultHost}:8091/hud`;
+
+/* ---------- UI refs ---------- */
+const targetSel = document.getElementById("target");
+const countVal  = document.getElementById("countVal");
+const modVal    = document.getElementById("modVal");
+const tbody     = document.getElementById("tbody");
+const lastTotal = document.getElementById("lastTotal");
+const lastMeta  = document.getElementById("lastMeta");
+const toast     = document.getElementById("toast");
+
+/* ---------- Touch helpers ---------- */
+function bump(el){ el.style.transform='scale(0.97)'; setTimeout(()=> el.style.transform='scale(1)', 90); }
+function showToast(txt='Envoyé'){ toast.textContent=txt; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 800); }
+
+/* ---------- WS + BC ---------- */
+let ws, wsReady=false, bc=null;
+function connectWS(){
+  try{ ws = new WebSocket(WS_URL); }catch{ openBC(); return; }
+  ws.onopen=()=> wsReady=true;
+  ws.onclose=()=>{ wsReady=false; setTimeout(connectWS,800); if(!bc) openBC(); };
+  ws.onmessage= ev => { try{ onIncoming(JSON.parse(ev.data)); }catch{} };
+}
+connectWS(); setTimeout(()=>{ if(!wsReady && !bc) openBC(); }, 1200);
+function openBC(){
+  try{ if(bc) bc.close(); bc = new BroadcastChannel("dice_room_"+ROOM); bc.onmessage = ev => onIncoming(ev.data); }catch{}
+}
+function send(msg){
+  const s = JSON.stringify(msg);
+  if(wsReady && ws && ws.readyState===1) ws.send(s); else if(bc) bc.postMessage(msg);
+}
+
+/* ---------- Dice core ---------- */
+function parseFormula(str){
+  const m = String(str).replace(/\s+/g,'').match(/^(\d*)d(\d+)([+-]\d+)?$/i);
+  if(!m) return null;
+  const n = Math.max(1, parseInt(m[1]||'1',10));
+  const faces = parseInt(m[2],10);
+  const mod = parseInt(m[3]||'0',10);
+  return {n,faces,mod,formula:`${n}d${faces}${mod>=0?`+${mod}`:mod}`};
+}
+function roll(formula){
+  const p = parseFormula(formula);
+  if(!p) return null;
+  const rolls = Array.from({length:p.n},()=>1+Math.floor(Math.random()*p.faces));
+  const subtotal = rolls.reduce((a,b)=>a+b,0);
+  const total = subtotal + p.mod;
+  return {...p, rolls, subtotal, total};
+}
+
+/* ---------- Actions ---------- */
+let lastDieType = "d20";
+
+function doRollAndSend(formula){
+  const payload = roll(formula);
+  if(!payload) return;
+  const msg = { type:"roll", room:ROOM, player:PLAYER, target:targetSel.value, payload, ts:Date.now() };
+  // local
+  lastTotal.textContent = payload.total;
+  lastMeta.textContent = `${payload.formula}  ·  [${payload.rolls.join(', ')}]`;
+  addLog(msg);
+  // send
+  send(msg);
+  showToast('Envoyé');
+}
+
+function addLog({target, payload}){
+  const tr = document.createElement("tr");
+  const now = new Date().toLocaleTimeString();
+  tr.innerHTML = `<td>${now}</td><td><span class="pill">${target}</span></td>
+                  <td>${payload.formula}</td><td>${payload.total}</td>
+                  <td>[${payload.rolls.join(', ')}]${payload.mod? ' '+(payload.mod>0?'+':'')+payload.mod:''}</td>`;
+  tbody.prepend(tr);
+}
+
+/* knobs */
+document.getElementById("countMinus").onclick = e => { bump(e.currentTarget); countVal.textContent = Math.max(1, (+countVal.textContent||1)-1); };
+document.getElementById("countPlus").onclick  = e => { bump(e.currentTarget); countVal.textContent = Math.max(1, (+countVal.textContent||1)+1); };
+document.getElementById("modMinus").onclick    = e => { bump(e.currentTarget); modVal.textContent   = (+modVal.textContent||0)-1; };
+document.getElementById("modPlus").onclick     = e => { bump(e.currentTarget); modVal.textContent   = (+modVal.textContent||0)+1; };
+
+document.getElementById("reset").onclick = e => { bump(e.currentTarget); countVal.textContent=1; modVal.textContent=0; };
+
+document.querySelectorAll(".grid-dice .btn[data-d]").forEach(el=>{
+  el.addEventListener("click", e=>{
+    bump(el);
+    lastDieType = el.dataset.d;
+    const n   = +countVal.textContent || 1;
+    const mod = +modVal.textContent   || 0;
+    const f = `${n}${lastDieType}${mod? (mod>0?`+${mod}`:mod):''}`;
+    doRollAndSend(f);
+  });
+});
+document.getElementById("repeat").onclick = e => {
+  bump(e.currentTarget);
+  const n   = +countVal.textContent || 1;
+  const mod = +modVal.textContent   || 0;
+  const f = `${n}${lastDieType}${mod? (mod>0?`+${mod}`:mod):''}`;
+  doRollAndSend(f);
+};
+
+document.getElementById("go").onclick = e => {
+  bump(e.currentTarget);
+  const f = document.getElementById("formula").value.trim();
+  if(f) doRollAndSend(f);
+};
+
+/* incoming (affiche aussi localement si d’autres devices lancent) */
+function onIncoming(msg){
+  if(!msg || msg.type!=='roll') return;
+  if(msg.room && msg.room!==ROOM) return;
+  addLog(msg);
+  lastTotal.textContent = msg.payload.total;
+  lastMeta.textContent  = `${msg.payload.formula}  ·  [${msg.payload.rolls.join(', ')}]`;
+}
+</script>
+</body>
+</html>

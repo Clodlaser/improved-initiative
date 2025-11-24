@@ -1,0 +1,30 @@
+// server/hud-ws.js  — WebSocket HUD dédié (port 8091)
+const { WebSocketServer } = require('ws');
+
+const wss = new WebSocketServer({ port: 8091, path: '/hud' });
+console.log('HUD WS listening on ws://127.0.0.1:8091/hud');
+
+wss.on('connection', (ws, req) => {
+  console.log('HUD WS connected from', req && req.socket && req.socket.remoteAddress);
+  ws.on('message', (data) => {
+    const text = Buffer.isBuffer(data) ? data.toString() : String(data);
+    let sent = 0;
+    for (const client of wss.clients) {
+      if (client.readyState === 1) { // 1 = OPEN
+        try { client.send(text); sent++; } catch {}
+      }
+    }
+    console.log(`HUD WS recv len=${text.length} | clients=${wss.clients.size} | sent=${sent}`);
+  });
+  ws.on('close', () => console.log('HUD WS closed'));
+});
+
+// Heartbeat (debug) — visible dans tout client connecté
+setInterval(() => {
+  const hb = JSON.stringify({ type: 'debug', at: Date.now(), note: 'hb' });
+  let sent = 0;
+  for (const c of wss.clients) {
+    if (c.readyState === 1) { try { c.send(hb); sent++; } catch {} }
+  }
+  console.log(`HUD WS hb sent=${sent}`);
+}, 4000);

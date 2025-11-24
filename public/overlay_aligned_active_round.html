@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>II Overlay HUD (aligned + current highlight + round flash)</title>
+<style>
+  html,body{height:100%;margin:0;background:transparent}
+  #hud{position:fixed;bottom:16px;left:16px;z-index:1;width:860px;max-width:92vw;min-width:560px;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.45);font:600 14px/1.25 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;background:rgba(0,0,0,.60);backdrop-filter:blur(4px)}
+  .content{padding:12px 14px 10px;position:relative}
+  .rows{margin:0}
+  .row{position:relative;display:flex;align-items:center;gap:14px;margin:8px 0;padding:6px 10px;border-radius:10px;transition:transform .18s ease, box-shadow .18s ease, background .18s ease}
+  .name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800;letter-spacing:.2px}
+  .name.deadName{opacity:.6;text-decoration:line-through}
+  /* Right zone: bar + numbers or skull; fixed width for perfect alignment */
+  .right{display:flex;align-items:center;gap:10px;flex:0 0 430px;justify-content:flex-end}
+  .hpBar{height:8px;background:rgba(20,20,20,.7);border-radius:7px;overflow:hidden;flex:1;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);position:relative}
+  .hpFill{display:block;height:100%}
+  .hpTxt{width:80px;text-align:right;opacity:.98;font-size:16px}
+  /* Enemies: keep same layout, hide numbers (but keep the box) and use skull there when dead */
+  .enemy .hpTxt{visibility:hidden} /* invisible but reserves width for alignment */
+  .skull{width:80px;text-align:right;opacity:.95;font-size:16px}
+  /* Current turn highlight */
+  .row.current{transform:scale(1.015);box-shadow:0 10px 22px rgba(0,0,0,.35), 0 0 0 2px rgba(255,255,255,.10) inset;background:rgba(255,255,255,.04)}
+  .row.current .name::before{content:"▶ ";opacity:.95}
+  /* Sweep animation across the bar to draw attention */
+  .row.current .hpBar::after{
+    content:"";position:absolute;inset:0;background:linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+    animation:sweep 1.2s ease-in-out infinite;mix-blend-mode:screen;pointer-events:none
+  }
+  @keyframes sweep{0%{transform:translateX(-100%)}50%{transform:translateX(0%)}100%{transform:translateX(100%)}}
+  /* Enemy critical pulse (<=5%) */
+  @keyframes pulseCrit{0%{box-shadow:0 0 0 0 rgba(255,66,66,.0)}50%{box-shadow:0 0 0 6px rgba(255,66,66,.35)}100%{box-shadow:0 0 0 0 rgba(255,66,66,.0)}}
+  .enemy.critical .hpBar{animation:pulseCrit 1.2s ease-in-out infinite}
+  .enemy.deadRow .hpFill{background:#3c3c3c!important}
+  /* Round banner */
+  .roundBanner{
+    position:absolute;top:8px;left:50%;transform:translateX(-50%);
+    background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.2);
+    padding:6px 12px;border-radius:999px;font-weight:900;letter-spacing:.4px;opacity:0;pointer-events:none
+  }
+  .roundBanner.show{animation:roundPop 1.2s ease forwards}
+  @keyframes roundPop{0%{opacity:0;transform:translate(-50%,-10px) scale(.9)}40%{opacity:1;transform:translate(-50%,0) scale(1.02)}100%{opacity:0;transform:translate(-50%,-6px) scale(1)}}
+  /* Global flash on new round */
+  .roundFlash{position:absolute;inset:0;background:radial-gradient(1200px 240px at 50% 0%, rgba(255,255,255,.22), transparent 60%);opacity:0;pointer-events:none}
+  .roundFlash.flash{animation:flash .8s ease-out forwards}
+  @keyframes flash{0%{opacity:.95}100%{opacity:0}}
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="content">
+    <div class="roundBanner" id="rb">Round 1</div>
+    <div class="roundFlash" id="rf"></div>
+    <div class="rows" id="rows"><div class="name">En attente de données…</div></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const rowsEl=document.getElementById('rows');
+  const rb=document.getElementById('rb');
+  const rf=document.getElementById('rf');
+  const qs=new URLSearchParams(location.search);
+  const CHANNEL=qs.get('ch')||'session-1';
+  const WS_URL = qs.get('ws') || 'ws://127.0.0.1:8091/hud';
+  const playersParam = (qs.get('players')||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const PC_SET = new Set(playersParam.length? playersParam : ['Pierre','Loic','Gabriele','Joel','Ana\u00ebl','Anaël','Tristan']);
+
+  const ESC_MAP = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+  const esc = s => String(s).replace(/[&<>"']/g, m => ESC_MAP[m]);
+
+  function colorForPct(p){
+    if (!isFinite(p)) return '#42d07c';
+    if (p<=5)  return 'black';
+    if (p<=20) return '#a3082a';
+    if (p<=40) return '#ff5d5d';
+    if (p<=60) return '#ff9f43';
+    if (p<=80) return '#ffd257';
+    return '#42d07c';
+  }
+
+  function computeIsPlayer(c){
+    try{
+      if (c==null || typeof c!=='object') return false;
+      if (c.isPlayer===true) return true;
+      if (c.player===true) return true;
+      if (typeof c.Player==='string' && c.Player.toLowerCase()==='player') return true;
+      if (c.role==='pc' || c.team==='ally') return true;
+      if (typeof c.PersistentCharacterId==='string' || typeof c.persistentCharacterId==='string') return true;
+      if (PC_SET.has(c.name)) return true;
+    }catch(e){}
+    return false;
+  }
+
+  let lastTurn = -1;
+  let lastRoundSeen = null;
+
+  function maybeRoundEvent(state){
+    const provided = state?.round ?? state?.Round ?? state?.roundCounter ?? state?.RoundCounter;
+    let newRound = null;
+
+    if (typeof provided === 'number' && provided >= 0){
+      if (lastRoundSeen === null) lastRoundSeen = provided;
+      if (provided > lastRoundSeen){
+        newRound = provided;
+        lastRoundSeen = provided;
+      }
+    } else {
+      // No explicit round number: detect wrap (turn drops)
+      const t = Number(state?.turn||0);
+      if (lastTurn >= 0 && t < lastTurn){
+        newRound = (lastRoundSeen ?? 0) + 1;
+        lastRoundSeen = newRound;
+      }
+      lastTurn = t;
+    }
+
+    if (newRound != null){
+      rb.textContent = `Round ${newRound}`;
+      rb.classList.remove('show'); void rb.offsetWidth; rb.classList.add('show');
+      rf.classList.remove('flash'); void rf.offsetWidth; rf.classList.add('flash');
+    }
+  }
+
+  function render(state){
+    maybeRoundEvent(state);
+
+    const turn = Number(state?.turn||0);
+    const list = Array.isArray(state?.list)? state.list : [];
+    const ord  = turn>0? list.slice(turn).concat(list.slice(0,turn)) : list;
+    const view = ord.slice(0,16);
+
+    const curRef = ord[0] && (ord[0].id ?? ord[0].uuid ?? ord[0].name);
+
+    rowsEl.innerHTML = view.length ? view.map((c,idx)=>{
+      const name = esc(c?.name ?? '?');
+      const cur  = Number(c?.cur), max = Number(c?.max);
+      const hasHP = isFinite(cur) && isFinite(max) && max>0;
+      const pct = hasHP ? Math.max(0, Math.min(100, Math.round(cur*100/max))) : NaN;
+      const isPlayer = computeIsPlayer(c);
+      const isCurrent = (curRef && (c?.id ?? c?.uuid ?? c?.name) === curRef);
+
+      if (isPlayer){
+        if (hasHP && cur<=0) return `<div class="row ${isCurrent?'current':''}">
+            <div class="name deadName">${name}</div>
+            <div class="right">
+              <div class="hpBar"><span class="hpFill" style="width:0;background:#3c3c3c"></span></div>
+              <div class="hpTxt">—</div>
+            </div>
+          </div>`;
+        const clr = pct<25?'#ff5d5d':(pct<60?'#ffd257':'#42d07c');
+        return `<div class="row ${isCurrent?'current':''}">
+            <div class="name">${name}</div>
+            <div class="right">
+              <div class="hpBar"><span class="hpFill" style="width:${isNaN(pct)?0:pct}%;background:${clr}"></span></div>
+              <div class="hpTxt">${hasHP?`${cur}/${max}`:'—'}</div>
+            </div>
+          </div>`;
+      } else {
+        const clr = colorForPct(pct);
+        const dead = hasHP && cur<=0;
+        const critical = hasHP && pct<=5;
+        if (dead) {
+          return `<div class="row enemy ${isCurrent?'current':''} deadRow">
+            <div class="name deadName">${name}</div>
+            <div class="right">
+              <div class="hpBar"><span class="hpFill" style="width:100%;background:#3c3c3c"></span></div>
+              <div class="skull">💀</div>
+            </div>
+          </div>`;
+        }
+        return `<div class="row enemy ${critical?'critical':''} ${isCurrent?'current':''}">
+          <div class="name">${name}</div>
+          <div class="right">
+            <div class="hpBar"><span class="hpFill" style="width:100%;background:${clr}"></span></div>
+            <div class="hpTxt"> </div>
+          </div>
+        </div>`;
+      }
+    }).join('') : '<div class="name">Aucun combattant…</div>';
+  }
+
+  function normalizeFrame(ev){
+    if (typeof ev.data==='string') return Promise.resolve(ev.data);
+    if (ev.data instanceof Blob) return ev.data.text();
+    if (ev.data instanceof ArrayBuffer) return Promise.resolve(new TextDecoder().decode(ev.data));
+    try { return Promise.resolve(String(ev.data)); } catch { return Promise.resolve(''); }
+  }
+
+  function handleMessage(txt){
+    let msg; try{ msg=JSON.parse(txt);}catch{ return; }
+    const state = (msg?.type==='ii_state' && msg.data) ? msg.data
+                : (msg?.list && msg?.turn!=null) ? msg
+                : (msg?.data?.data?.list ? msg.data.data : (msg?.data?.list ? msg.data : null));
+    if (!state) return;
+    render(state);
+  }
+
+  function connect(){
+    const ws=new WebSocket(WS_URL);
+    ws.onopen =()=>console.log('[overlay-aligned] open →', WS_URL, 'ch=', CHANNEL);
+    ws.onerror=e=>console.log('[overlay-aligned] error',e);
+    ws.onclose =()=>{ console.log('[overlay-aligned] closed, retry in 1s'); setTimeout(connect,1000); };
+    ws.onmessage=ev=>{ normalizeFrame(ev).then(handleMessage).catch(err=>console.error('[overlay-aligned] frame error', err)); };
+  }
+  connect();
+})();
+</script>
+</body>
+</html>

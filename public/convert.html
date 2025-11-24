@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>StatBlock → Improved Initiative JSON</title>
+  <style>
+    :root{--bg:#0b0d10;--panel:#0f1318;--ink:#e6e9ef;--muted:#9aa3af;--line:#242a32}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--ink);font:500 14px/1.45 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial}
+    .wrap{max-width:1200px;margin:28px auto;padding:0 16px}
+    h1{font:800 20px/1.2 ui-sans-serif;margin:0 0 4px}
+    .hint{color:var(--muted);margin:0 0 18px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;min-height:420px}
+    .panel header{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+    .panel header h2{font:700 14px/1 ui-sans-serif;margin:0}
+    .panel .bar{margin-left:auto;display:flex;gap:8px}
+    button{padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:#111723;color:#fff;cursor:pointer}
+    textarea{flex:1;width:100%;background:transparent;color:var(--ink);border:0;resize:none;padding:12px 12px 14px;outline:none;font:500 13px/1.5 ui-monospace,SFMono-Regular,Consolas,Menlo,monospace}
+    .row{display:flex;gap:10px;align-items:center}
+    .footer{display:flex;gap:12px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
+    .checkbox{display:flex;gap:8px;align-items:center;color:var(--muted)}
+    .ok{color:#5fd18b}
+    .err{color:#ff8383}
+    @media(max-width:960px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>StatBlock → Improved Initiative JSON</h1>
+    <p class="hint">Colle ton bloc de stats (format 5e). Le JSON à droite suit ton schéma (<i>Source, Type, HP, AC, InitiativeModifier, InitiativeAdvantage, Speed, Abilities, Saves, Skills, DamageResistances, ConditionImmunities, Senses, Languages, Challenge, Traits[], Actions[], Reactions[], LegendaryActions[], MythicActions[], Description, Player, Version, ImageURL</i>).</p>
+
+    <div class="grid">
+      <section class="panel" id="left">
+        <header>
+          <h2>Entrée</h2>
+          <div class="bar">
+            <button id="btnSample">Exemple</button>
+            <button id="btnConvert">Convertir</button>
+          </div>
+        </header>
+        <textarea id="src" placeholder="Colle ici ton stat block..."></textarea>
+        <div class="footer">
+          <label class="checkbox"><input type="checkbox" id="cbLive" checked /> Conversion en direct</label>
+        </div>
+      </section>
+
+      <section class="panel" id="right">
+        <header>
+          <h2>JSON (copier/coller)</h2>
+          <div class="bar">
+            <button id="btnCopy">Copier</button>
+            <button id="btnDownload">Télécharger .json</button>
+          </div>
+        </header>
+        <textarea id="out" readonly></textarea>
+        <div class="footer">
+          <span id="status" class="hint">Prêt.</span>
+          <span style="margin-left:auto" class="hint">Astuce : tu peux éditer manuellement le JSON avant de le copier.</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const $ = sel => document.querySelector(sel);
+  const src = $('#src');
+  const out = $('#out');
+  const status = $('#status');
+
+  // ===== Core parser yielding your exact schema =====
+  function parseImproved(t){
+    t = t.replace(/\r/g,'').replace(/\t/g,'    ').trim();
+
+    const lines = t.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+    const out = {
+      Source: undefined,
+      Type: undefined,
+      HP: undefined,
+      AC: undefined,
+      InitiativeModifier: undefined,
+      InitiativeAdvantage: false,
+      Speed: [],
+      Abilities: undefined,
+      DamageVulnerabilities: [],
+      DamageResistances: [],
+      DamageImmunities: [],
+      ConditionImmunities: [],
+      Saves: [],
+      Skills: [],
+      Senses: [],
+      Languages: [],
+      Challenge: undefined,
+      Traits: [],
+      Actions: [],
+      BonusActions: [],
+      Reactions: [],
+      LegendaryActions: [],
+      MythicActions: [],
+      Description: "",
+      Player: "",
+      Version: "3.13.3",
+      ImageURL: "",
+      LastUpdateMs: Date.now()
+    };
+
+    const pushIf = (arr, v) => { if(v!=null && v!=="") arr.push(v) };
+
+    // ===== Source (book + page) =====
+    const bookLine = lines.find(l=>/^pa\w+/i.test(l));
+    const pageLine = lines.find(l=>/^p\.?\s*\d+/i.test(l));
+    if (bookLine && pageLine) {
+      const page = pageLine.replace(/^p\.?/i,'').trim();
+      out.Source = `${bookLine}, p.${page}`;
+    } else if (bookLine) {
+      out.Source = bookLine;
+    }
+
+    // ===== Type =====
+    out.Type = (t.match(/^(?:.*\n){0,3}([A-Z][^\n]*(Aberration|Beast|Celestial|Construct|Dragon|Elemental|Fey|Fiend|Giant|Humanoid|Monstrosity|Ooze|Plant|Undead)[^\n]*)$/mi)||[])[1];
+
+    // ===== AC =====
+    const acm = t.match(/\bAC\s+(\d+)(?:\s*\(([^)]*)\))?/i);
+    if (acm) out.AC = { Value: parseInt(acm[1],10), Notes: acm[2] };
+
+    // ===== Initiative =====
+    const init = (t.match(/\bInitiative\s*([+−-]?\d+)/i)||[])[1];
+    if (init) out.InitiativeModifier = parseInt(init.replace('−','-'),10);
+    // Awareness gives advantage on initiative
+    out.InitiativeAdvantage =
+      /initiative\s*\(advantage\)/i.test(t) || /Awareness\./i.test(t);
+
+    // ===== HP =====
+    const hpm = t.match(/\bHP\s+(\d+)(?:\s*\(([^)]*)\))?/i);
+    if (hpm) out.HP = { Value: parseInt(hpm[1],10), Notes: `(${(hpm[2]||'').trim()})` };
+
+    // ===== Speed -> array =====
+    const speedLine = (t.match(/\bSpeed\s+([^\n]+)/i)||[])[1];
+    if (speedLine) {
+      speedLine.split(/,\s*/).forEach(s=>{
+        s = s.trim();
+        if (/^\d+\s*ft\./i.test(s)) s = 'walk ' + s;
+        s = s.replace(/^(\w+)/, m=>m.toLowerCase());
+        pushIf(out.Speed, s);
+      });
+    }
+
+    // ===== Abilities & Saves from grid (prefers the second modifier on the line as Save) =====
+    const order = ['Str','Dex','Con','Int','Wis','Cha'];
+    const abilities = {};
+    const saves = [];
+    for (const A of order) {
+      const rx = new RegExp(`${A}[^A-Z]*?(\\d{1,2})(?:[^+\\-]*?([+−-]\\d+))?(?:[^+\\-]*?([+−-]\\d+))?`,'i');
+      const m = t.match(rx);
+      if (m) {
+        abilities[A] = parseInt(m[1],10);
+        const s1 = m[2]? m[2].replace('−','-') : undefined;
+        const s2 = m[3]? m[3].replace('−','-') : undefined;
+        const sv = s2 || s1;
+        if (sv) saves.push({ Name: A, Modifier: parseInt(sv,10) });
+      }
+    }
+    if (Object.keys(abilities).length === 6) out.Abilities = abilities;
+    if (saves.length) out.Saves = saves;
+
+    // ===== Skills -> array of {Name, Modifier} =====
+    const skills = (t.match(/\bSkills?\s+([^\n]+)/i)||[])[1];
+    if (skills) {
+      skills.split(/,\s*/).forEach(p=>{
+        const m = p.match(/([A-Za-z ]+?)\s*([+−-]?\d+)/);
+        if (m) out.Skills.push({ Name: m[1].trim(), Modifier: parseInt(m[2].replace('−','-'),10) });
+      });
+    }
+
+    // ===== Damage (arrays, lower-cased) =====
+    const vuln = (t.match(/\bVulnerabilities?\s+([^\n]+)/i)||[])[1];
+    if (vuln) vuln.split(/,\s*/).forEach(x=>pushIf(out.DamageVulnerabilities, x.trim().toLowerCase()));
+    const resist = (t.match(/\bResistances?\s+([^\n]+)/i)||[])[1];
+    if (resist) resist.split(/,\s*/).forEach(x=>pushIf(out.DamageResistances, x.trim().toLowerCase()));
+    const immun = (t.match(/\bImmunities?\s+([^\n]+)/i)||[])[1];
+    if (immun) immun.split(/,\s*/).forEach(x=>pushIf(out.DamageImmunities, x.trim().toLowerCase()));
+
+    // ===== Condition Immunities (array, lower-cased) =====
+    const cimm = (t.match(/\bCondition Immunities?\s*:?\s*([^\n]+)/i)||[])[1];
+    if (cimm) cimm.split(/,\s*/).forEach(x=>pushIf(out.ConditionImmunities, x.trim().toLowerCase()));
+
+    // ===== Senses -> array (lower-cased except Passive Perception) =====
+    const senses = (t.match(/\bSenses?\s+([^\n]+)/i)||[])[1];
+    if (senses) {
+      senses.split(/,\s*/).forEach(s=>{
+        s = s.trim();
+        if (/^Passive Perception/i.test(s)) pushIf(out.Senses, s.replace(/Passive/,'passive'));
+        else pushIf(out.Senses, s.toLowerCase());
+      });
+    }
+
+    // ===== Languages -> array =====
+    const langs = (t.match(/\bLanguages?\s+([^\n]+)/i)||[])[1];
+    if (langs) langs.split(/,\s*/).forEach(l=>pushIf(out.Languages, l.trim()));
+
+    // ===== Challenge (only the numeric/fraction string) =====
+    const crRaw = (t.match(/\bCR\s+([^\n]+)/i)||t.match(/\bChallenge\s+([^\n]+)/i)||[])[1];
+    if (crRaw) {
+      const m = String(crRaw).match(/\d+\/?\d*/);
+      if (m) out.Challenge = m[0];
+    }
+
+    // ===== Sections =====
+    function section(title){
+      const rx = new RegExp(`${title}[^\\n]*\\n([\\s\\S]*?)(?=\\n[A-Z][A-Za-z ]{1,30}(?:\\s*\\(.*?\\))?:|\\n[A-Z][A-Za-z ]{1,30}\\.|\\n?$)`, 'i');
+      const m = t.match(rx); return m? m[1].trim(): undefined;
+    }
+    function namedBlocks(text){
+      if (!text) return [];
+      const lines = text.split(/\n+/); const arr=[]; let cur=null;
+      for (const ln of lines){
+        const m = ln.match(/^([A-Z][^.:]{1,120})(?:\.|:|—)\s*(.*)$/);
+        if (m){ if (cur) arr.push(cur); cur={Name:m[1].trim(), Content:m[2].trim()}; }
+        else if (cur){ cur.Content += (cur.Content?' ':'') + ln.trim(); }
+      }
+      if (cur) arr.push(cur);
+      return arr;
+    }
+
+    out.Traits = namedBlocks(section('Traits'));
+    out.Actions = namedBlocks(section('Actions'));
+    out.Reactions = namedBlocks(section('Reactions'));
+    out.LegendaryActions = namedBlocks(section('Legendary Actions'));
+    out.MythicActions = namedBlocks(section('Mythic Actions'));
+
+    return out;
+  }
+
+  function convertNow(){
+    try{
+      const txt = src.value;
+      if(!txt.trim()){ out.value = ''; status.textContent='Aucun contenu.'; status.className='hint'; return }
+      const obj = parseImproved(txt);
+      out.value = JSON.stringify(obj, null, 2);
+      status.textContent = 'Conversion OK';
+      status.className = 'hint ok';
+    }catch(e){
+      out.value = '';
+      status.textContent = 'Erreur de conversion: ' + (e.message||e);
+      status.className = 'hint err';
+    }
+  }
+
+  $('#btnConvert').addEventListener('click', convertNow);
+  $('#cbLive').addEventListener('change', e=>{ if(e.target.checked) convertNow(); });
+  src.addEventListener('input', ()=>{ if($('#cbLive').checked) convertNow(); });
+
+  $('#btnCopy').addEventListener('click', async ()=>{
+    try{ await navigator.clipboard.writeText(out.value||''); status.textContent='Copié dans le presse-papiers'; status.className='hint ok'; }catch(_){ status.textContent='Impossible de copier'; status.className='hint err'; }
+  });
+
+  $('#btnDownload').addEventListener('click', ()=>{
+    if(!out.value.trim()) return;
+    const blob = new Blob([out.value], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'creature.json';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+})();
+</script>
+
+</body>
+</html>

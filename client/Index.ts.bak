@@ -38,17 +38,6 @@ window.onload = async () => {
     }
     renderReact(React.createElement(App, { tracker: viewModel }), container);
 
-    // ==== Exposition API debug (dock tactile / OBS / HUD) ====
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const vm: any = viewModel;
-    (window as any).II_DEBUG = {
-      getTracker: () => vm,
-      nextTurn: () => vm.NextTurn?.(),
-      update: () => vm.Update?.(),
-      getEncounter: () => vm.Encounter
-    };
-    console.log("[II_DEBUG] bound to live viewModel");
-
     viewModel.ImportEncounterIfAvailable();
     viewModel.ImportFromQueryParamIfAvailable();
     viewModel.GetWhatsNewIfAvailable();

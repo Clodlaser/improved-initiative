@@ -1,0 +1,184 @@
+<!doctype html>
+<html environmentJSON="{{ environmentJSON }}">
+  <head>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id={{ googleAnalyticsId }}"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "{{ googleAnalyticsId }}");
+
+      gtag("consent", "default", {
+        ad_storage: "denied",
+        ad_user_data: "denied",
+        ad_personalization: "denied",
+        analytics_storage: "denied"
+      });
+    </script>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="/css/improved-initiative.{{ appVersion }}.css"
+    />
+    <link rel="manifest" href="/manifest.json" />
+    <meta
+      name="description"
+      content="The original combat tracker for D&amp;D 5E. Prep and run fast, adaptable combat encounters. A free alternative to the D&amp;D Beyond (DDB) Encounter Builder."
+    />
+    <meta
+      property="og:image"
+      content="img/improved-initiative-transparent-darkgreen.png"
+    />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,user-scalable=no"
+    />
+    <meta http-equiv="content-language" content="en-us" />
+
+    <title>Combat Tracker - Improved Initiative</title>
+
+    <script
+      type="text/javascript"
+      src="/js/ImprovedInitiative.{{ appVersion }}.js"
+    ></script>
+    <style type="text/css">
+      .loading-splash {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        z-index: 10;
+        display: flex;
+        flex-flow: column;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        background-color: rgba(1, 1, 1, 0.7);
+      }
+
+      .loading-splash img {
+        animation: bob 1s ease infinite;
+      }
+
+      @keyframes bob {
+        0% {
+          margin-top: 0;
+        }
+        50% {
+          margin-top: 20px;
+        }
+      }
+    </style>
+	<script defer src="/hudStream.js"></script>
+  </head>
+
+  <body id="tracker">
+    <div id="fb-root"></div>
+    <script>
+      (function (d, s, id) {
+        var js,
+          fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s);
+        js.id = id;
+        js.src = "//connect.facebook.net/en_US/sdk.js#xfbml=1&version=v2.10";
+        fjs.parentNode.insertBefore(js, fjs);
+      })(document, "script", "facebook-jssdk");
+    </script>
+    <div class="loading-splash">
+      <img
+        src="../img/boot-white-on-darkred-192.png"
+        alt="Improved Initiative Flying Boot Logo"
+      />
+      <p>Loading Improved Initiative</p>
+    </div>
+    <div id="app__container"></div>
+	<!-- Dice dock (flottant) -->
+<style>
+  #diceDock{
+    position:fixed; right:18px; bottom:18px; z-index:99999;
+    width: 480px; height: 360px; border-radius:14px; overflow:hidden;
+    background:#111; border:1px solid rgba(255,255,255,.18);
+    box-shadow:0 12px 30px rgba(0,0,0,.45); display:none;
+  }
+  #diceDockHeader{
+    height:36px; background:rgba(0,0,0,.6); color:#fff; display:flex; align-items:center;
+    justify-content:space-between; padding:0 10px; cursor:move; user-select:none;
+    font:700 13px/1 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;
+  }
+  #diceDockHeader .btn{ background:none;border:none;color:#fff;opacity:.85;cursor:pointer;font-size:18px; }
+  #diceDock iframe{ width:100%; height:calc(100% - 36px); border:0; background:#000; }
+  #diceToggle{
+    position:fixed; right:18px; bottom:18px; z-index:99998;
+    background:#111;color:#fff;border:1px solid rgba(255,255,255,.18);
+    border-radius:12px; padding:10px 14px; cursor:pointer; box-shadow:0 10px 22px rgba(0,0,0,.35);
+    font:700 13px/1 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;
+  }
+</style>
+<button id="diceToggle" title="Afficher/Masquer les dés (Alt+D)">🎲 Dés</button>
+<div id="diceDock">
+  <div id="diceDockHeader">
+    <span>🎲 Lancers</span>
+    <div>
+      <button class="btn" id="diceUndock" title="Ouvrir dans un nouvel onglet">⤢</button>
+      <button class="btn" id="diceClose"  title="Fermer">✕</button>
+    </div>
+  </div>
+  <iframe id="diceFrame" src="about:blank" allow="clipboard-read; clipboard-write"></iframe>
+</div>
+<script>
+(function(){
+  const LS_CH   = '__iiHUD_Channel';
+  const ROOM    = localStorage.getItem(LS_CH) || 'session-1';
+  const dock    = document.getElementById('diceDock');
+  const header  = document.getElementById('diceDockHeader');
+  const frame   = document.getElementById('diceFrame');
+  const btnTgl  = document.getElementById('diceToggle');
+  const btnUndk = document.getElementById('diceUndock');
+  const btnCls  = document.getElementById('diceClose');
+
+const BASE_URL = `/dice_all_in_one.html?target=table&size=600&room=${encodeURIComponent(ROOM)}&ws=ws://localhost:8090`;
+
+  function showDock(v){
+    dock.style.display = v ? 'block' : 'none';
+    btnTgl.style.display = v ? 'none' : 'block';
+    if (v && frame.src === 'about:blank') frame.src = BASE_URL;  // lazy load
+    localStorage.setItem('__diceDockOpen', v ? '1' : '0');
+  }
+
+  // Raccourci ALT+D
+  window.addEventListener('keydown', (e)=>{
+    if (e.altKey && !e.shiftKey && e.key.toLowerCase() === 'g'){
+      e.preventDefault(); showDock(dock.style.display==='none');
+    }
+  });
+
+  // Boutons
+  btnTgl.addEventListener('click', ()=>showDock(true));
+  btnCls.addEventListener('click', ()=>showDock(false));
+  btnUndk.addEventListener('click', ()=> window.open(BASE_URL, '_blank'));
+
+  // Drag
+  (function enableDrag(el, handle){
+    let sx=0, sy=0, ox=0, oy=0, dragging=false;
+    const save=()=>localStorage.setItem('__diceDockXY', JSON.stringify({x:el.style.left||'',y:el.style.top||'',r:el.style.right||'',b:el.style.bottom||''}));
+    handle.addEventListener('mousedown', (e)=>{ dragging=true; sx=e.clientX; sy=e.clientY; el.style.right=''; el.style.bottom=''; ox=el.offsetLeft; oy=el.offsetTop; e.preventDefault(); });
+    window.addEventListener('mousemove', (e)=>{ if(!dragging) return; el.style.left=(ox+e.clientX-sx)+'px'; el.style.top=(oy+e.clientY-sy)+'px'; });
+    window.addEventListener('mouseup',   ()=>{ if(dragging){ dragging=false; save(); } });
+    // restore position
+    try{ const s=JSON.parse(localStorage.getItem('__diceDockXY')||'{}'); if(s.x||s.y||s.r||s.b){ el.style.left=s.x; el.style.top=s.y; el.style.right=s.r; el.style.bottom=s.b; } }catch{}
+  })(dock, header);
+
+  // Auto-open si précédemment ouvert
+  showDock(localStorage.getItem('__diceDockOpen') === '1');
+})();
+</script>
+
+  </body>
+</html>

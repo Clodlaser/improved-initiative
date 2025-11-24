@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dice Overlay</title>
+<style>
+:root{ --size: 480px; }
+html,body{height:100%}
+body{
+  margin:0; background:transparent; color:#ffffff; font:16px/1.2 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  overflow:hidden; display:flex; align-items:center; justify-content:center;
+}
+.wrap{ width:var(--size); height:var(--size); position:relative; display:flex; align-items:center; justify-content:center; }
+.tile{
+  width:100%; height:100%;
+  display:none;
+  align-items:center; justify-content:center; position:relative; overflow:hidden;
+  border:2px solid rgba(255,255,255,.10);
+  background:
+    radial-gradient(120% 120% at 30% 30%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
+    radial-gradient(60% 60% at 70% 80%, rgba(0,0,0,.35) 0%, rgba(0,0,0,0) 60%),
+    linear-gradient(180deg, rgba(6,12,18,.65), rgba(6,12,18,.35));
+  backdrop-filter: blur(6px);
+  box-shadow:inset 0 12px 34px rgba(0,0,0,.45), 0 18px 38px rgba(0,0,0,.45);
+  opacity:0; transition:opacity .35s ease;
+}
+.tile.active{ display:flex; opacity:1; }
+
+.value{
+  font-size:calc(var(--size)*0.42); font-weight:1000; line-height:1;
+  text-shadow:0 6px 22px rgba(0,0,0,.6);
+  transform:translateZ(0);
+}
+.sub{
+  position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
+  font-size:calc(var(--size)*0.075); color:#d7e7ff; opacity:.9;
+  text-shadow:0 2px 10px rgba(0,0,0,.6);
+}
+@keyframes wobble {
+  0% { transform: rotate(-8deg) scale(.92); }
+  40% { transform: rotate(6deg) scale(1.05); }
+  70% { transform: rotate(-3deg) scale(1.02); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+.roll{ animation: wobble 520ms cubic-bezier(.2,.75,.2,1); }
+.crit{ box-shadow:inset 0 0 0 3px rgba(255,215,0,.85), 0 0 40px rgba(255,215,0,.35) }
+.fail{ box-shadow:inset 0 0 0 3px rgba(255,80,80,.9), 0 0 40px rgba(255,80,80,.35) }
+.ribbon{
+  position:absolute; top:10px; left:10px; padding:.1em .4em; border-radius:8px; font-weight:900;
+  background:#2e7d32; color:white; display:none; letter-spacing:.02em;
+}
+.ribbon.bad{ background:#c62828 }
+
+/* Formes par type de dé */
+.shape-d4{ clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
+.shape-d6{ border-radius:12px; }
+.shape-d8{ clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%); }
+.shape-d10{ clip-path: polygon(50% 0%, 73% 7%, 93% 25%, 100% 50%, 93% 75%, 73% 93%, 50% 100%, 27% 93%, 7% 75%, 0% 50%, 7% 25%, 27% 7%); }
+.shape-d12{ clip-path: polygon(40% 0%, 60% 0%, 80% 10%, 90% 20%, 100% 40%, 100% 60%, 90% 80%, 80% 90%, 60% 100%, 40% 100%, 20% 90%, 10% 80%, 0% 60%, 0% 40%, 10% 20%, 20% 10%); }
+.shape-d20{ clip-path: polygon(50% 0%, 65% 3%, 78% 10%, 90% 22%, 97% 35%, 100% 50%, 97% 65%, 90% 78%, 78% 90%, 65% 97%, 50% 100%, 35% 97%, 22% 90%, 10% 78%, 3% 65%, 0% 50%, 3% 35%, 10% 22%, 22% 10%, 35% 3%); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="tile" class="tile">
+    <div id="val" class="value">—</div>
+    <div id="sub" class="sub">Prêt</div>
+    <div id="ribbon" class="ribbon">CRITIQUE</div>
+  </div>
+</div>
+
+<script>
+const qs = new URLSearchParams(location.search);
+const WS_URL = qs.get("ws") || "ws://127.0.0.1:8091/hud";
+const ROOM   = qs.get("room") || "session-1";
+const TARGET = qs.get("target") || "table";
+const size   = parseInt(qs.get("size")||"600",10);
+document.documentElement.style.setProperty('--size', size+'px');
+
+let ws, wsReady=false, bc=null;
+function connectWS(){
+  try{ ws = new WebSocket(WS_URL); }catch{ openBC(); return; }
+  ws.onopen = ()=> wsReady=true;
+  ws.onclose= ()=>{ wsReady=false; setTimeout(connectWS,800); if(!bc) openBC(); };
+  ws.onmessage = ev => { try{ onIncoming(JSON.parse(ev.data)); }catch{} };
+}
+connectWS();
+setTimeout(()=>{ if(!wsReady && !bc) openBC(); }, 1200);
+function openBC(){
+  try{
+    if(bc) bc.close();
+    bc = new BroadcastChannel("dice_room_" + ROOM);
+    bc.onmessage = ev => onIncoming(ev.data);
+  }catch{}
+}
+
+/* ---------- Rendu ---------- */
+const tile = document.getElementById('tile');
+const val  = document.getElementById('val');
+const sub  = document.getElementById('sub');
+const rib  = document.getElementById('ribbon');
+let hideTimer=null, spinTimer=null;
+
+function setShape(faces){
+  tile.classList.remove('shape-d4','shape-d6','shape-d8','shape-d10','shape-d12','shape-d20');
+  switch(faces){
+    case 4: tile.classList.add('shape-d4'); break;
+    case 6: tile.classList.add('shape-d6'); break;
+    case 8: tile.classList.add('shape-d8'); break;
+    case 10:case 100: tile.classList.add('shape-d10'); break;
+    case 12: tile.classList.add('shape-d12'); break;
+    case 20: tile.classList.add('shape-d20'); break;
+    default: tile.classList.add('shape-d6');
+  }
+}
+
+function animateRandom(faces, duration=1500){
+  let start = Date.now();
+  clearInterval(spinTimer);
+  spinTimer = setInterval(()=>{
+    const rand = 1 + Math.floor(Math.random()*faces);
+    val.textContent = rand;
+  }, 80);
+  return new Promise(resolve=>{
+    setTimeout(()=>{ clearInterval(spinTimer); resolve(); }, duration);
+  });
+}
+
+function render(payload){
+  const {rolls, mod=0, total, faces, n} = payload;
+  setShape(faces);
+
+  rib.style.display='none';
+  tile.classList.remove('roll','crit','fail');
+
+  const modTxt = mod ? (mod>0? ` +${mod}`:` ${mod}`) : '';
+  sub.textContent = `${n}d${faces}${modTxt}`;
+
+  tile.style.display='flex';
+  void tile.offsetWidth;
+  tile.classList.add('active');
+
+  animateRandom(faces,1000).then(()=>{
+    val.textContent = total;
+    sub.textContent = `${n}d${faces}${modTxt}  ·  [${rolls.join(', ')}]`;
+
+    if(faces===20 && n===1){
+      const r = rolls[0];
+      if(r===20){ tile.classList.add('crit'); rib.textContent='CRITIQUE'; rib.classList.remove('bad'); rib.style.display='inline-block'; }
+      else if(r===1){ tile.classList.add('fail'); rib.textContent='ÉCHEC'; rib.classList.add('bad'); rib.style.display='inline-block'; }
+    }
+
+    tile.classList.remove('roll'); void tile.offsetWidth; tile.classList.add('roll');
+
+    if(hideTimer) clearTimeout(hideTimer);
+    hideTimer=setTimeout(()=>{
+      tile.classList.remove('active');
+      setTimeout(()=>{ tile.style.display='none'; },400);
+    },5000);
+  });
+}
+
+function onIncoming(msg){
+  if(!msg || msg.type!=='roll') return;
+  if(msg.room && msg.room!==ROOM) return;
+  if(msg.target && msg.target!==TARGET) return;
+  const p=msg.payload||{};
+  if(p.formula && (p.faces==null||p.n==null)){
+    const m=p.formula.match(/(\d*)d(\d+)([+-]\d+)?/i);
+    if(m){ p.n=parseInt(m[1]||'1',10); p.faces=parseInt(m[2],10); }
+  }
+  render(p);
+}
+</script>
+</body>
+</html>

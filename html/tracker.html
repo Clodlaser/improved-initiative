@@ -1,102 +1,369 @@
 <!doctype html>
 <html environmentJSON="{{ environmentJSON }}">
   <head>
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script
-      async
-      src="https://www.googletagmanager.com/gtag/js?id={{ googleAnalyticsId }}"
-    ></script>
+    <meta charset="utf-8" />
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ googleAnalyticsId }}"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
+      function gtag(){ dataLayer.push(arguments); }
       gtag("js", new Date());
-
       gtag("config", "{{ googleAnalyticsId }}");
-
-      gtag("consent", "default", {
-        ad_storage: "denied",
-        ad_user_data: "denied",
-        ad_personalization: "denied",
-        analytics_storage: "denied"
-      });
+      gtag("consent","default",{ad_storage:"denied",ad_user_data:"denied",ad_personalization:"denied",analytics_storage:"denied"});
     </script>
-    <link
-      rel="stylesheet"
-      type="text/css"
-      href="/css/improved-initiative.{{ appVersion }}.css"
-    />
-    <link rel="manifest" href="/manifest.json" />
-    <meta
-      name="description"
-      content="The original combat tracker for D&amp;D 5E. Prep and run fast, adaptable combat encounters. A free alternative to the D&amp;D Beyond (DDB) Encounter Builder."
-    />
-    <meta
-      property="og:image"
-      content="img/improved-initiative-transparent-darkgreen.png"
-    />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,user-scalable=no"
-    />
-    <meta http-equiv="content-language" content="en-us" />
 
+    <link rel="stylesheet" type="text/css" href="/css/improved-initiative.{{ appVersion }}.css" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+    <meta http-equiv="content-language" content="en-us" />
     <title>Combat Tracker - Improved Initiative</title>
 
-    <script
-      type="text/javascript"
-      src="/js/ImprovedInitiative.{{ appVersion }}.js"
-    ></script>
-    <style type="text/css">
-      .loading-splash {
-        position: fixed;
-        width: 100%;
-        height: 100%;
-        z-index: 10;
-        display: flex;
-        flex-flow: column;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        background-color: rgba(1, 1, 1, 0.7);
-      }
+    <script type="text/javascript" src="/js/ImprovedInitiative.{{ appVersion }}.js"></script>
 
-      .loading-splash img {
-        animation: bob 1s ease infinite;
-      }
+    <style>
+      /* loading */
+      .loading-splash{position:fixed;width:100%;height:100%;z-index:10;display:flex;flex-flow:column;align-items:center;justify-content:center;font-weight:bold;background:rgba(1,1,1,.7)}
+      .loading-splash img{animation:bob 1s ease infinite}
+      @keyframes bob{0%{margin-top:0}50%{margin-top:20px}}
 
-      @keyframes bob {
-        0% {
-          margin-top: 0;
-        }
-        50% {
-          margin-top: 20px;
-        }
+      /* GM Dock container */
+      #gmDock{
+        position:fixed; right:12px; bottom:12px; z-index:9999;
+        display:flex; flex-direction:column; gap:10px;
+        background:rgba(20,20,20,.92); border:1px solid rgba(255,255,255,.15);
+        border-radius:16px; padding:12px; backdrop-filter:blur(4px);
+        touch-action:manipulation; user-select:none;
+      }
+      #gmDock.left{ right:auto; left:12px; }
+      #gmDock .row{ display:flex; gap:10px; align-items:center; justify-content:center; }
+      #gmDock .btn{
+        min-width:110px; height:56px; border-radius:12px;
+        border:1px solid rgba(255,255,255,.2);
+        background:#222; color:#fff; font-weight:800; font-size:18px; cursor:pointer;
+      }
+      #gmDock .btn.danger{ background:#b91818; }
+      #gmDock .btn.success{ background:#0a8f4a; }
+      #gmDock .btn.primary{ background:#07a15f; min-width:120px; color:#fff; }
+      #gmDock .btn.small{ min-width:40px; height:36px; font-size:14px; padding:4px 8px; }
+
+      @keyframes gmPulse { 0%{transform:scale(1)} 50%{transform:scale(.96)} 100%{transform:scale(1)} }
+      #gmDock .btn.pulse { animation: gmPulse .18s ease; }
+
+      /* numpad */
+      #numPad{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}
+      #numPad .pad{width:min(92vw,420px);background:#111;color:#fff;border-radius:16px;border:1px solid rgba(255,255,255,.18);padding:14px;box-shadow:0 20px 40px rgba(0,0,0,.5)}
+      #numPad .title{font:700 16px/1.2 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;opacity:.95;margin-bottom:8px}
+      #numPad .display{height:52px;display:flex;align-items:center;justify-content:flex-end;border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:0 12px;font-size:26px;background:#000;margin-bottom:10px;letter-spacing:1px}
+      #numPad .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+      #numPad .key{height:56px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:#222;color:#fff;font:700 20px/1 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;cursor:pointer}
+      #numPad .key.wide{grid-column:span 2}
+      #numPad .key.danger{background:#c11}
+      #numPad .key.success{background:#0a5}
+
+      /* toast feedback */
+      #gmToast{
+        position:fixed; right:14px; bottom:86px; z-index:10001;
+        min-width:140px; max-width:60vw; padding:10px 14px;
+        border-radius:12px; color:#fff; font:700 14px/1.2 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;
+        background:rgba(30,30,30,.95); border:1px solid rgba(255,255,255,.15);
+        box-shadow:0 10px 30px rgba(0,0,0,.35); opacity:0; transform:translateY(8px);
+        pointer-events:none; transition:opacity .18s ease, transform .18s ease;
+      }
+      #gmToast.show{ opacity:1; transform:translateY(0); }
+      #gmToast.dmg{ background:linear-gradient(180deg,#c11,#a10); }
+      #gmToast.heal{ background:linear-gradient(180deg,#15803d,#0f6d33); }
+
+      /* small responsive tweak */
+      @media(max-width:520px){
+        #gmDock .btn{ min-width:84px; height:48px; font-size:16px; }
+        #gmDock{ right:8px; bottom:8px; padding:8px; border-radius:12px; }
       }
     </style>
+	<script defer src="/hudStream.js"></script>
   </head>
 
   <body id="tracker">
-    <div id="fb-root"></div>
-    <script>
-      (function (d, s, id) {
-        var js,
-          fjs = d.getElementsByTagName(s)[0];
-        if (d.getElementById(id)) return;
-        js = d.createElement(s);
-        js.id = id;
-        js.src = "//connect.facebook.net/en_US/sdk.js#xfbml=1&version=v2.10";
-        fjs.parentNode.insertBefore(js, fjs);
-      })(document, "script", "facebook-jssdk");
-    </script>
     <div class="loading-splash">
-      <img
-        src="../img/boot-white-on-darkred-192.png"
-        alt="Improved Initiative Flying Boot Logo"
-      />
+      <img src="../img/boot-white-on-darkred-192.png" alt="Improved Initiative Flying Boot Logo" />
       <p>Loading Improved Initiative</p>
     </div>
+
     <div id="app__container"></div>
+
+    <!-- GM Dock -->
+    <div id="gmDock" role="toolbar" aria-label="GM Touch Dock">
+      <div class="row">
+        <button class="btn danger"  id="btnDmg">DMG</button>
+        <button class="btn success" id="btnHeal">HEAL</button>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="btnNext">Next ▶</button>
+      </div>
+      <div class="row">
+        <button class="btn small" id="btnFlip" title="Move dock left / right">⇄</button>
+      </div>
+    </div>
+
+    <!-- pavé numérique -->
+    <div id="numPad" aria-hidden="true">
+      <div class="pad" role="dialog" aria-modal="true" aria-label="Numeric pad">
+        <div class="title" id="padTitle">Enter amount</div>
+        <div class="display" id="padDisplay">0</div>
+        <div class="grid">
+          <button class="key">1</button><button class="key">2</button><button class="key">3</button>
+          <button class="key">4</button><button class="key">5</button><button class="key">6</button>
+          <button class="key">7</button><button class="key">8</button><button class="key">9</button>
+          <button class="key wide" data-act="clr">CLR</button><button class="key">0</button>
+          <button class="key wide" data-act="bksp">⌫</button><button class="key success wide" data-act="ok">OK</button>
+          <button class="key danger wide" data-act="cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- toast -->
+    <div id="gmToast" aria-live="polite"></div>
+
+    <script>
+      // GM Dock script - complet & robuste
+      (function(){
+        const getVM = () => window.II_DEBUG?.getTracker?.() || null;
+        const koUnwrap = v => (typeof v === "function" ? v() : v);
+
+        function waitFor(fn, timeout=2200){
+          const t0 = performance.now();
+          return new Promise(resolve=>{
+            (function loop(){
+              const v = fn();
+              if (v) return resolve(v);
+              if (performance.now() - t0 > timeout) return resolve(null);
+              requestAnimationFrame(loop);
+            })();
+          });
+        }
+        function setNativeValue(el, value){
+          const d = Object.getOwnPropertyDescriptor(el.__proto__, 'value') ||
+                    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+          d.set.call(el, value);
+          el.dispatchEvent(new Event('input',  { bubbles:true }));
+          el.dispatchEvent(new Event('change', { bubbles:true }));
+        }
+        const isVisible = el => !!el && el.offsetParent !== null && getComputedStyle(el).visibility !== 'hidden';
+
+        // toast
+        function toast(msg, kind="ok", t=1500){
+          const el = document.getElementById("gmToast");
+          if(!el) return;
+          el.className = "";
+          el.textContent = msg;
+          el.classList.add(kind, "show");
+          clearTimeout(el._t);
+          el._t = setTimeout(()=> el.classList.remove("show"), t);
+        }
+
+        // find damage modal - tolerant: take last visible numeric/text input
+        function findDamagePrompt(){
+          const inputs = [...document.querySelectorAll('input[type="number"], input[type="text"]')].filter(isVisible);
+          if (!inputs.length) return null;
+          const input = inputs[inputs.length - 1];
+          const box   = input.closest('form, [role="dialog"], .modal, .ReactModal__Content') || input.parentElement || document.body;
+          let okBtn = (box && [...box.querySelectorAll('button,[role="button"]')].reverse().find(b=>{
+            const t = (b.textContent || '').toLowerCase().trim();
+            const aria = (b.ariaLabel || '').toLowerCase();
+            const html = (b.innerHTML || '').toLowerCase();
+            return t === '✓' || t === 'ok' || /apply|confirm|valider|confirmer/.test(t) || /check/.test(aria) || /check|✓/.test(html);
+          })) || null;
+          if (!okBtn){
+            let sib = input.nextElementSibling;
+            while (sib && sib.tagName !== 'BUTTON' && !sib.matches('[role="button"]')) sib = sib.nextElementSibling;
+            if (sib) okBtn = sib;
+          }
+          return { root: box, form: input.closest('form'), input, okBtn };
+        }
+
+        // encounter helpers
+        function getEncounter(vm){
+          return vm?.Encounter || vm?.EncounterCommander?.Encounter || vm?.GetEncounter?.() || null;
+        }
+        function getActiveId(enc){
+          return koUnwrap(enc?.ActiveCombatantId) ||
+                 enc?.lastVisibleActiveCombatantId ||
+                 koUnwrap(enc?.EncounterFlow?.ActiveCombatantId) || null;
+        }
+        async function getActiveVM(vm){
+          const enc = getEncounter(vm); if (!enc) return null;
+          const cc  = vm.CombatantCommander; if (!cc) return null;
+
+          // 1) already selected
+          let selected = koUnwrap(cc.SelectedCombatants);
+          if (Array.isArray(selected) && selected[0] && typeof selected[0].Name === "function") return selected[0];
+
+          // 2) try select current
+          if (typeof cc.selectByOffset === "function") {
+            try { cc.selectByOffset(0); } catch(e){}
+            selected = koUnwrap(cc.SelectedCombatants);
+            if (Array.isArray(selected) && selected[0] && typeof selected[0].Name === "function") return selected[0];
+          }
+
+          // 3) combatant details map
+          const id = getActiveId(enc);
+          let dict = koUnwrap(cc.CombatantDetails);
+          if (dict && typeof dict === "object") {
+            const vals = Array.isArray(dict) ? dict : Object.values(dict);
+            for (const vmItem of vals) {
+              const vmId = koUnwrap(vmItem?.Id) ?? koUnwrap(vmItem?.Combatant?.Id);
+              if (vmId === id && typeof vmItem?.Name === "function") return vmItem;
+            }
+          }
+
+          // 4) fall back to scanning list
+          const listKO = koUnwrap(enc?.Combatants) ?? koUnwrap(enc?.combatants);
+          const list = Array.isArray(listKO) ? listKO : (listKO && typeof listKO === "object" ? Object.values(listKO) : []);
+          for (const vmItem of list) {
+            if (typeof vmItem?.Name === "function" && (koUnwrap(vmItem?.IsActive) === true)) return vmItem;
+            const vmId = koUnwrap(vmItem?.Id) ?? koUnwrap(vmItem?.Combatant?.Id);
+            if (vmId === id && typeof vmItem?.Name === "function") return vmItem;
+          }
+          return null;
+        }
+
+        // apply HP delta - open modal once, wait, fill, submit robustly
+        async function hpDelta(delta){
+          const vm = getVM(); if (!vm) { toast("II_DEBUG absent", "dmg", 1200); return; }
+          const cc = vm.CombatantCommander;
+          if (!cc || typeof cc.applyDamageForCombatants !== "function") { toast("API indisponible", "dmg", 1200); return; }
+
+          const activeVM = await getActiveVM(vm);
+          if (!activeVM) { toast("Aucun combattant actif", "dmg", 1200); return; }
+
+          try { cc.latestRoll = null; } catch(e){}
+          const valStr = String(Math.trunc(delta));
+
+          // open once
+          cc.applyDamageForCombatants([activeVM]);
+
+          // wait for prompt (tolerant)
+          const prompt = await waitFor(findDamagePrompt, 2200);
+          if (!prompt || !prompt.input) { toast("Prompt non détecté.", "dmg", 1200); return; }
+
+          // write (triple write)
+          prompt.input.focus();
+          setNativeValue(prompt.input, valStr);
+          setTimeout(()=>{ try { setNativeValue(prompt.input, valStr); } catch(e){} }, 40);
+          setTimeout(()=>{ try { setNativeValue(prompt.input, valStr); } catch(e){} }, 120);
+
+          // submit robust
+          const submitPrompt = ()=>{
+            if (prompt.okBtn) {
+              try { prompt.okBtn.click(); return true; } catch(e){}
+            }
+            if (prompt.form && typeof prompt.form.requestSubmit === 'function') {
+              try { prompt.form.requestSubmit(); return true; } catch(e){}
+            }
+            if (prompt.form) {
+              try {
+                const ok = prompt.form.dispatchEvent(new Event('submit', { bubbles:true, cancelable:true }));
+                if (ok) return true;
+              } catch(e){}
+            }
+            try {
+              const kd = new KeyboardEvent('keydown', { key:'Enter', code:'Enter', bubbles:true, cancelable:true });
+              Object.defineProperty(kd,'keyCode',{get:()=>13}); Object.defineProperty(kd,'which',{get:()=>13});
+              prompt.input.dispatchEvent(kd);
+              const ku = new KeyboardEvent('keyup',   { key:'Enter', code:'Enter', bubbles:true, cancelable:true });
+              Object.defineProperty(ku,'keyCode',{get:()=>13}); Object.defineProperty(ku,'which',{get:()=>13});
+              prompt.input.dispatchEvent(ku);
+            } catch(e){}
+            return false;
+          };
+
+          setTimeout(()=>{ submitPrompt(); }, 180);
+          setTimeout(()=>{ try { cc.latestRoll = null; } catch(e){} }, 260);
+
+          // local feedback
+          const pretty = valStr.startsWith('-') ? `Heal ${Math.abs(parseInt(valStr))}` : `DMG ${valStr}`;
+          toast(pretty, valStr.startsWith('-') ? "heal" : "dmg", 1200);
+          try { navigator.vibrate?.(18); } catch(e){}
+        }
+
+        // next turn
+        function doNext(){
+          const vm = getVM(); if (!vm) { toast("II_DEBUG absent", "dmg", 1200); return; }
+          const ec = vm.EncounterCommander || vm.Encounter || vm.TurnCommander;
+          const f = ec?.NextTurn || ec?.AdvanceTurn || ec?.Next || ec?.GoToNext || ec?.AdvanceRound || ec?.NextCombatant;
+          if (typeof f === "function") { try { f.call(ec); } catch(e){ console.warn(e); } }
+        }
+
+        // numpad UI
+        const pad = document.getElementById("numPad");
+        const padTitle = document.getElementById("padTitle");
+        const padDisplay = document.getElementById("padDisplay");
+        let mode = "dmg";
+        let buffer = "";
+
+        function openPad(m){
+          mode = m; buffer = "";
+          try { const vm = getVM(); vm?.CombatantCommander && (vm.CombatantCommander.latestRoll = null); } catch(e){}
+          padTitle.textContent = (m === "heal") ? "HEAL – amount" : "DMG – amount";
+          padDisplay.textContent = "0";
+          pad.style.display = "flex";
+        }
+        function closePad(){ pad.style.display = "none"; }
+        function commitPad(){
+          const n = parseInt(buffer||"0",10);
+          if (!Number.isFinite(n) || n<=0){ closePad(); return; }
+          const delta = (mode === "heal") ? -n : n;
+          closePad();
+          // immediate feedback
+          toast((mode==="heal" ? `+${n} HP` : `-${n} HP`), mode==="heal" ? "heal" : "dmg");
+          try { navigator.vibrate?.(20); } catch(e){}
+          hpDelta(delta);
+        }
+
+        pad.addEventListener("click",(e)=>{
+          const k=e.target.closest(".key"); if(!k) return;
+          const act=k.dataset.act;
+          if(!act){
+            const d=k.textContent.trim();
+            if(buffer.length<5){ buffer=(buffer==="0"?d:buffer+d); }
+            padDisplay.textContent=buffer||"0"; return;
+          }
+          if(act==="bksp"){ buffer=buffer.slice(0,-1); padDisplay.textContent=buffer||"0"; return; }
+          if(act==="clr"){ buffer=""; padDisplay.textContent="0"; return; }
+          if(act==="ok"){ commitPad(); return; }
+          if(act==="cancel"){ closePad(); return; }
+        });
+        pad.addEventListener("click",(e)=>{ if(e.target===pad) closePad(); });
+        window.addEventListener("keydown",(e)=>{ if(e.key==="Escape" && pad.style.display==="flex") closePad(); });
+
+        // wiring buttons + pulse + flip
+        const btnDmg  = document.getElementById("btnDmg");
+        const btnHeal = document.getElementById("btnHeal");
+        const btnNext = document.getElementById("btnNext");
+        const btnFlip = document.getElementById("btnFlip");
+        function pulse(btn){ btn.classList.add("pulse"); setTimeout(()=>btn.classList.remove("pulse"), 200); }
+
+        btnDmg.addEventListener("click", (e)=>{ pulse(e.currentTarget); openPad("dmg"); });
+        btnHeal.addEventListener("click",(e)=>{ pulse(e.currentTarget); openPad("heal"); });
+        btnNext.addEventListener("click",(e)=>{ pulse(e.currentTarget); doNext(); });
+        btnFlip.addEventListener("click",(e)=>{
+          const dock = document.getElementById("gmDock");
+          dock.classList.toggle("left");
+          localStorage.setItem("__iiDockLeft", dock.classList.contains("left") ? "1" : "0");
+        });
+
+        // restore dock side
+        (function initDockSide(){
+          const dock = document.getElementById("gmDock");
+          if(localStorage.getItem("__iiDockLeft")==="1") dock.classList.add("left");
+        })();
+
+        // ready indicator
+        const dock = document.getElementById("gmDock");
+        const readyCheck=setInterval(()=>{
+          const ok=!!(window.II_DEBUG&&window.II_DEBUG.getTracker);
+          dock.style.opacity=ok?"":"0.5"; if(ok) clearInterval(readyCheck);
+        },300);
+
+      })();
+    </script>
   </body>
 </html>

@@ -1,113 +1,144 @@
-// public/hudStream.js
+// public/hudStream.js (merge timers + dedup same tag)
 (function () {
   'use strict';
 
   const LS_PJS='__iiHUD_PJs', LS_CH='__iiHUD_Channel';
   const DEFAULT_CHANNEL='session-1', POLL_MS=5000, DEBOUNCE_MS=200;
-
-  // Par défaut on pousse vers le WS dédié (8091). Override possible via ?ws=
-  const p = new URLSearchParams(location.search);
-  const WS_URL = p.get('ws') || 'ws://127.0.0.1:8091/hud';
-  console.log('[HUD] WS_URL =', WS_URL);
-
-  const $=(s,r=document)=>r.querySelector(s);
-  const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const sp = new URLSearchParams(location.search);
+  const WS_URL = sp.get('ws') || (location.protocol==='https:'?'wss':'ws')+'://127.0.0.1:8091/hud';
+  const $  = (s,r=document)=>r.querySelector(s);
+  const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
   const qFirst=(arr,root)=>{ for(const s of arr){ const el=$(s,root); if(el) return el; } return null; };
+  const pjSetFromLS = ()=> new Set((localStorage.getItem(LS_PJS)||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));
+  const getChannel = ()=> localStorage.getItem(LS_CH) || (localStorage.setItem(LS_CH, DEFAULT_CHANNEL), DEFAULT_CHANNEL);
 
-  const pjSetFromLS = ()=>{
-    const raw = localStorage.getItem(LS_PJS) || '';
-    return new Set(raw.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean));
-  };
-  const getChannel = ()=>{
-    let ch = localStorage.getItem(LS_CH);
-    if (!ch) { ch = DEFAULT_CHANNEL; localStorage.setItem(LS_CH, ch); }
-    return ch;
-  };
+  function norm(x){ return (x||'').replace(/\s+/g,' ').trim(); }
+  function isAdminText(t){ return /^(add|remove|ajouter|retirer)\b/i.test(t); }
 
-  function isActiveRow(tr){
-    const cls = tr.className || '';
-    if (['active','combatant--active','is-active'].some(m=>cls.includes(m))) return true;
-    return !!tr.querySelector('.active,.combatant--active,.is-active');
+  function extractTagsFromRow(tr){
+    const selectors = [
+      '.combatant__tags .tag','.combatant__tags [class*="tag"]',
+      '.tags .tag','.tags [class*="tag"]',
+      '.conditions .condition','.status .status-item',
+      '.badges .badge','[data-tag]','[data-badge]',
+      '[class*="tag"]','[class*="badge"]','[class*="condition"]','[class*="status"]'
+    ].join(',');
+    const nodes = $$(selectors, tr);
+    const temp=[], seenRaw=new Set();
+    let last = null;
+
+    for(const el of nodes){
+      if (el.tagName==='BUTTON') continue;
+      if (/\b(add|remove)\b/i.test(el.className||'')) continue;
+
+      let text = norm(el.getAttribute('data-text') || el.getAttribute('aria-label') || el.textContent);
+      if (!text) continue;
+
+      // timer isolé: "8" → merge avec le précédent
+      if (/^\d{1,3}$/.test(text)){
+        if (last) { last.text += ` (${text})`; }
+        continue;
+      }
+      if (isAdminText(text)) continue;
+
+      text = text.replace(/^[:\-\s]+|[:\-\s]+$/g,''); // nettoie
+      // collé: "Poisoned8" → "Poisoned (8)"
+      const m = text.match(/^(.+?)\s*(\d{1,3})$/);
+      if (m) text = `${m[1]} (${m[2]})`;
+
+      const keyRaw = text.toLowerCase();
+      if (seenRaw.has(keyRaw)) { last = temp[temp.length-1] || null; continue; }
+
+      const gmAttr=el.getAttribute('data-gm')||el.getAttribute('data-hidden')||el.getAttribute('data-gmonly');
+      const gmClass=/\bgm\b|\bgm-only\b|\bgmonly\b/i.test(el.className||'');
+      const isGM=!!(gmAttr==='true'||gmClass||/^gm:|^_/i.test(text));
+
+      last = { text, gm:isGM };
+      temp.push(last);
+      seenRaw.add(keyRaw);
+    }
+
+    // DEDUP : fusionne "Poisoned" et "Poisoned (5)" → garder la version avec timer (plus grand si plusieurs)
+    const map = new Map(); // base -> tag
+    const base = t => (t.text||'').replace(/\s*\(\d{1,3}\)\s*$/,'').trim().toLowerCase();
+    const timerOf = t => { const m = (t.text||'').match(/\((\d{1,3})\)$/); return m ? Number(m[1]) : null; };
+
+    for (const t of temp){
+      const b = base(t);
+      const cur = map.get(b);
+      if (!cur) { map.set(b, t); continue; }
+      const aT = timerOf(cur), bT = timerOf(t);
+      if (aT == null && bT != null) map.set(b, t);
+      else if (aT != null && bT != null && bT > aT) map.set(b, t);
+      else cur.gm = cur.gm || t.gm;
+    }
+    return Array.from(map.values());
   }
 
+  function extractHiddenFromRow(tr){
+    const cls=(tr.className||'').toLowerCase();
+    if (/\bhidden\b|\bis-hidden\b|\bcombatant--hidden\b/.test(cls)) return true;
+    const icon=tr.querySelector('[title*="hidden" i],[aria-label*="hidden" i],[class*="eye"][class*="slash"]');
+    if(icon) return true;
+    if (tr.getAttribute('data-hidden')==='true') return true;
+    return false;
+  }
+
+  function isActiveRow(tr){
+    const cls = tr?.className || '';
+    if (['active','combatant--active','is-active'].some(m=>cls.includes(m))) return true;
+    return !!tr?.querySelector?.('.active,.combatant--active,.is-active');
+  }
   function resolvePortraitSrc(tr){
-    const img = tr.querySelector('td.combatant__image-cell img, td:nth-child(3) img');
-    if (img && (img.currentSrc || img.src)) return img.currentSrc || img.src;
-    const cell = tr.querySelector('td.combatant__image-cell, td:nth-child(3)');
-    if (cell) {
-      const bg = getComputedStyle(cell).backgroundImage || '';
-      const m = bg.match(/url\(["']?(.+?)["']?\)/i);
-      if (m && m[1]) return m[1];
-    }
-    return null;
+    try{
+      const img = tr.querySelector('td.combatant__image-cell img, td:nth-child(3) img');
+      if (img && (img.currentSrc || img.src)) return img.currentSrc || img.src;
+      const cell = tr.querySelector('td.combatant__image-cell, td:nth-child(3)');
+      if (cell) { const bg = getComputedStyle(cell).backgroundImage||''; const m=bg.match(/url\(["']?(.+?)["']?\)/i); if(m&&m[1]) return m[1]; }
+    }catch{} return null;
   }
 
   function collectState(){
-    const rows = $$('.combatants tbody tr');
-    const PJS  = pjSetFromLS();
-    const list = rows.map(tr=>{
-      const nameEl = qFirst(['td.combatant__name','td:nth-child(4)'], tr);
-      const hpEl   = qFirst(['td.combatant__hp','td:nth-child(5)'], tr);
-      const name   = (nameEl?.textContent||'?').trim();
-      const hpTxt  = (hpEl?.textContent||'').trim().replace(/\s+/g,'');
-      const nums   = hpTxt.match(/\d+/g) || [];
-      const cur    = Number(nums[0] ?? NaN);
-      const max    = Number(nums[1] ?? NaN);
-      const img    = resolvePortraitSrc(tr) || null; // URL (pas de base64)
-      const isPlayer = tr.classList?.contains('combatant--player') || PJS.has(name.toLowerCase());
-      const active   = isActiveRow(tr);
-      return { name, cur, max, isPlayer, active, img };
-    });
-    const turn = Math.max(0, list.findIndex(x=>x.active));
-    return { turn, list };
+    try{
+      const rows=$$('.combatants tbody tr'); const PJS=pjSetFromLS();
+      const list = rows.map(tr=>{
+        const nameEl=qFirst(['td.combatant__name','td:nth-child(4)'], tr);
+        const hpEl  =qFirst(['td.combatant__hp','td:nth-child(5)'], tr);
+        const name=(nameEl?.textContent||'?').trim();
+        const hpTxt=(hpEl?.textContent||'').trim().replace(/\s+/g,'');
+        const nums=hpTxt.match(/\d+/g)||[];
+        const cur=Number(nums[0]??NaN), max=Number(nums[1]??NaN);
+        const img=resolvePortraitSrc(tr)||null;
+        const isPlayer=tr?.classList?.contains('combatant--player') || PJS.has(name.toLowerCase());
+        const active=isActiveRow(tr);
+        const tags=extractTagsFromRow(tr);
+        const isHidden=extractHiddenFromRow(tr);
+        const c={name,cur,max,isPlayer,active,img}; if(tags.length) c.tags=tags; if(isHidden) c.isHidden=true; return c;
+      });
+      const turn=Math.max(0,list.findIndex(x=>x.active));
+      return {turn,list};
+    }catch(e){ console.log('[HUD] collectState error:',e); return {turn:0,list:[]}; }
   }
 
-  // petit indicateur
-  const IND_ID='__iiHUD_Indicator';
-  if (!document.getElementById(IND_ID)) {
-    const style=document.createElement('style');
-    style.textContent=`#${IND_ID}{position:fixed;right:16px;bottom:16px;z-index:99999;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 10px;font:600 12px/1.2 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;backdrop-filter:blur(4px);box-shadow:0 8px 22px rgba(0,0,0,.35);display:flex;align-items:center;gap:8px;user-select:none}
-    #${IND_ID} .dot{width:10px;height:10px;border-radius:50%;border:2px solid rgba(255,255,255,.25)}
-    #${IND_ID} .dot.off{background:#8a8a8a} #${IND_ID} .dot.reco{background:#ffb257} #${IND_ID} .dot.ok{background:#42d07c}
-    #${IND_ID} .pill{background:rgba(255,255,255,.10); padding:4px 6px; border-radius:7px; font-weight:700}`;
-    document.head.appendChild(style);
-    const ind=document.createElement('div');
-    ind.id=IND_ID;
-    ind.innerHTML=`<span class="dot off" id="iiDot"></span><span class="pill" id="iiChan">—</span>`;
-    document.body.appendChild(ind);
-  }
-  const setDot=k=>{ document.getElementById('iiDot').className='dot '+(k||'off'); };
-  const updateIndicator=()=>{ document.getElementById('iiChan').textContent = getChannel(); };
-  updateIndicator();
-
-  let ws=null, lastSent='', reconnectTimer=0;
-
+  let ws=null,lastSent='',reconnectTimer=0;
   function openWS(){
     try{
-      setDot('reco');
-      ws = new WebSocket(WS_URL);
-      console.log('[HUD] connecting…');
-
-      ws.onopen = ()=>{ console.log('[HUD] OPEN'); setDot('ok'); sendSnapshot(true); };
-      ws.onclose= e  =>{ console.log('[HUD] CLOSE', e.code, e.reason); setDot('reco'); clearTimeout(reconnectTimer); reconnectTimer=setTimeout(openWS,1000); };
-      ws.onerror= e  =>{ console.log('[HUD] ERROR', e); try{ws.close();}catch{} };
-    }catch(err){ console.log('[HUD] WS ctor failed', err); }
+      ws=new WebSocket(WS_URL);
+      ws.onopen = ()=>{ sendSnapshot(true); };
+      ws.onclose= ()=>{ clearTimeout(reconnectTimer); reconnectTimer=setTimeout(openWS,1000); };
+      ws.onerror= ()=>{ try{ws.close();}catch{} };
+    }catch{}
   }
-
   function sendSnapshot(force=false){
-    const payload = { type:'ii_state', channel:getChannel(), at:Date.now(), data:collectState() };
-    const blob = JSON.stringify(payload);
-    if (!force && blob===lastSent) return;
-    lastSent = blob;
-    if (ws && ws.readyState === 1) { console.log('[HUD] send ii_state', payload); ws.send(blob); }
-    else { console.log('[HUD] WS not ready'); }
+    try{
+      const payload={type:'ii_state',channel:getChannel(),at:Date.now(),data:collectState()};
+      const blob=JSON.stringify(payload); if(!force && blob===lastSent) return; lastSent=blob;
+      if(ws && ws.readyState===1) ws.send(blob);
+    }catch(e){ console.log('[HUD] send error',e); }
   }
-
-  new MutationObserver(()=>setTimeout(()=>sendSnapshot(false),DEBOUNCE_MS))
-    .observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true});
+  try{ new MutationObserver(()=>setTimeout(()=>sendSnapshot(false),DEBOUNCE_MS)).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true}); }catch{}
   setInterval(()=>sendSnapshot(false),POLL_MS);
-
-  if (!localStorage.getItem(LS_CH)) localStorage.setItem(LS_CH, DEFAULT_CHANNEL);
-  openWS();
-  setTimeout(()=>sendSnapshot(true),400);
+  if(!localStorage.getItem(LS_CH)) localStorage.setItem(LS_CH, DEFAULT_CHANNEL);
+  openWS(); setTimeout(()=>sendSnapshot(true),400);
+  
 })();

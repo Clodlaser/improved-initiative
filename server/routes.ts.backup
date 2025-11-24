@@ -26,10 +26,6 @@ import { configureAffiliateRoutes } from "./configureAffiliateRoutes";
 import request = require("request");
 import { configureImportRoutes } from "./configureImportRoutes";
 
-// >>> AJOUT : import de la route d'auto-sync DDB
-import { installSyncDdbRoute } from "./routes/sync-ddb";
-// <<< AJOUT
-
 const baseUrl = process.env.BASE_URL || "";
 const patreonClientId = process.env.PATREON_CLIENT_ID || "PATREON_CLIENT_ID";
 const defaultAccountLevel = process.env.DEFAULT_ACCOUNT_LEVEL || "free";
@@ -97,7 +93,7 @@ export default async function (
 
   let cacheMaxAge = moment.duration(7, "days").asMilliseconds();
   if (process.env.NODE_ENV === "development") {
-    (mustacheEngine as any).cache._max = 0;
+    mustacheEngine.cache._max = 0;
     cacheMaxAge = 0;
   }
 
@@ -110,16 +106,11 @@ export default async function (
   app.use(
     bodyParser.json({
       verify: function (req, res, buf, encoding) {
-        (req as any)["rawBody"] = buf.toString();
+        req["rawBody"] = buf.toString();
       }
     })
   );
   app.use(bodyParser.urlencoded({ extended: false }));
-
-  // >>> AJOUT : montage de la route d'auto-sync DDB (après body-parser)
-  installSyncDdbRoute(app);
-  console.log("[sync-ddb] route mounted at /admin/sync-ddb");
-  // <<< AJOUT
 
   configureMetricsRoutes(app);
 

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dice — Player Controller</title>
+<style>
+:root {
+  --bg:#0f141a; --fg:#e6eef5; --muted:#97a6b2; --card:#121a22; --line:#202b36; --accent:#4da3ff;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--fg); font:14px/1.4 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+}
+.wrapper{max-width:1200px;margin:0 auto;padding:16px}
+.row{display:flex;gap:16px;flex-wrap:wrap}
+.card{
+  background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; box-shadow:0 8px 24px rgba(0,0,0,.25);
+}
+.controls .row > *{flex:1}
+select,input,button{
+  background:#0e151d; color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:8px 10px;
+}
+button{ cursor:pointer }
+button.primary{ background:var(--accent); border-color:#2f87e6; color:#051423; font-weight:700 }
+button.ghost{ background:transparent }
+.group{display:flex;gap:6px;align-items:center}
+.btnbar{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:12px}
+.btn{padding:12px 0;border-radius:10px;background:#101821;border:1px solid var(--line);text-align:center;font-weight:700}
+.btn:hover{border-color:#314357}
+.hint{color:var(--muted)}
+.grid{display:grid;grid-template-columns:320px 1fr;gap:16px;margin-top:16px}
+.log table{width:100%;border-collapse:collapse}
+.log th,.log td{border-top:1px solid var(--line);padding:8px 10px;text-align:left;color:#d5e2ee}
+.log th{color:#9eb1c5;font-weight:600}
+.pill{display:inline-block;background:#0f1b27;border:1px solid var(--line);padding:2px 8px;border-radius:999px;color:#bcd0e5;font-size:12px}
+.big{
+  font-size:64px; font-weight:900; letter-spacing:-.02em; margin:10px 0 6px;
+  text-shadow:0 4px 18px rgba(0,0,0,.6);
+}
+.small{color:#b3c3d2}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+
+/* mini “dé” local */
+.dieMini{
+  width:120px;height:120px;border-radius:16px;border:1px solid var(--line);
+  background:radial-gradient(120% 120% at 30% 30%, #2c3947 0%, #18222d 60%, #121b24 100%);
+  display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;
+  box-shadow:inset 0 10px 30px rgba(0,0,0,.35), 0 10px 24px rgba(0,0,0,.25);
+}
+.dieMini .value{font-size:56px;font-weight:900}
+@keyframes pop{0%{transform:scale(.85)}55%{transform:scale(1.06)}100%{transform:scale(1)}}
+.pop{animation:pop .34s ease-out}
+
+/* top bar knobs */
+.knobs{display:flex;align-items:center;gap:10px}
+.knobs .box{display:flex;align-items:center;gap:6px;background:#0e151d;border:1px solid var(--line);padding:6px;border-radius:10px}
+.knobs input[type="number"]{width:60px;text-align:center}
+.reset{margin-left:auto}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="controls card">
+    <div class="row">
+      <div class="group">
+        <label for="target">Envoyer vers :</label>
+        <select id="target">
+          <option value="table">table</option>
+          <option value="combat">combat</option>
+          <option value="mj">mj</option>
+        </select>
+      </div>
+
+      <div class="knobs" style="flex:1;justify-content:flex-end">
+        <div class="box">
+          <span>Nb dés</span>
+          <button class="ghost" id="dcountMinus">−</button>
+          <input id="dcount" type="number" min="1" value="1" />
+          <button class="ghost" id="dcountPlus">+</button>
+        </div>
+        <div class="box">
+          <span>Bonus/Malus</span>
+          <button class="ghost" id="modMinus">−</button>
+          <input id="mod" type="number" value="0"/>
+          <button class="ghost" id="modPlus">+</button>
+        </div>
+        <button class="reset" id="reset">Reset</button>
+      </div>
+    </div>
+
+    <div class="btnbar">
+      <button class="btn" data-d="d20">d20</button>
+      <button class="btn" data-d="d4">d4</button>
+      <button class="btn" data-d="d6">d6</button>
+      <button class="btn" data-d="d8">d8</button>
+      <button class="btn" data-d="d10">d10</button>
+      <button class="btn" data-d="d12">d12</button>
+      <button class="btn" data-d="d100">d100</button>
+    </div>
+
+    <div class="row" style="align-items:center;margin-top:12px">
+      <div class="group" style="flex:1">
+        <span>Formule libre :</span>
+        <input id="formula" value="1d20+0" />
+        <button class="primary" id="btnFormula">Lancer (formule)</button>
+        <span class="hint">Raccourcis : <b>E</b> = d20 (compteurs) · <b>R</b> = relancer dernier type</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="small">Dernier jet</div>
+      <div class="dieMini" id="miniDie"><div class="value" id="miniVal">—</div></div>
+      <div class="small" id="lastFormula">Formule : —</div>
+      <div class="small">Cible : <span class="pill" id="lastTarget">—</span></div>
+    </div>
+
+    <div class="card log">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="small">Journal des jets</div>
+        <button id="clear" class="ghost">Effacer</button>
+      </div>
+      <table id="logtbl">
+        <thead><tr><th>Heure</th><th>Cible</th><th>Formule</th><th>Total</th><th>Détails</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- Params ---------- */
+const qs = new URLSearchParams(location.search);
+const WS_URL  = qs.get("ws") || "ws://127.0.0.1:8091/hud";
+const ROOM    = qs.get("room") || "session-1";
+const PLAYER  = qs.get("player") || "1";
+
+/* ---------- UI refs ---------- */
+const targetSel = document.getElementById("target");
+const dcountEl  = document.getElementById("dcount");
+const modEl     = document.getElementById("mod");
+const miniDie   = document.getElementById("miniDie");
+const miniVal   = document.getElementById("miniVal");
+const lastTarget= document.getElementById("lastTarget");
+const lastFormula=document.getElementById("lastFormula");
+const logTbody  = document.querySelector("#logtbl tbody");
+
+/* ---------- WS + BC ---------- */
+let ws, wsReady=false, bc=null;
+function connectWS(){
+  try { ws = new WebSocket(WS_URL); } catch { openBC(); return; }
+  ws.onopen = ()=>{ wsReady=true; };
+  ws.onclose= ()=>{ wsReady=false; setTimeout(connectWS, 800); if(!bc) openBC(); };
+  ws.onmessage = ev => { try{ onIncoming(JSON.parse(ev.data)); }catch{} };
+}
+connectWS();
+setTimeout(()=>{ if(!wsReady && !bc) openBC(); }, 1200);
+function openBC(){
+  try {
+    if(bc) bc.close();
+    bc = new BroadcastChannel("dice_room_" + ROOM);
+    bc.onmessage = ev => onIncoming(ev.data);
+  } catch {}
+}
+function send(msg){
+  const data = JSON.stringify(msg);
+  if(wsReady && ws && ws.readyState===1) ws.send(data);
+  else if(bc) bc.postMessage(msg);
+}
+
+/* ---------- Roll core ---------- */
+function parseFormula(str){
+  // Support: NdX(+/-Y), case-insensitive
+  const m = String(str).replace(/\s+/g,'').match(/^(\d*)d(\d+)([+-]\d+)?$/i);
+  if(!m) return null;
+  const n = Math.max(1, parseInt(m[1]||'1',10));
+  const faces = parseInt(m[2],10);
+  const mod = parseInt(m[3]||'0',10);
+  return {n,faces,mod,formula:`${n}d${faces}${mod>=0?`+${mod}`:mod}`};
+}
+function roll(formula){
+  const p = parseFormula(formula);
+  if(!p) return null;
+  const rolls = Array.from({length:p.n}, _ => 1 + Math.floor(Math.random()*p.faces));
+  const subtotal = rolls.reduce((a,b)=>a+b,0);
+  const total = subtotal + p.mod;
+  return { ...p, rolls, subtotal, total };
+}
+
+/* ---------- UI helpers ---------- */
+function addLog({target, payload}){
+  const tr = document.createElement("tr");
+  const now = new Date().toLocaleTimeString();
+  const details = `[${payload.rolls.join(', ')}]` + (payload.mod? ` ${payload.mod>=0?'+':''}${payload.mod}`:'');
+  tr.innerHTML = `<td>${now}</td><td><span class="pill">${target}</span></td>
+                  <td>${payload.formula}</td><td>${payload.total}</td><td>${details}</td>`;
+  logTbody.prepend(tr);
+}
+function showMini(payload, target){
+  miniVal.textContent = payload.total;
+  miniDie.classList.remove('pop'); void miniDie.offsetWidth; miniDie.classList.add('pop');
+  lastTarget.textContent = target;
+  lastFormula.textContent = 'Formule : ' + payload.formula;
+}
+
+/* ---------- Outgoing ---------- */
+let lastDieType = "d20";
+document.querySelectorAll(".btn[data-d]").forEach(b=>{
+  b.addEventListener('click', ()=>{
+    lastDieType = b.dataset.d;
+    const n = Math.max(1, parseInt(dcountEl.value||'1',10));
+    const mod = parseInt(modEl.value||'0',10);
+    const f = `${n}${lastDieType}${mod? (mod>0?`+${mod}`:mod):''}`;
+    doRollAndSend(f);
+  });
+});
+document.getElementById("btnFormula").addEventListener('click', ()=>{
+  const f = document.getElementById("formula").value.trim();
+  if(!f) return;
+  doRollAndSend(f);
+});
+window.addEventListener('keydown', (e)=>{
+  if(e.key.toLowerCase()==='e') doRollAndSend(`${dcountEl.value||1}d20${(+modEl.value||0)? (modEl.value>0?`+${modEl.value}`:modEl.value):''}`);
+  if(e.key.toLowerCase()==='r') doRollAndSend(`${dcountEl.value||1}${lastDieType}${(+modEl.value||0)? (modEl.value>0?`+${modEl.value}`:modEl.value):''}`);
+});
+document.getElementById("dcountMinus").onclick = ()=> dcountEl.value = Math.max(1, (+dcountEl.value||1)-1);
+document.getElementById("dcountPlus").onclick  = ()=> dcountEl.value = Math.max(1, (+dcountEl.value||1)+1);
+document.getElementById("modMinus").onclick    = ()=> modEl.value = (+modEl.value||0)-1;
+document.getElementById("modPlus").onclick     = ()=> modEl.value = (+modEl.value||0)+1;
+document.getElementById("reset").onclick       = ()=> { dcountEl.value=1; modEl.value=0; };
+document.getElementById("clear").onclick       = ()=> { logTbody.innerHTML=''; };
+
+function doRollAndSend(formula){
+  const payload = roll(formula);
+  if(!payload) return;
+  const msg = {
+    type: "roll",
+    room: ROOM,
+    player: PLAYER,
+    target: targetSel.value,
+    payload,
+    ts: Date.now()
+  };
+  // local echo + send
+  showMini(payload, msg.target);
+  addLog(msg);
+  send(msg);
+}
+
+/* ---------- Incoming (depuis autres appareils) ---------- */
+function onIncoming(msg){
+  if(!msg || msg.type!=='roll') return;
+  if(msg.room && msg.room!==ROOM) return;
+  // Filtrage cible : afficher tout dans le log local, mais teinter la cible visuellement déjà faite.
+  addLog(msg);
+  showMini(msg.payload, msg.target);
+}
+</script>
+</body>
+</html>

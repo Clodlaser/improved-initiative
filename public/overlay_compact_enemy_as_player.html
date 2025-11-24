@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>II Overlay HUD (compact — enemies like players)</title>
+<style>
+  html,body{height:100%;margin:0;background:transparent}
+  #hud{position:fixed;bottom:16px;left:16px;z-index:1;width:640px;max-width:80vw;min-width:420px;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.45);font:600 14px/1.25 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;background:rgba(0,0,0,.60);backdrop-filter:blur(4px)}
+  .content{padding:10px 12px 8px}
+  .rows{margin:0}
+  .row{position:relative;display:flex;align-items:center;gap:10px;margin:6px 0;padding:4px 8px;border-radius:8px}
+  .name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+  .hpWrap{display:flex;align-items:center;gap:8px}
+  .hpBar{height:6px;background:rgba(20,20,20,.7);border-radius:6px;overflow:hidden;width:320px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+  .hpBar>i{display:block;height:100%}
+  .hpTxt{width:66px;text-align:right;opacity:.98;font-size:14px}
+  .row.current .name::before{content:"▶ ";opacity:.95}
+  /* Enemy rows now mirror player layout. We just drop the number and force full bar length. */
+  .enemy{box-shadow:none;padding:4px 8px}
+  .enemy.deadRow .hpBar>i{background:#3c3c3c!important}
+  .dead{font-size:16px;margin-left:8px}
+  .hint{opacity:.85;font-weight:600;font-size:12px;margin:4px 0}
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="content">
+    <div class="rows" id="rows"><div class="hint">En attente de données…</div></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const rowsEl=document.getElementById('rows');
+  const qs=new URLSearchParams(location.search);
+  const CHANNEL=qs.get('ch')||'session-1';
+  const WS_URL = qs.get('ws') || 'ws://127.0.0.1:8091/hud';
+  const playersParam = (qs.get('players')||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const PC_SET = new Set(playersParam.length? playersParam : ['Pierre','Loic','Gabriele','Joel','Ana\u00ebl','Anaël','Tristan']);
+
+  const ESC_MAP = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+  const esc = s => String(s).replace(/[&<>"']/g, m => ESC_MAP[m]);
+
+  function enemyBg(p){
+    if (!isFinite(p)) return 'rgba(255,255,255,.06)';
+    if (p<=5)  return 'black';
+    if (p<=20) return '#a3082a';
+    if (p<=40) return '#ff5d5d';
+    if (p<=60) return '#ff9f43';
+    if (p<=80) return '#ffd257';
+    return '#42d07c';
+  }
+
+  function computeIsPlayer(c){
+    try{
+      if (c==null || typeof c!=='object') return false;
+      if (c.isPlayer===true) return true;
+      if (c.player===true) return true;
+      if (typeof c.Player==='string' && c.Player.toLowerCase()==='player') return true;
+      if (c.role==='pc' || c.team==='ally') return true;
+      if (typeof c.PersistentCharacterId==='string' || typeof c.persistentCharacterId==='string') return true;
+      if (PC_SET.has(c.name)) return true;
+    }catch(e){}
+    return false;
+  }
+
+  function render(state){
+    const turn = Number(state?.turn||0);
+    const list = Array.isArray(state?.list)? state.list : [];
+    const ord  = turn>0? list.slice(turn).concat(list.slice(0,turn)) : list;
+    const view = ord.slice(0,12);
+
+    rowsEl.innerHTML = view.length ? view.map((c,idx)=>{
+      const name = esc(c?.name ?? '?');
+      const cur  = Number(c?.cur), max = Number(c?.max);
+      const hasHP = isFinite(cur) && isFinite(max) && max>0;
+      const pct = hasHP ? Math.max(0, Math.min(100, Math.round(cur*100/max))) : NaN;
+      const isPlayer = computeIsPlayer(c);
+
+      if (isPlayer){
+        if (hasHP && cur<=0) return `<div class="row ${idx===0?'current':''}"><div class="name">${name}</div><div class="dead">💀</div></div>`;
+        const clr = pct<25?'#ff5d5d':(pct<60?'#ffd257':'#42d07c');
+        return `<div class="row ${idx===0?'current':''}">
+                  <div class="name">${name}</div>
+                  <div class="hpWrap"><div class="hpBar"><i style="width:${isNaN(pct)?0:pct}%;background:${clr}"></i></div><div class="hpTxt">${hasHP?`${cur}/${max}`:'—'}</div></div>
+                </div>`;
+      } else {
+        // Enemy with same layout as player, but:
+        // - bar is always full width (100%)
+        // - color based on pct
+        // - no numbers displayed
+        const bg = enemyBg(pct);
+        const dead = hasHP && cur<=0;
+        if (dead) {
+          return `<div class="row enemy ${idx===0?'current':''} deadRow">
+                    <div class="name">${name}</div>
+                    <div class="hpWrap"><div class="hpBar"><i style="width:100%;background:#3c3c3c"></i></div></div>
+                    <div class="dead">💀</div>
+                  </div>`;
+        }
+        return `<div class="row enemy ${idx===0?'current':''}">
+                  <div class="name">${name}</div>
+                  <div class="hpWrap"><div class="hpBar"><i style="width:100%;background:${bg}"></i></div></div>
+                </div>`;
+      }
+    }).join('') : '<div class="hint">Aucun combattant…</div>';
+  }
+
+  function normalizeFrame(ev){
+    if (typeof ev.data==='string') return Promise.resolve(ev.data);
+    if (ev.data instanceof Blob) return ev.data.text();
+    if (ev.data instanceof ArrayBuffer) return Promise.resolve(new TextDecoder().decode(ev.data));
+    try { return Promise.resolve(String(ev.data)); } catch { return Promise.resolve(''); }
+  }
+
+  function handleMessage(txt){
+    let msg; try{ msg=JSON.parse(txt);}catch{ return; }
+    const state = (msg?.type==='ii_state' && msg.data) ? msg.data
+                : (msg?.list && msg?.turn!=null) ? msg
+                : (msg?.data?.data?.list ? msg.data.data : (msg?.data?.list ? msg.data : null));
+    if (!state) return;
+    render(state);
+  }
+
+  function connect(){
+    const ws=new WebSocket(WS_URL);
+    ws.onopen =()=>console.log('[overlay-compact-enemyasplayer] open →', WS_URL, 'ch=', CHANNEL);
+    ws.onerror=e=>console.log('[overlay-compact-enemyasplayer] error',e);
+    ws.onclose =()=>{ console.log('[overlay-compact-enemyasplayer] closed, retry in 1s'); setTimeout(connect,1000); };
+    ws.onmessage=ev=>{ normalizeFrame(ev).then(handleMessage).catch(err=>console.error('[overlay-compact-enemyasplayer] frame error', err)); };
+  }
+  connect();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>II Overlay HUD (2 colonnes PJ / Monstres)</title>
+<style>
+  html,body{height:100%;margin:0;background:transparent}
+  #hud{position:fixed;bottom:16px;left:16px;z-index:1;width:860px;max-width:90vw;min-width:560px;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.45);font:600 14px/1.25 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;background:rgba(0,0,0,.60);backdrop-filter:blur(4px)}
+  .content{padding:10px 12px 8px}
+  .ticker{font-weight:800;opacity:.95;margin:2px 2px 8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .chip{padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
+  .now{background:#111;border-color:#ff637a;box-shadow:0 0 0 2px rgba(255,99,122,.35) inset}
+  .next{opacity:.9}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .col{}
+  .colTitle{font-weight:900;letter-spacing:.3px;opacity:.95;margin:0 0 6px 4px}
+  .rows{margin:0}
+  .row{position:relative;display:flex;align-items:center;gap:10px;margin:6px 0;padding:6px 8px;border-radius:8px}
+  .name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+  .hpWrap{display:flex;align-items:center;gap:8px}
+  .hpBar{height:6px;background:rgba(20,20,20,.7);border-radius:6px;overflow:hidden;width:90%;min-width:140px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+  .hpBar>i{display:block;height:100%}
+  .hpTxt{width:64px;text-align:right;opacity:.98;font-size:14px}
+  .row.current{box-shadow:0 0 0 2px #ff637a,inset 0 0 0 1px rgba(255,255,255,.08);border-radius:10px}
+  .row.current .name::before{content:"▶ ";opacity:.95}
+  .enemy{box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);padding:4px 8px}
+  .enemy.critical{background:#000!important;color:#fff;box-shadow:0 0 0 2px #a3082a, inset 0 0 0 1px rgba(255,255,255,.06);animation:pulseCrit 1.2s ease-in-out infinite}
+  @keyframes pulseCrit{0%{box-shadow:0 0 0 2px #a3082a, inset 0 0 0 1px rgba(255,255,255,.06)}50%{box-shadow:0 0 0 6px rgba(163,8,42,.4), inset 0 0 0 1px rgba(255,255,255,.06)}100%{box-shadow:0 0 0 2px #a3082a, inset 0 0 0 1px rgba(255,255,255,.06)}}
+  .enemy.deadRow{background:#3c3c3c!important;color:#fff;opacity:.9;animation:none!important}
+  .dead{font-size:16px}
+  .hint{opacity:.85;font-weight:600;font-size:12px;margin:4px 0}
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="content">
+    <div class="ticker" id="ticker"><span class="hint">En attente de données…</span></div>
+    <div class="grid">
+      <div class="col">
+        <div class="colTitle">PJ</div>
+        <div class="rows" id="rowsPj"><div class="hint">—</div></div>
+      </div>
+      <div class="col">
+        <div class="colTitle">Monstres</div>
+        <div class="rows" id="rowsMon"><div class="hint">—</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const rowsPj=document.getElementById('rowsPj');
+  const rowsMon=document.getElementById('rowsMon');
+  const ticker=document.getElementById('ticker');
+
+  const qs=new URLSearchParams(location.search);
+  const CHANNEL=qs.get('ch')||'session-1';
+  const WS_URL = qs.get('ws') || 'ws://127.0.0.1:8091/hud';
+  const playersParam = (qs.get('players')||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const PC_SET = new Set(playersParam.length? playersParam : ['Pierre','Loic','Gabriele','Joel','Ana\u00ebl','Anaël','Tristan']);
+
+  const ESC_MAP = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+  const esc = s => String(s).replace(/[&<>"']/g, m => ESC_MAP[m]);
+
+  function enemyBg(p){
+    if (!isFinite(p)) return 'rgba(255,255,255,.06)';
+    if (p<=5)  return 'black';
+    if (p<=20) return '#a3082a';
+    if (p<=40) return '#ff5d5d';
+    if (p<=60) return '#ff9f43';
+    if (p<=80) return '#ffd257';
+    return '#42d07c';
+  }
+
+  function computeIsPlayer(c){
+    try{
+      if (c==null || typeof c!=='object') return false;
+      if (c.isPlayer===true) return true;
+      if (c.player===true) return true;
+      if (typeof c.Player==='string' && c.Player.toLowerCase()==='player') return true;
+      if (c.role==='pc' || c.team==='ally') return true;
+      if (typeof c.PersistentCharacterId==='string' || typeof c.persistentCharacterId==='string') return true;
+      if (PC_SET.has(c.name)) return true;
+    }catch(e){}
+    return false;
+  }
+
+  function rowPJ(c, current){
+    const name = esc(c?.name ?? '?');
+    const cur  = Number(c?.cur), max = Number(c?.max);
+    const hasHP = isFinite(cur) && isFinite(max) && max>0;
+    const pct = hasHP ? Math.max(0, Math.min(100, Math.round(cur*100/max))) : NaN;
+    if (hasHP && cur<=0) return `<div class="row ${current?'current':''}"><div class="name">${name}</div><div class="dead">💀</div></div>`;
+    const clr = pct<25?'#ff5d5d':(pct<60?'#ffd257':'#42d07c');
+    return `<div class="row ${current?'current':''}">
+      <div class="name">${name}</div>
+      <div class="hpWrap"><div class="hpBar"><i style="width:${isNaN(pct)?0:pct}%;background:${clr}"></i></div><div class="hpTxt">${hasHP?`${cur}/${max}`:'—'}</div></div>
+    </div>`;
+  }
+
+  function rowMon(c, current){
+    const name = esc(c?.name ?? '?');
+    const cur  = Number(c?.cur), max = Number(c?.max);
+    const hasHP = isFinite(cur) && isFinite(max) && max>0;
+    const pct = hasHP ? Math.max(0, Math.min(100, Math.round(cur*100/max))) : NaN;
+    const bg = enemyBg(pct);
+    const dead = hasHP && cur<=0;
+    const critical = hasHP && pct<=5 && !dead;
+    const cls = `row enemy ${current?'current':''}` + (dead?' deadRow':(critical?' critical':''));
+    const style = (bg==='black'&&!dead)?'background:black;color:white':`background:${dead?'#3c3c3c':bg}`;
+    if (dead) return `<div class="${cls}" style="${style}"><div class="name">${name}</div><div class="dead">💀</div></div>`;
+    return `<div class="${cls}" style="${style}"><div class="name">${name}</div></div>`;
+  }
+
+  function render(state){
+    const turn = Number(state?.turn||0);
+    const list = Array.isArray(state?.list)? state.list : [];
+    const ord  = turn>0? list.slice(turn).concat(list.slice(0,turn)) : list;
+
+    // ticker (Now + Next 3)
+    if (ord.length){
+      const now = esc(ord[0]?.name ?? '?');
+      const next = ord.slice(1,4).map(c=>`<span class="chip next">${esc(c?.name ?? '?')}</span>`).join('');
+      ticker.innerHTML = `<span class="chip now">▶ ${now}</span>${next}`;
+    } else {
+      ticker.innerHTML = `<span class="hint">Aucun combattant…</span>`;
+    }
+
+    // split into two columns but keep "current" highlight on whichever column contains the current
+    const players = list.filter(c=>computeIsPlayer(c));
+    const monsters= list.filter(c=>!computeIsPlayer(c));
+
+    const curId = ord[0] && (ord[0].id ?? ord[0].uuid ?? ord[0].name);
+    function isCurrent(c){
+      const cid = c && (c.id ?? c.uuid ?? c.name);
+      return curId && cid && cid === curId;
+    }
+
+    rowsPj.innerHTML  = players.length  ? players.map(c=>rowPJ(c, isCurrent(c))).join('') : '<div class="hint">—</div>';
+    rowsMon.innerHTML = monsters.length ? monsters.map(c=>rowMon(c, isCurrent(c))).join('') : '<div class="hint">—</div>';
+  }
+
+  function normalizeFrame(ev){
+    if (typeof ev.data==='string') return Promise.resolve(ev.data);
+    if (ev.data instanceof Blob) return ev.data.text();
+    if (ev.data instanceof ArrayBuffer) return Promise.resolve(new TextDecoder().decode(ev.data));
+    try { return Promise.resolve(String(ev.data)); } catch { return Promise.resolve(''); }
+  }
+
+  function handleMessage(txt){
+    let msg; try{ msg=JSON.parse(txt);}catch{ return; }
+    const state = (msg?.type==='ii_state' && msg.data) ? msg.data
+                : (msg?.list && msg?.turn!=null) ? msg
+                : (msg?.data?.data?.list ? msg.data.data : (msg?.data?.list ? msg.data : null));
+    if (!state) return;
+    render(state);
+  }
+
+  function connect(){
+    const ws=new WebSocket(WS_URL);
+    ws.onopen =()=>console.log('[overlay-2col] open →', WS_URL, 'ch=', CHANNEL);
+    ws.onerror=e=>console.log('[overlay-2col] error',e);
+    ws.onclose =()=>{ console.log('[overlay-2col] closed, retry in 1s'); setTimeout(connect,1000); };
+    ws.onmessage=ev=>{ normalizeFrame(ev).then(handleMessage).catch(err=>console.error('[overlay-2col] frame error', err)); };
+  }
+  connect();
+})();
+</script>
+</body>
+</html>

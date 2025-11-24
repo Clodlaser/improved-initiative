@@ -1,0 +1,11 @@
+<!doctype html><meta charset="utf-8"><title>WS test</title>
+<pre id="log"></pre>
+<script>
+const log = m => document.getElementById('log').textContent += m+"\n";
+const url = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/hud`;
+log('Connecting ' + url);
+const ws = new WebSocket(url);
+ws.onopen = () => log('OPEN');
+ws.onerror = e => log('ERROR ' + (e.message||e));
+ws.onclose = e => log('CLOSE ' + e.code + ' ' + e.reason);
+</script>

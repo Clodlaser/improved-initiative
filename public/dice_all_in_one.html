@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Dice All-In-One</title>
+<style>
+body {
+  background:#111;
+  color:#eee;
+  font-family:sans-serif;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  height:100vh;
+  margin:0;
+}
+h1 {margin:0 0 1em;}
+#log {
+  background:#222;
+  width:90%;
+  max-width:800px;
+  height:40vh;
+  overflow:auto;
+  padding:0.5em;
+  border-radius:6px;
+  box-shadow:0 0 10px #000 inset;
+}
+button {
+  margin:0.25em;
+  padding:0.5em 1em;
+  background:#333;
+  color:#eee;
+  border:1px solid #555;
+  border-radius:4px;
+  cursor:pointer;
+}
+button:hover {background:#555;}
+input, select {
+  margin:0.25em;
+  padding:0.25em 0.5em;
+  background:#222;
+  color:#eee;
+  border:1px solid #555;
+  border-radius:4px;
+}
+.small {font-size:0.9em;}
+</style>
+</head>
+<body>
+<h1>Dice All In One</h1>
+<div>
+  <label>Player :</label>
+  <input id="player" value="1" size="2"/>
+  <label>Target :</label>
+  <input id="target" value="table" size="6"/>
+  <label>Room :</label>
+  <input id="room" value="session-1" size="8"/>
+</div>
+<div>
+  <button data-dice="d4">d4</button>
+  <button data-dice="d6">d6</button>
+  <button data-dice="d8">d8</button>
+  <button data-dice="d10">d10</button>
+  <button data-dice="d12">d12</button>
+  <button data-dice="d20">d20</button>
+  <button data-dice="d100">d100</button>
+</div>
+<div>
+  <input id="formula" placeholder="Ex: 2d6+3" size="12"/>
+  <button id="rollFormula">Lancer (formule)</button>
+</div>
+<pre id="log"></pre>
+
+<script>
+const WS_URL = new URLSearchParams(location.search).get("ws") || "ws://127.0.0.1:8091/hud";
+const roomEl   = document.getElementById("room");
+const playerEl = document.getElementById("player");
+const targetEl = document.getElementById("target");
+const logEl    = document.getElementById("log");
+const formulaEl= document.getElementById("formula");
+
+let ws, wsReady=false, channel=null;
+
+// ---------- LOG ----------
+function log(msg){ 
+  const t = document.createElement("div");
+  t.textContent = msg;
+  logEl.appendChild(t);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ---------- WS + BC ----------
+function connectWS(){
+  try { ws = new WebSocket(WS_URL); } catch { openBC(); return; }
+  ws.onopen = ()=>{ wsReady = true; log("[WS connecté]"); };
+  ws.onclose= ()=>{ wsReady = false; setTimeout(connectWS, 800); if(!channel) openBC(); };
+  ws.onmessage=(ev)=>{ try{ handleIncoming(JSON.parse(ev.data)); }catch{} };
+}
+// Essaye d’abord WS, fallback BC seulement si WS KO après délai
+connectWS();
+setTimeout(()=>{ if(!wsReady && !channel) openBC(); }, 1200);
+
+roomEl.addEventListener("change", openBC);
+
+function openBC(){
+  try {
+    if(channel) channel.close();
+    channel = new BroadcastChannel("dice_all_in_one_" + roomEl.value);
+    channel.onmessage = ev => handleIncoming(ev.data);
+    log("[BroadcastChannel prêt]");
+  } catch {}
+}
+
+function send(msg){
+  const data = JSON.stringify(msg);
+  if(wsReady && ws && ws.readyState===1){ ws.send(data); }
+  else if(channel){ channel.postMessage(msg); }
+}
+
+// ---------- DÉS ----------
+function rollDice(formula){
+  // Exemple: "2d6+3"
+  const match = formula.match(/(\d*)d(\d+)([+-]\d+)?/i);
+  if(!match) return {formula, result:NaN, rolls:[]};
+  const n = parseInt(match[1]||"1"), faces=parseInt(match[2]), mod=parseInt(match[3]||"0");
+  const rolls = Array.from({length:n},()=>1+Math.floor(Math.random()*faces));
+  const total = rolls.reduce((a,b)=>a+b,0)+mod;
+  return {formula,result:total,rolls,mod};
+}
+
+// ---------- INTERACTIONS ----------
+document.querySelectorAll("button[data-dice]").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    const die = btn.dataset.dice;
+    const res = rollDice("1"+die);
+    displayResult(res);
+    send({
+      type:"roll",
+      room: roomEl.value,
+      player:playerEl.value,
+      target:targetEl.value,
+      payload:res,
+      ts:Date.now()
+    });
+  });
+});
+
+document.getElementById("rollFormula").addEventListener("click", ()=>{
+  const f = formulaEl.value.trim();
+  if(!f) return;
+  const res = rollDice(f);
+  displayResult(res);
+  send({
+    type:"roll",
+    room: roomEl.value,
+    player:playerEl.value,
+    target:targetEl.value,
+    payload:res,
+    ts:Date.now()
+  });
+});
+
+window.addEventListener("keydown",(e)=>{
+  if(e.key.toLowerCase()==="e"){ // exemple: E pour d20
+    const res=rollDice("1d20");
+    displayResult(res);
+    send({type:"roll",room:roomEl.value,player:playerEl.value,target:targetEl.value,payload:res,ts:Date.now()});
+  }
+  if(e.key.toLowerCase()==="r"){ // R pour relancer formule
+    const f=formulaEl.value.trim(); if(!f) return;
+    const res=rollDice(f);
+    displayResult(res);
+    send({type:"roll",room:roomEl.value,player:playerEl.value,target:targetEl.value,payload:res,ts:Date.now()});
+  }
+});
+
+// ---------- AFFICHAGE LOCAL ----------
+function displayResult(res){
+  if(!res) return;
+  log(`${res.formula} → ${res.result} (${res.rolls.join(",")}${res.mod? (res.mod>0? "+"+res.mod:res.mod):""})`);
+}
+
+// ---------- RÉCEPTION ----------
+function handleIncoming(msg){
+  if(!msg || msg.type!=="roll") return;
+  if(msg.room && msg.room !== roomEl.value) return; // filtrage room
+  displayIncoming(msg);
+}
+
+function displayIncoming(msg){
+  const {player,target,payload}=msg;
+  const s=`🎲 [${player}→${target}] ${payload.formula} = ${payload.result}`;
+  log(s);
+}
+</script>
+</body>
+</html>
