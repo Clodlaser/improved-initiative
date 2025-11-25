@@ -12,7 +12,7 @@ $env:SYNC_DDB_TOKEN = "CHANGEMOI"
 $env:DDB_HEADLESS = "false"
 $env:DDB_CONCURRENCY = "1"
 $env:DDB_NAV_TIMEOUT = "20000"
-#$env:SKIP_OPEN5E_API = "true"
+$env:SKIP_OPEN5E_API = "true"
 
 
 

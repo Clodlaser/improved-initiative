@@ -40,8 +40,16 @@ export function CombatantRow(props: CombatantRowProps) {
 
   const selectCombatant = (mouseEvent?: React.MouseEvent) => {
     const appendSelection =
-      mouseEvent && (mouseEvent.ctrlKey || mouseEvent.metaKey);
+      mouseEvent &&
+      (mouseEvent.ctrlKey || mouseEvent.metaKey || mouseEvent.shiftKey);
     commandContext.SelectCombatant(props.combatantState.Id, appendSelection);
+  };
+
+  const toggleCombatantSelection = (nextState: boolean) => {
+    commandContext.ToggleCombatantSelection(
+      props.combatantState.Id,
+      nextState
+    );
   };
 
   const [, drag] = useDrag({
@@ -117,6 +125,17 @@ export function CombatantRow(props: CombatantRowProps) {
         align="left"
         aria-current={isActive ? "true" : "false"}
       >
+        <input
+          type="checkbox"
+          className="combatant__select-checkbox"
+          aria-label={`Select ${displayName}`}
+          checked={isSelected}
+          onClick={e => e.stopPropagation()}
+          onChange={event => {
+            event.stopPropagation();
+            toggleCombatantSelection(event.currentTarget.checked);
+          }}
+        />
         {DisplayCombatantColor && (
           <CombatantColorPicker combatantState={props.combatantState} />
         )}

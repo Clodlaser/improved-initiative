@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html environmentJSON="{{ environmentJSON }}">
   <head>
     <meta charset="utf-8" />
@@ -40,6 +40,7 @@
         border:1px solid rgba(255,255,255,.2);
         background:#222; color:#fff; font-weight:800; font-size:18px; cursor:pointer;
       }
+      #gmDock .btn.secondary{ background:#2f343a; }
       #gmDock .btn.danger{ background:#b91818; }
       #gmDock .btn.success{ background:#0a8f4a; }
       #gmDock .btn.primary{ background:#07a15f; min-width:120px; color:#fff; }
@@ -89,21 +90,28 @@
 
     <div id="app__container"></div>
 
-    <!-- GM Dock -->
+        <!-- GM Dock -->
     <div id="gmDock" role="toolbar" aria-label="GM Touch Dock">
       <div class="row">
         <button class="btn danger"  id="btnDmg">DMG</button>
         <button class="btn success" id="btnHeal">HEAL</button>
       </div>
       <div class="row">
-        <button class="btn primary" id="btnNext">Next ▶</button>
+        <button class="btn secondary small" id="btnSelectAll">Select all</button>
+        <button class="btn secondary small" id="btnClearSel">Clear</button>
       </div>
       <div class="row">
-        <button class="btn small" id="btnFlip" title="Move dock left / right">⇄</button>
+        <button class="btn danger small" id="btnGroupDmg">Group DMG</button>
+        <button class="btn success small" id="btnGroupHeal">Group HEAL</button>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="btnNext">Next >></button>
+      </div>
+      <div class="row">
+        <button class="btn small" id="btnFlip" title="Move dock left / right"><></button>
       </div>
     </div>
-
-    <!-- pavé numérique -->
+<!-- pavé numérique -->
     <div id="numPad" aria-hidden="true">
       <div class="pad" role="dialog" aria-modal="true" aria-label="Numeric pad">
         <div class="title" id="padTitle">Enter amount</div>
@@ -226,7 +234,7 @@
         }
 
         // apply HP delta - open modal once, wait, fill, submit robustly
-        async function hpDelta(delta){
+async function hpDelta(delta){
           const vm = getVM(); if (!vm) { toast("II_DEBUG absent", "dmg", 1200); return; }
           const cc = vm.CombatantCommander;
           if (!cc || typeof cc.applyDamageForCombatants !== "function") { toast("API indisponible", "dmg", 1200); return; }
@@ -284,6 +292,67 @@
           try { navigator.vibrate?.(18); } catch(e){}
         }
 
+        async function hpDeltaSelection(delta){
+          const vm = getVM(); if (!vm) { toast("II_DEBUG absent", "dmg", 1200); return; }
+          const cc = vm.CombatantCommander;
+          if (!cc || typeof cc.applyDamageForCombatants !== "function") { toast("API indisponible", "dmg", 1200); return; }
+
+          const selected = (koUnwrap(cc.SelectedCombatants) || []).filter(c => typeof c?.Name === "function");
+          if (!selected.length) { toast("Sélection vide", "dmg", 1200); return; }
+
+          try { cc.latestRoll = null; } catch(e){}
+          const valStr = String(Math.trunc(delta));
+          cc.applyDamageForCombatants(selected);
+
+          const prompt = await waitFor(findDamagePrompt, 2200);
+          if (!prompt || !prompt.input) { toast("Prompt non détecté.", "dmg", 1200); return; }
+
+          prompt.input.focus();
+          setNativeValue(prompt.input, valStr);
+          setTimeout(()=>{ try { setNativeValue(prompt.input, valStr); } catch(e){} }, 40);
+          setTimeout(()=>{ try { setNativeValue(prompt.input, valStr); } catch(e){} }, 120);
+
+          const submitPrompt = ()=>{
+            if (prompt.okBtn) {
+              try { prompt.okBtn.click(); return true; } catch(e){}
+            }
+            if (prompt.form && typeof prompt.form.requestSubmit === 'function') {
+              try { prompt.form.requestSubmit(); return true; } catch(e){}
+            }
+            if (prompt.form) {
+              try {
+                const ok = prompt.form.dispatchEvent(new Event('submit', { bubbles:true, cancelable:true }));
+                if (ok) return true;
+              } catch(e){}
+            }
+            return false;
+          };
+
+          setTimeout(()=>{ submitPrompt(); }, 180);
+          setTimeout(()=>{ try { cc.latestRoll = null; } catch(e){} }, 260);
+
+          const pretty = valStr.startsWith('-') ? `Heal ${Math.abs(parseInt(valStr))}` : `DMG ${valStr}`;
+          toast(pretty, valStr.startsWith('-') ? "heal" : "dmg", 1200);
+          try { navigator.vibrate?.(18); } catch(e){}
+        }
+
+        function selectAllCombatants(){
+          const vm = getVM(); if (!vm) { toast("II_DEBUG absent", "dmg", 1200); return; }
+          const list = typeof vm.CombatantViewModels === "function" ? vm.CombatantViewModels() : (vm.CombatantViewModels || []);
+          if (Array.isArray(list) && vm.CombatantCommander?.SelectMany) {
+            vm.CombatantCommander.SelectMany(list);
+            toast(`Select all (${list.length})`, "heal", 800);
+          }
+        }
+
+        function clearSelection(){
+          const vm = getVM(); if (!vm) { toast("II_DEBUG absent", "dmg", 1200); return; }
+          if (vm.CombatantCommander?.Deselect) {
+            vm.CombatantCommander.Deselect();
+            toast("Sélection vidée", "dmg", 800);
+          }
+        }
+
         // next turn
         function doNext(){
           const vm = getVM(); if (!vm) { toast("II_DEBUG absent", "dmg", 1200); return; }
@@ -297,12 +366,13 @@
         const padTitle = document.getElementById("padTitle");
         const padDisplay = document.getElementById("padDisplay");
         let mode = "dmg";
+        let target = "active"; // active | group
         let buffer = "";
 
-        function openPad(m){
-          mode = m; buffer = "";
+        function openPad(m, t="active"){
+          mode = m; target = t; buffer = "";
           try { const vm = getVM(); vm?.CombatantCommander && (vm.CombatantCommander.latestRoll = null); } catch(e){}
-          padTitle.textContent = (m === "heal") ? "HEAL – amount" : "DMG – amount";
+          padTitle.textContent = (m === "heal") ? "HEAL - amount" : "DMG - amount";
           padDisplay.textContent = "0";
           pad.style.display = "flex";
         }
@@ -315,7 +385,8 @@
           // immediate feedback
           toast((mode==="heal" ? `+${n} HP` : `-${n} HP`), mode==="heal" ? "heal" : "dmg");
           try { navigator.vibrate?.(20); } catch(e){}
-          hpDelta(delta);
+          if (target === "group") hpDeltaSelection(delta);
+          else hpDelta(delta);
         }
 
         pad.addEventListener("click",(e)=>{
@@ -334,16 +405,24 @@
         pad.addEventListener("click",(e)=>{ if(e.target===pad) closePad(); });
         window.addEventListener("keydown",(e)=>{ if(e.key==="Escape" && pad.style.display==="flex") closePad(); });
 
-        // wiring buttons + pulse + flip
+// wiring buttons + pulse + flip
         const btnDmg  = document.getElementById("btnDmg");
         const btnHeal = document.getElementById("btnHeal");
         const btnNext = document.getElementById("btnNext");
         const btnFlip = document.getElementById("btnFlip");
+        const btnSelectAll = document.getElementById("btnSelectAll");
+        const btnClearSel  = document.getElementById("btnClearSel");
+        const btnGroupDmg  = document.getElementById("btnGroupDmg");
+        const btnGroupHeal = document.getElementById("btnGroupHeal");
         function pulse(btn){ btn.classList.add("pulse"); setTimeout(()=>btn.classList.remove("pulse"), 200); }
 
-        btnDmg.addEventListener("click", (e)=>{ pulse(e.currentTarget); openPad("dmg"); });
-        btnHeal.addEventListener("click",(e)=>{ pulse(e.currentTarget); openPad("heal"); });
+        btnDmg.addEventListener("click", (e)=>{ pulse(e.currentTarget); openPad("dmg","active"); });
+        btnHeal.addEventListener("click",(e)=>{ pulse(e.currentTarget); openPad("heal","active"); });
         btnNext.addEventListener("click",(e)=>{ pulse(e.currentTarget); doNext(); });
+        btnSelectAll.addEventListener("click",(e)=>{ pulse(e.currentTarget); selectAllCombatants(); });
+        btnClearSel.addEventListener("click",(e)=>{ pulse(e.currentTarget); clearSelection(); });
+        btnGroupDmg.addEventListener("click",(e)=>{ pulse(e.currentTarget); openPad("dmg","group"); });
+        btnGroupHeal.addEventListener("click",(e)=>{ pulse(e.currentTarget); openPad("heal","group"); });
         btnFlip.addEventListener("click",(e)=>{
           const dock = document.getElementById("gmDock");
           dock.classList.toggle("left");
@@ -367,3 +446,4 @@
     </script>
   </body>
 </html>
+

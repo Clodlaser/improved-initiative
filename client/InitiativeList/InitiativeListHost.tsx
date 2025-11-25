@@ -1,10 +1,10 @@
 import * as React from "react";
-import { TrackerViewModel } from "../TrackerViewModel";
+import { useCallback } from "react";
+import { TagState } from "../../common/CombatantState";
 import { useSubscription } from "../Combatant/linkComponentToObservables";
 import { InitiativeList } from "./InitiativeList";
 import { CommandContext } from "./CommandContext";
-import { useCallback } from "react";
-import { TagState } from "../../common/CombatantState";
+import { TrackerViewModel } from "../TrackerViewModel";
 
 export function InitiativeListHost(props: { tracker: TrackerViewModel }) {
   const { tracker } = props;
@@ -12,6 +12,8 @@ export function InitiativeListHost(props: { tracker: TrackerViewModel }) {
   const encounterState = useSubscription(
     tracker.Encounter.ObservableEncounterState
   );
+  const combatantViewModels =
+    useSubscription(tracker.CombatantViewModels) ?? [];
   const selectedCombatantIds = useSubscription(
     tracker.CombatantCommander.SelectedCombatants
   ).map(c => c.Combatant.Id);
@@ -21,38 +23,59 @@ export function InitiativeListHost(props: { tracker: TrackerViewModel }) {
 
   const selectCombatantById = useCallback(
     (combatantId: string, appendSelection: boolean) => {
-      const selectedViewModel = tracker
-        .CombatantViewModels()
-        .find(c => c.Combatant.Id == combatantId);
+      const selectedViewModel = combatantViewModels.find(
+        c => c.Combatant.Id == combatantId
+      );
 
       if (selectedViewModel !== undefined) {
         tracker.CombatantCommander.Select(selectedViewModel, appendSelection);
       }
     },
+    [combatantViewModels, tracker]
+  );
+
+  const toggleCombatantSelection = useCallback(
+    (combatantId: string, nextState?: boolean) => {
+      const combatantViewModel = combatantViewModels.find(
+        c => c.Combatant.Id == combatantId
+      );
+      if (combatantViewModel !== undefined) {
+        tracker.CombatantCommander.ToggleSelect(combatantViewModel, nextState);
+      }
+    },
+    [combatantViewModels, tracker]
+  );
+
+  const selectAllCombatants = useCallback(() => {
+    tracker.CombatantCommander.SelectMany(combatantViewModels);
+  }, [combatantViewModels, tracker]);
+
+  const clearSelection = useCallback(
+    () => tracker.CombatantCommander.Deselect(),
     [tracker]
   );
 
   const removeCombatantTag = useCallback(
     (combatantId: string, tagState: TagState) => {
-      const combatantViewModel = tracker
-        .CombatantViewModels()
-        .find(c => c.Combatant.Id == combatantId);
+      const combatantViewModel = combatantViewModels.find(
+        c => c.Combatant.Id == combatantId
+      );
       combatantViewModel?.RemoveTagByState(tagState);
     },
-    [tracker]
+    [combatantViewModels, tracker]
   );
 
   const applyDamageToCombatant = useCallback(
     (combatantId: string) => {
-      const combatantViewModel = tracker
-        .CombatantViewModels()
-        .find(c => c.Combatant.Id == combatantId);
+      const combatantViewModel = combatantViewModels.find(
+        c => c.Combatant.Id == combatantId
+      );
 
       if (combatantViewModel !== undefined) {
         tracker.CombatantCommander.ApplyDamageTargeted(combatantViewModel);
       }
     },
-    [tracker]
+    [combatantViewModels, tracker]
   );
 
   const moveCombatantFromDrag = useCallback(
@@ -83,12 +106,12 @@ export function InitiativeListHost(props: { tracker: TrackerViewModel }) {
 
   const toggleCombatantSpentReaction = useCallback(
     (combatantId: string) => {
-      const combatantViewModel = tracker
-        .CombatantViewModels()
-        .find(c => c.Combatant.Id == combatantId);
+      const combatantViewModel = combatantViewModels.find(
+        c => c.Combatant.Id == combatantId
+      );
       combatantViewModel.ToggleSpentReaction();
     },
-    [tracker]
+    [combatantViewModels, tracker]
   );
 
   const combatantsPendingRemove = useSubscription(
@@ -99,6 +122,9 @@ export function InitiativeListHost(props: { tracker: TrackerViewModel }) {
     <CommandContext.Provider
       value={{
         SelectCombatant: selectCombatantById,
+        ToggleCombatantSelection: toggleCombatantSelection,
+        SelectAllCombatants: selectAllCombatants,
+        ClearCombatantSelection: clearSelection,
         RemoveTagFromCombatant: removeCombatantTag,
         ApplyDamageToCombatant: applyDamageToCombatant,
         CombatantCommands: tracker.CombatantCommander.Commands,
@@ -107,8 +133,7 @@ export function InitiativeListHost(props: { tracker: TrackerViewModel }) {
         ToggleCombatantSpentReaction: toggleCombatantSpentReaction,
         CombatantsPendingRemove: combatantsPendingRemove,
         RestoreCombatants: tracker.CombatantCommander.RestoreCombatants,
-        FlushCombatants:
-          tracker.CombatantCommander.FlushCombatants
+        FlushCombatants: tracker.CombatantCommander.FlushCombatants
       }}
     >
       <InitiativeList

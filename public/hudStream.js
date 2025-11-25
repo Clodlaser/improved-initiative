@@ -104,16 +104,21 @@
       const list = rows.map(tr=>{
         const nameEl=qFirst(['td.combatant__name','td:nth-child(4)'], tr);
         const hpEl  =qFirst(['td.combatant__hp','td:nth-child(5)'], tr);
+        const initEl=qFirst(['td.combatant__initiative','td:nth-child(2)'], tr);
         const name=(nameEl?.textContent||'?').trim();
         const hpTxt=(hpEl?.textContent||'').trim().replace(/\s+/g,'');
         const nums=hpTxt.match(/\d+/g)||[];
         const cur=Number(nums[0]??NaN), max=Number(nums[1]??NaN);
+        const initVal = Number((initEl?.textContent||'').trim()) || 0;
         const img=resolvePortraitSrc(tr)||null;
         const isPlayer=tr?.classList?.contains('combatant--player') || PJS.has(name.toLowerCase());
         const active=isActiveRow(tr);
         const tags=extractTagsFromRow(tr);
         const isHidden=extractHiddenFromRow(tr);
-        const c={name,cur,max,isPlayer,active,img}; if(tags.length) c.tags=tags; if(isHidden) c.isHidden=true; return c;
+        const c={name,cur,max,isPlayer,active,img,init:initVal};
+        if(tags.length) c.tags=tags;
+        if(isHidden) c.isHidden=true;
+        return c;
       });
       const turn=Math.max(0,list.findIndex(x=>x.active));
       return {turn,list};

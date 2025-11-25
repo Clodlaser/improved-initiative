@@ -57,6 +57,17 @@ export class CombatantCommander {
     () => this.SelectedCombatants().length > 1
   );
 
+  private updateSelectionFromIds = (ids: string[]) => {
+    const idSet = new Set(ids);
+    const orderedIds = this.tracker
+      .CombatantViewModels()
+      .map(vm => vm.Combatant.Id)
+      .filter(id => idSet.has(id));
+
+    this.selectedCombatantIds(orderedIds);
+    Metrics.TrackEvent("CombatantsSelected", { Count: orderedIds.length });
+  };
+
   public CombatantDetails = ko.pureComputed(() => {
     const selectedCombatants = this.SelectedCombatants();
     if (!this.HasSelected()) {
@@ -103,11 +114,39 @@ export class CombatantCommander {
 
     const allSelected = [...combatantsToRemainSelected, data.Combatant.Id];
 
-    this.selectedCombatantIds(allSelected);
+    this.updateSelectionFromIds(allSelected);
+  };
 
-    Metrics.TrackEvent("CombatantsSelected", {
-      Count: this.selectedCombatantIds().length
-    });
+  public ToggleSelect = (
+    data: CombatantViewModel,
+    shouldSelect?: boolean
+  ) => {
+    if (!data) {
+      return;
+    }
+
+    const selected = new Set(this.selectedCombatantIds());
+    const id = data.Combatant.Id;
+    const nextState =
+      shouldSelect === undefined ? !selected.has(id) : shouldSelect;
+
+    const pendingLink = this.pendingLinkInitiative();
+    if (pendingLink && nextState) {
+      this.linkCombatantInitiatives([data, pendingLink.combatant]);
+      this.tracker.PromptQueue.Remove(pendingLink.promptId);
+    }
+
+    if (nextState) {
+      selected.add(id);
+    } else {
+      selected.delete(id);
+    }
+
+    this.updateSelectionFromIds(Array.from(selected));
+  };
+
+  public SelectMany = (combatants: CombatantViewModel[]) => {
+    this.updateSelectionFromIds(combatants.map(c => c.Combatant.Id));
   };
 
   private selectByOffset = (offset: number) => {
@@ -119,10 +158,9 @@ export class CombatantCommander {
     } else if (newIndex >= this.tracker.CombatantViewModels().length) {
       newIndex = this.tracker.CombatantViewModels().length - 1;
     }
-    this.selectedCombatantIds.removeAll();
-    this.selectedCombatantIds.push(
+    this.updateSelectionFromIds([
       this.tracker.CombatantViewModels()[newIndex].Combatant.Id
-    );
+    ]);
   };
 
   public Remove = async () => {
@@ -131,7 +169,7 @@ export class CombatantCommander {
     }
 
     const combatantsToRemove = this.SelectedCombatants();
-    this.selectedCombatantIds.removeAll();
+    this.updateSelectionFromIds([]);
     const firstDeletedIndex = this.tracker
       .CombatantViewModels()
       .indexOf(combatantsToRemove[0]);
@@ -179,7 +217,7 @@ export class CombatantCommander {
   };
 
   public Deselect = () => {
-    this.selectedCombatantIds([]);
+    this.updateSelectionFromIds([]);
   };
 
   public SelectPrevious = () => {

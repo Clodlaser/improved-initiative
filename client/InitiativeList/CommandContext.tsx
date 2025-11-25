@@ -6,6 +6,12 @@ import { Combatant } from "../Combatant/Combatant";
 
 export const CommandContext = React.createContext({
   SelectCombatant: (combatantId: string, appendSelection: boolean) => {},
+  ToggleCombatantSelection: (
+    combatantId: string,
+    nextState?: boolean
+  ) => {},
+  SelectAllCombatants: () => {},
+  ClearCombatantSelection: () => {},
   RemoveTagFromCombatant: (combatantId: string, tagState: TagState) => {},
   ApplyDamageToCombatant: (combatantId: string) => {},
   MoveCombatantFromDrag: (
