@@ -80,6 +80,18 @@ export const BuildEncounterCommandList = (
       defaultShowOnActionBar: false
     }),
     new Command({
+      id: "damage-all-player-characters",
+      description: "Apply damage to all Player Characters",
+      actionBinding: c.DamageAllPlayerCharacters,
+      fontAwesomeIcon: "minus-circle"
+    }),
+    new Command({
+      id: "heal-all-player-characters",
+      description: "Heal all Player Characters",
+      actionBinding: c.HealAllPlayerCharacters,
+      fontAwesomeIcon: "plus-circle"
+    }),
+    new Command({
       id: "player-window",
       description: "Launch Player View",
       actionBinding: c.LaunchPlayerView,

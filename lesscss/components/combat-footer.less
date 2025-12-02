@@ -3,7 +3,8 @@
   border-radius: 0;
   margin: 0;
   margin-top: auto;
-  padding: @medium-spacer;
+  padding: @small-spacer @medium-spacer;
+  box-shadow: 0 -2px 8px rgba(14, 27, 42, 0.12);
 
   a {
     color: var(--text-inverted);
@@ -14,12 +15,13 @@
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    min-height: @large-spacer;
+    min-height: 0;
+    max-height: 4rem;
     color: var(--text-inverted);
-    margin-bottom: @large-spacer;
+    margin-bottom: @small-spacer;
 
     li {
-      padding: @small-spacer 0;
+      padding: @extra-small-spacer 0;
     }
   }
 

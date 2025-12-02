@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="fr">
 <head>
 <meta charset="utf-8" />
@@ -35,6 +35,25 @@ letter-spacing:.15px;opacity:.93;white-space:nowrap}
 grid-template-columns:minmax(130px,1fr) minmax(150px,250px) max-content;
 align-items:center;column-gap:1px;margin:3px 0;padding:3px 5px;border-radius:7px;
 transition:transform .12s ease,box-shadow .12s ease,background .12s ease}
+.roundDivider{
+  margin:8px 2px 6px;
+  height:8px;
+  border-radius:999px;
+  background:linear-gradient(90deg,rgba(255,255,255,.22),rgba(255,255,255,.04));
+  box-shadow:0 0 0 1px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.08);
+  position:relative;
+}
+.roundDivider::after{
+  content:"Next round";
+  position:absolute;
+  top:-13px; left:50%; transform:translateX(-50%);
+  font-size:10px; font-weight:800; color:rgba(255,255,255,.72);
+  letter-spacing:.2px;
+  padding:1px 7px;
+  border-radius:999px;
+  background:rgba(0,0,0,.6);
+  border:1px solid rgba(255,255,255,.18);
+}
 
 /* Couleur par camp */
 .row.pc {border-left:3px solid rgba(0,255,180,.4);}
@@ -145,36 +164,40 @@ background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);white-sp
    return `<span class="${cls}" title="${n} ${cur}/${max}">
      <span class="pDot" style="background:${clr}"></span>
      <span>${n}</span>
-     <span>Â·</span>
      <span>${cur}/${max}</span>
    </span>`;
   }).join('');
  }
 
- function render(s){
+   function render(s){
   updateRound(s);
   const list=Array.isArray(s?.list)?s.list:[],turn=+s?.turn||0;
   const ord=turn>0?list.slice(turn).concat(list.slice(0,turn)):list;
   const curRef=ord[0]&&(ord[0].id??ord[0].uuid??ord[0].name);
   renderPlayers(list);
-  const rows=ord.filter(c=>!(c?.isHidden||c?.hidden)||SHOW_HIDDEN).map(c=>{
+  const wrapIdx = (turn>0 && list.length>0) ? (list.length - turn) : null;
+  const rows=[];
+  ord.forEach((c,i)=>{
+   if(wrapIdx!==null && i===wrapIdx){
+    rows.push('<div class="roundDivider" aria-label="Next round"></div>');
+   }
+   if((c?.isHidden||c?.hidden)&&!SHOW_HIDDEN){ return; }
    const name=esc(c?.name??'?'),cur=+c?.cur,max=+c?.max,pct=isFinite(cur)&&isFinite(max)&&max>0?Math.max(0,Math.min(100,Math.round(cur*100/max))):NaN;
    const clr=pctColor(pct),isPC=isPlayer(c),isCur=(c?.id??c?.uuid??c?.name)===curRef;
    const nameCls=(cur<=0)?'name deadName':'name';
    const tags=sanitizeTags(c?.tags||[]);
    const barWidth = isPC ? `${pct}%` : `100%`;
-const isDead = cur <= 0;
-const bar = isDead ? `` : `<div class="hpBar"><span class="hpFill${isPC?"":" npcFull"}" style="width:${barWidth};background:${clr}"></span></div>`;
-   return `<div class="row ${isPC?'pc':'npc'}${isCur?' current':''}">
+   const isDead = cur <= 0;
+   const bar = isDead ? `` : `<div class="hpBar"><span class="hpFill${isPC?"":" npcFull"}" style="width:${barWidth};background:${clr}"></span></div>`;
+   rows.push(`<div class="row ${isPC?'pc':'npc'}${isCur?' current':''}">
     <div class="${nameCls}">${name}</div>
     ${bar}<div class="hpTxt">${isPC?' ':' '}</div>
     ${cur<=0?'<div class="skull"></div>':'<div class="skull"></div>'}
     ${tags.length?`<div class="tags">${tags.map(t=>`<span class="${tagClass(t)}">${esc(t)}</span>`).join('')}</div>`:''}
-   </div>`;
+   </div>`);
   });
-  rowsEl.innerHTML=rows.join('')||'<div class="name" style="opacity:.8;padding:4px 8px">En attenteâ€¦</div>';
+    rowsEl.innerHTML=rows.join('')||'<div class="name" style="opacity:.8;padding:4px 8px">En attente�</div>';
  }
-
  const norm=ev=>ev.data instanceof Blob?ev.data.text():Promise.resolve(typeof ev.data==='string'?ev.data:JSON.stringify(ev.data));
  const handle=txt=>{let m;try{m=JSON.parse(txt);}catch{return;}
   const s=(m?.type==='ii_state'&&m.data)?m.data:(m?.list?m:(m?.data?.list?m.data:null));if(s)render(s);}
@@ -186,6 +209,14 @@ const bar = isDead ? `` : `<div class="hpBar"><span class="hpFill${isPC?"":" npc
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
 
 
 

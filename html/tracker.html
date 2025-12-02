@@ -25,26 +25,115 @@
       .loading-splash img{animation:bob 1s ease infinite}
       @keyframes bob{0%{margin-top:0}50%{margin-top:20px}}
 
+:root{
+        --dock-btn-width: 150px;
+        --dock-btn-height: 58px;
+        --dock-btn-radius: 14px;
+        --dock-btn-font: 17px;
+        --dock-gap: 10px;
+        --dock-pad: 12px;
+        --dock-border: 14px;
+      }
+
       /* GM Dock container */
       #gmDock{
         position:fixed; right:12px; bottom:12px; z-index:9999;
-        display:flex; flex-direction:column; gap:10px;
-        background:rgba(20,20,20,.92); border:1px solid rgba(255,255,255,.15);
-        border-radius:16px; padding:12px; backdrop-filter:blur(4px);
-        touch-action:manipulation; user-select:none;
+        display:flex; flex-direction:column; gap:var(--dock-gap);
+        background:rgba(14,27,42,.9);
+        border:1px solid rgba(161,90,47,.35);
+        border-radius:var(--dock-border); padding:var(--dock-pad);
+        backdrop-filter:blur(4px);
+        box-shadow:0 12px 28px rgba(14,27,42,.28);
+        touch-action:manipulation; user-select:none; cursor:default;
       }
       #gmDock.left{ right:auto; left:12px; }
-      #gmDock .row{ display:flex; gap:10px; align-items:center; justify-content:center; }
-      #gmDock .btn{
-        min-width:110px; height:56px; border-radius:12px;
-        border:1px solid rgba(255,255,255,.2);
-        background:#222; color:#fff; font-weight:800; font-size:18px; cursor:pointer;
+      #gmDock.dragging{ cursor:grabbing; }
+      #gmDock.compact{
+        --dock-btn-width: 132px;
+        --dock-btn-height: 46px;
+        --dock-btn-radius: 12px;
+        --dock-btn-font: 15px;
+        --dock-gap: 8px;
+        --dock-pad: 10px;
+        --dock-border: 12px;
       }
-      #gmDock .btn.secondary{ background:#2f343a; }
-      #gmDock .btn.danger{ background:#b91818; }
-      #gmDock .btn.success{ background:#0a8f4a; }
-      #gmDock .btn.primary{ background:#07a15f; min-width:120px; color:#fff; }
-      #gmDock .btn.small{ min-width:40px; height:36px; font-size:14px; padding:4px 8px; }
+      #gmDock .drag-handle{
+        height:12px; margin-bottom:4px; display:flex; align-items:center; justify-content:center;
+        cursor:grab; touch-action:none;
+      }
+      #gmDock .drag-handle::after{
+        content:""; width:46px; height:4px; border-radius:999px; background:rgba(255,255,255,.25); box-shadow:0 1px 0 rgba(0,0,0,.25);
+      }
+      #gmDock.dragging .drag-handle{ cursor:grabbing; }
+      #gmDock .section{
+        background:rgba(22,36,52,.92);
+        border-radius:12px;
+        border:1px solid rgba(161,90,47,.2);
+        overflow:hidden;
+      }
+      #gmDock .section + .section{ margin-top:var(--dock-gap); }
+      #gmDock .section-toggle{
+        width:100%; border:0; background:rgba(161,90,47,.16);
+        color:#f4ede6; font-weight:700; font-size:14px; padding:9px 10px;
+        display:flex; align-items:center; justify-content:space-between; cursor:pointer;
+        text-transform:uppercase; letter-spacing:0.5px;
+      }
+      #gmDock .section-toggle .chevron{
+        width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:7px solid rgba(244,237,230,.82);
+        transition:transform .15s ease;
+      }
+      #gmDock .section.collapsed .section-toggle .chevron{ transform:rotate(-90deg); }
+      #gmDock .section-body{ padding:10px; display:flex; flex-direction:column; gap:8px; transition:max-height .18s ease, opacity .15s ease; }
+      #gmDock .section.collapsed .section-body{ max-height:0; opacity:0; padding-top:0; padding-bottom:0; pointer-events:none; }
+      #gmDock .row{ display:flex; gap:10px; align-items:center; justify-content:center; }
+      #gmDock .row.dual{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+      #gmDock.compact .row.dual{ gap:8px; }
+      #gmDock .btn{
+        min-width:var(--dock-btn-width); width:100%;
+        height:var(--dock-btn-height); border-radius:var(--dock-btn-radius);
+        border:1px solid rgba(161,90,47,.55);
+        background:linear-gradient(180deg,#a15a2f,#8f4e29);
+        color:#f4ede6; font-weight:700; font-size:var(--dock-btn-font); cursor:pointer;
+        transition:transform .12s ease, box-shadow .12s ease, filter .12s ease;
+        padding:10px 12px;
+      }
+      #gmDock .btn:disabled{
+        opacity:.55; cursor:not-allowed; filter:saturate(.6);
+      }
+      #gmDock .btn:hover{ transform:translateY(-1px); box-shadow:0 0 0 2px rgba(161,90,47,.35); filter:brightness(1.02); }
+      #gmDock .btn:focus{ outline:2px solid #a15a2f; outline-offset:2px; }
+      #gmDock .btn.secondary{
+        background:rgba(25,52,79,.9);
+        color:#f4ede6;
+        border-color:rgba(161,90,47,.35);
+      }
+      #gmDock .btn.danger{
+        background:linear-gradient(180deg,#b23535,#9a2e2e);
+        border-color:rgba(178,53,53,.6);
+      }
+      #gmDock .btn.success{
+        background:linear-gradient(180deg,#2f9e69,#287d58);
+        border-color:rgba(161,90,47,.45);
+      }
+      #gmDock .btn.primary{
+        background:linear-gradient(180deg,#a15a2f,#8f4e29);
+        min-width:var(--dock-btn-width); color:#f4ede6;
+      }
+      #gmDock .btn.small{
+        min-width:var(--dock-btn-width); height:48px; font-size:15px; padding:8px 12px;
+      }
+      #gmDock .btn.micro{
+        min-width:var(--dock-btn-width); height:42px; font-size:14px; padding:6px 10px;
+      }
+      #gmDock.compact .btn{ height:calc(var(--dock-btn-height) - 8px); font-size:calc(var(--dock-btn-font) - 1px); border-radius:10px; padding:8px 10px; }
+      #gmDock.compact .btn.micro{ height:36px; font-size:13px; }
+      #gmDock .btn[data-badge]:after{
+        content:attr(data-badge);
+        display:inline-flex; align-items:center; justify-content:center;
+        margin-left:8px; min-width:18px; height:18px; border-radius:9px;
+        background:rgba(0,0,0,.25); padding:0 6px; font-size:12px; font-weight:700;
+      }
+      #gmDock .btn[data-badge=""]::after{ display:none; }
 
       @keyframes gmPulse { 0%{transform:scale(1)} 50%{transform:scale(.96)} 100%{transform:scale(1)} }
       #gmDock .btn.pulse { animation: gmPulse .18s ease; }
@@ -59,6 +148,12 @@
       #numPad .key.wide{grid-column:span 2}
       #numPad .key.danger{background:#c11}
       #numPad .key.success{background:#0a5}
+      #numPad .targets{margin:8px 0 4px 0; background:#0a0a0a; border:1px solid rgba(255,255,255,.15); border-radius:10px; padding:8px; max-height:none; overflow:visible;}
+      #numPad .target-row{display:grid; grid-template-columns:1fr 96px; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.08);}
+      #numPad .target-row:last-child{border-bottom:0;}
+      #numPad .target-name{color:#f4f4f4; font:600 14px/1.2 ui-sans-serif,system-ui,Segoe UI,Roboto,Arial; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+      #numPad .target-mod{width:100%; height:36px; border-radius:9px; border:1px solid rgba(255,255,255,.2); background:#111; color:#fff; font:600 13px ui-sans-serif,system-ui,Segoe UI,Roboto,Arial; padding:6px 8px; }
+      #numPad .targets.empty{display:none;}
 
       /* toast feedback */
       #gmToast{
@@ -92,23 +187,61 @@
 
         <!-- GM Dock -->
     <div id="gmDock" role="toolbar" aria-label="GM Touch Dock">
-      <div class="row">
-        <button class="btn danger"  id="btnDmg">DMG</button>
-        <button class="btn success" id="btnHeal">HEAL</button>
+      <div class="drag-handle" id="dockHandle" aria-hidden="true"></div>
+      <div class="section" data-section="active">
+        <button class="section-toggle" data-section-toggle="active">
+          <span>Active target</span><span class="chevron"></span>
+        </button>
+        <div class="section-body">
+          <div class="row">
+            <button class="btn danger"  id="btnDmg" aria-label="Damage active target">DMG</button>
+            <button class="btn success" id="btnHeal" aria-label="Heal active target">HEAL</button>
+          </div>
+          <div class="row dual">
+            <button class="btn primary small" id="btnPrev" aria-label="Go to previous turn"><< Back</button>
+            <button class="btn primary small" id="btnNext" aria-label="Go to next turn">Next >></button>
+          </div>
+        </div>
       </div>
-      <div class="row">
-        <button class="btn secondary small" id="btnSelectAll">Select all</button>
-        <button class="btn secondary small" id="btnClearSel">Clear</button>
+
+      <div class="section" data-section="selection">
+        <button class="section-toggle" data-section-toggle="selection">
+          <span>Sélection</span><span class="chevron"></span>
+        </button>
+        <div class="section-body">
+          <div class="row dual">
+            <button class="btn secondary small" id="btnSelectAll" aria-label="Select all combatants">Select all</button>
+            <button class="btn secondary small" id="btnClearSel" aria-label="Clear selection">Clear</button>
+          </div>
+          <div class="row dual">
+            <button class="btn danger small" id="btnGroupDmg" aria-label="Damage selected combatants">Group DMG</button>
+            <button class="btn success small" id="btnGroupHeal" aria-label="Heal selected combatants">Group HEAL</button>
+          </div>
+        </div>
       </div>
-      <div class="row">
-        <button class="btn danger small" id="btnGroupDmg">Group DMG</button>
-        <button class="btn success small" id="btnGroupHeal">Group HEAL</button>
+
+      <div class="section" data-section="players">
+        <button class="section-toggle" data-section-toggle="players">
+          <span>Joueurs</span><span class="chevron"></span>
+        </button>
+        <div class="section-body">
+          <div class="row dual">
+            <button class="btn danger small" id="btnPlayersDmg" aria-label="Damage all player characters">Players DMG</button>
+            <button class="btn success small" id="btnPlayersHeal" aria-label="Heal all player characters">Players HEAL</button>
+          </div>
+        </div>
       </div>
-      <div class="row">
-        <button class="btn primary" id="btnNext">Next >></button>
-      </div>
-      <div class="row">
-        <button class="btn small" id="btnFlip" title="Move dock left / right"><></button>
+
+      <div class="section" data-section="layout">
+        <button class="section-toggle" data-section-toggle="layout">
+          <span>Dock</span><span class="chevron"></span>
+        </button>
+        <div class="section-body">
+          <div class="row dual">
+            <button class="btn secondary micro" id="btnFlip" aria-label="Move dock left or right" title="Move dock left / right">Flip side</button>
+            <button class="btn secondary micro" id="btnCompact" aria-label="Toggle compact mode" title="Toggle compact mode">Mode compact</button>
+          </div>
+        </div>
       </div>
     </div>
 <!-- pavé numérique -->
@@ -116,6 +249,9 @@
       <div class="pad" role="dialog" aria-modal="true" aria-label="Numeric pad">
         <div class="title" id="padTitle">Enter amount</div>
         <div class="display" id="padDisplay">0</div>
+        <div class="targets empty" id="padTargets">
+          <div class="target-list"></div>
+        </div>
         <div class="grid">
           <button class="key">1</button><button class="key">2</button><button class="key">3</button>
           <button class="key">4</button><button class="key">5</button><button class="key">6</button>
@@ -233,6 +369,18 @@
           return null;
         }
 
+        function getPlayerVMs(vm){
+          const list = typeof vm?.CombatantViewModels === "function"
+            ? vm.CombatantViewModels()
+            : vm?.CombatantViewModels || [];
+
+          return (Array.isArray(list) ? list : []).filter(c => {
+            const combatant = koUnwrap(c?.Combatant);
+            const isPC = combatant?.IsPlayerCharacter;
+            return typeof isPC === "function" ? !!isPC() : !!isPC;
+          });
+        }
+
         // apply HP delta - open modal once, wait, fill, submit robustly
 async function hpDelta(delta){
           const vm = getVM(); if (!vm) { toast("II_DEBUG absent", "dmg", 1200); return; }
@@ -287,6 +435,50 @@ async function hpDelta(delta){
           setTimeout(()=>{ try { cc.latestRoll = null; } catch(e){} }, 260);
 
           // local feedback
+          const pretty = valStr.startsWith('-') ? `Heal ${Math.abs(parseInt(valStr))}` : `DMG ${valStr}`;
+          toast(pretty, valStr.startsWith('-') ? "heal" : "dmg", 1200);
+          try { navigator.vibrate?.(18); } catch(e){}
+        }
+
+        async function hpDeltaPlayers(delta){
+          const vm = getVM(); if (!vm) { toast("II_DEBUG absent", "dmg", 1200); return; }
+          const cc = vm.CombatantCommander;
+          if (!cc || typeof cc.applyDamageForCombatants !== "function") { toast("API indisponible", "dmg", 1200); return; }
+
+          const players = getPlayerVMs(vm);
+          if (!players.length) { toast("Aucun PJ", "dmg", 1200); return; }
+
+          try { cc.latestRoll = null; } catch(e){}
+          const valStr = String(Math.trunc(delta));
+          cc.applyDamageForCombatants(players);
+
+          const prompt = await waitFor(findDamagePrompt, 2200);
+          if (!prompt || !prompt.input) { toast("Prompt non d�tect�.", "dmg", 1200); return; }
+
+          prompt.input.focus();
+          setNativeValue(prompt.input, valStr);
+          setTimeout(()=>{ try { setNativeValue(prompt.input, valStr); } catch(e){} }, 40);
+          setTimeout(()=>{ try { setNativeValue(prompt.input, valStr); } catch(e){} }, 120);
+
+          const submitPrompt = ()=>{
+            if (prompt.okBtn) {
+              try { prompt.okBtn.click(); return true; } catch(e){}
+            }
+            if (prompt.form && typeof prompt.form.requestSubmit === 'function') {
+              try { prompt.form.requestSubmit(); return true; } catch(e){}
+            }
+            if (prompt.form) {
+              try {
+                const ok = prompt.form.dispatchEvent(new Event('submit', { bubbles:true, cancelable:true }));
+                if (ok) return true;
+              } catch(e){}
+            }
+            return false;
+          };
+
+          setTimeout(()=>{ submitPrompt(); }, 180);
+          setTimeout(()=>{ try { cc.latestRoll = null; } catch(e){} }, 260);
+
           const pretty = valStr.startsWith('-') ? `Heal ${Math.abs(parseInt(valStr))}` : `DMG ${valStr}`;
           toast(pretty, valStr.startsWith('-') ? "heal" : "dmg", 1200);
           try { navigator.vibrate?.(18); } catch(e){}
@@ -360,23 +552,114 @@ async function hpDelta(delta){
           const f = ec?.NextTurn || ec?.AdvanceTurn || ec?.Next || ec?.GoToNext || ec?.AdvanceRound || ec?.NextCombatant;
           if (typeof f === "function") { try { f.call(ec); } catch(e){ console.warn(e); } }
         }
+        function doPrev(){
+          const vm = getVM(); if (!vm) { toast("II_DEBUG absent", "dmg", 1200); return; }
+          const ec = vm.EncounterCommander || vm.Encounter || vm.TurnCommander;
+          const f = ec?.PreviousTurn || ec?.Previous || ec?.Prev || ec?.GoToPrevious || ec?.PrevCombatant || ec?.Rewind;
+          if (typeof f === "function") { try { f.call(ec); } catch(e){ console.warn(e); } }
+        }
 
         // numpad UI
         const pad = document.getElementById("numPad");
         const padTitle = document.getElementById("padTitle");
         const padDisplay = document.getElementById("padDisplay");
+        const padTargets = document.getElementById("padTargets");
+        const padTargetList = padTargets?.querySelector(".target-list");
         let mode = "dmg";
-        let target = "active"; // active | group
+        let target = "active"; // active | group | players
         let buffer = "";
+        let targetItems = [];
+        const MODS = {
+          full: 1,
+          half: 0.5,
+          quarter: 0.25,
+          none: 0
+        };
+
+        function mapVM(vm){
+          const id = koUnwrap(vm?.Combatant?.Id) || koUnwrap(vm?.Id);
+          const name = (typeof vm?.Name === "function" ? vm.Name() : vm?.Name) || "Unknown";
+          return { id, name, vm, mod: "full" };
+        }
+
+        function renderTargets(list){
+          if(!padTargets || !padTargetList) return;
+          padTargetList.innerHTML = "";
+          padTargets.classList.toggle("empty", list.length===0);
+          if(!list.length) return;
+          list.forEach((item, idx)=>{
+            const row = document.createElement("div");
+            row.className = "target-row";
+            row.dataset.id = item.id;
+            const name = document.createElement("div");
+            name.className = "target-name";
+            name.textContent = item.name;
+            const select = document.createElement("select");
+            select.className = "target-mod";
+            select.dataset.id = item.id;
+            ["full","half","quarter","none"].forEach(v=>{
+              const opt = document.createElement("option");
+              opt.value = v;
+              opt.textContent = v==="full" ? "100%" : v==="half" ? "50%" : v==="quarter" ? "25%" : "0%";
+              if(item.mod===v) opt.selected = true;
+              select.appendChild(opt);
+            });
+            select.addEventListener("change",(e)=>{
+              const val = e.target.value;
+              const idx = targetItems.findIndex(t=>t.id===item.id);
+              if(idx>=0) targetItems[idx].mod = val;
+            });
+            row.appendChild(name);
+            row.appendChild(select);
+            padTargetList.appendChild(row);
+          });
+        }
+
+        function buildTargetList(t){
+          const vm = getVM();
+          if(!vm) return [];
+          if(t==="players") return getPlayerVMs(vm).map(mapVM);
+          if(t==="group"){
+            const cc = vm.CombatantCommander;
+            const selected = (koUnwrap(cc?.SelectedCombatants) || []).filter(c => typeof c?.Name === "function");
+            return selected.map(mapVM);
+          }
+          if(t==="active"){
+            const active = koUnwrap(vm?.CombatantCommander?.SelectedCombatants)?.[0] || null;
+            const fallback = getActiveVM(vm);
+            const pick = active || fallback;
+            return pick ? [mapVM(pick)] : [];
+          }
+          return [];
+        }
 
         function openPad(m, t="active"){
           mode = m; target = t; buffer = "";
           try { const vm = getVM(); vm?.CombatantCommander && (vm.CombatantCommander.latestRoll = null); } catch(e){}
           padTitle.textContent = (m === "heal") ? "HEAL - amount" : "DMG - amount";
           padDisplay.textContent = "0";
+          targetItems = buildTargetList(t);
+          renderTargets(targetItems);
           pad.style.display = "flex";
+          pad.setAttribute("aria-hidden","false");
         }
-        function closePad(){ pad.style.display = "none"; }
+        function closePad(){ pad.style.display = "none"; pad.setAttribute("aria-hidden","true"); }
+
+        function computeDelta(base, modKey){
+          const mult = MODS[modKey] ?? 1;
+          const val = base * mult;
+          return Math[base>0 ? "round" : "round"](val);
+        }
+
+        function applyToTarget(item, delta){
+          if(!item?.vm) return;
+          try{
+            if(typeof item.vm.ApplyDamage === "function"){
+              item.vm.ApplyDamage(String(delta));
+            }
+          }catch(e){ console.warn(e); }
+        }
+
         function commitPad(){
           const n = parseInt(buffer||"0",10);
           if (!Number.isFinite(n) || n<=0){ closePad(); return; }
@@ -385,8 +668,25 @@ async function hpDelta(delta){
           // immediate feedback
           toast((mode==="heal" ? `+${n} HP` : `-${n} HP`), mode==="heal" ? "heal" : "dmg");
           try { navigator.vibrate?.(20); } catch(e){}
-          if (target === "group") hpDeltaSelection(delta);
-          else hpDelta(delta);
+          const hasTargets = targetItems.length>0 && (target==="group" || target==="players");
+          if(hasTargets){
+            const vm = getVM();
+            const logs = [];
+            targetItems.forEach(it=>{
+              const modDelta = computeDelta(delta, it.mod);
+              logs.push(`${it.name} ${modDelta>0?`-${modDelta}`:`+${Math.abs(modDelta)}`}`);
+              applyToTarget(it, modDelta);
+            });
+            if(vm?.EventLog?.AddEvent){
+              vm.EventLog.AddEvent(`${mode==="heal"?"Heal":"Damage"}: ${logs.join(", ")}`);
+            }
+          } else if (target === "group") {
+            hpDeltaSelection(delta);
+          } else if (target === "players") {
+            hpDeltaPlayers(delta);
+          } else {
+            hpDelta(delta);
+          }
         }
 
         pad.addEventListener("click",(e)=>{
@@ -403,40 +703,210 @@ async function hpDelta(delta){
           if(act==="cancel"){ closePad(); return; }
         });
         pad.addEventListener("click",(e)=>{ if(e.target===pad) closePad(); });
-        window.addEventListener("keydown",(e)=>{ if(e.key==="Escape" && pad.style.display==="flex") closePad(); });
+        window.addEventListener("keydown",(e)=>{
+          if(pad.style.display!=="flex") return;
+          if(e.key==="Escape"){ closePad(); return; }
+          const isDigit = /^[0-9]$/.test(e.key);
+          if(isDigit){
+            e.preventDefault();
+            if(buffer.length<6){
+              buffer = buffer==="0" ? e.key : buffer + e.key;
+              padDisplay.textContent = buffer||"0";
+            }
+          } else if(e.key==="Backspace"){
+            e.preventDefault();
+            buffer = buffer.slice(0,-1);
+            padDisplay.textContent = buffer||"0";
+          } else if(e.key==="Enter"){
+            e.preventDefault();
+            commitPad();
+          }
+        });
 
-// wiring buttons + pulse + flip
+// dock + buttons wiring + pulse + flip
+        const dock = document.getElementById("gmDock");
+        const dockHandle = document.getElementById("dockHandle");
+        const sectionToggles = [...document.querySelectorAll("[data-section-toggle]")];
+        const DOCK_SECTION_KEY = "__iiDockSections";
+        const DOCK_POS_KEY = "__iiDockPos";
+        const DOCK_SIDE_KEY = "__iiDockLeft";
+        const DOCK_COMPACT_KEY = "__iiDockCompact";
+        function setSectionState(id, collapsed){
+          const state = JSON.parse(localStorage.getItem(DOCK_SECTION_KEY) || "{}");
+          state[id] = collapsed ? 1 : 0;
+          localStorage.setItem(DOCK_SECTION_KEY, JSON.stringify(state));
+        }
+        function applySectionState(){
+          const state = JSON.parse(localStorage.getItem(DOCK_SECTION_KEY) || "{}");
+          sectionToggles.forEach(btn=>{
+            const id = btn.dataset.sectionToggle;
+            const sec = btn.closest(".section");
+            const collapsed = state[id] === 1;
+            sec?.classList.toggle("collapsed", collapsed);
+          });
+        }
+        function readDockPos(){
+          try {
+            const raw = localStorage.getItem(DOCK_POS_KEY);
+            if(!raw) return null;
+            const obj = JSON.parse(raw);
+            if (obj && typeof obj.x === "number" && typeof obj.y === "number") return obj;
+          } catch(e){}
+          return null;
+        }
+        function clampDockPos(x,y){
+          const rect = dock.getBoundingClientRect();
+          const margin = 8;
+          const maxX = Math.max(margin, window.innerWidth - rect.width - margin);
+          const maxY = Math.max(margin, window.innerHeight - rect.height - margin);
+          return { x: Math.min(Math.max(margin,x), maxX), y: Math.min(Math.max(margin,y), maxY) };
+        }
+        function setDockPos(pos){
+          const clamped = clampDockPos(pos.x, pos.y);
+          dock.style.left = `${clamped.x}px`;
+          dock.style.top = `${clamped.y}px`;
+          dock.style.right = "auto";
+          dock.style.bottom = "auto";
+          localStorage.setItem(DOCK_POS_KEY, JSON.stringify(clamped));
+          return clamped;
+        }
+        function snapDock(side){
+          const margin = 12;
+          const rect = dock.getBoundingClientRect();
+          const savedY = readDockPos()?.y;
+          const y = Number.isFinite(savedY) ? savedY : window.innerHeight - rect.height - margin;
+          const placed = setDockPos({
+            x: side === "left" ? margin : Math.max(margin, window.innerWidth - rect.width - margin),
+            y
+          });
+          dock.classList.toggle("left", side === "left");
+          localStorage.setItem(DOCK_SIDE_KEY, side === "left" ? "1" : "0");
+          return placed;
+        }
+        function initDockPosition(){
+          const saved = readDockPos();
+          const side = localStorage.getItem(DOCK_SIDE_KEY) === "1" ? "left" : "right";
+          requestAnimationFrame(()=>{
+            if (saved) {
+              setDockPos(saved);
+              dock.classList.toggle("left", saved.x < window.innerWidth / 2);
+            } else {
+              snapDock(side);
+            }
+          });
+        }
+        function enableDockDrag(){
+          if(!dockHandle || !dock) return;
+          let pointerId = null;
+          let start = { x:0, y:0 };
+          const move = (e)=>{
+            if(pointerId!==e.pointerId) return;
+            const pos = setDockPos({ x: e.clientX - start.x, y: e.clientY - start.y });
+            dock.classList.toggle("left", pos.x < window.innerWidth / 2);
+          };
+          const end = (e)=>{
+            if(pointerId===null || (e && e.pointerId!==pointerId)) return;
+            dock.classList.remove("dragging");
+            dockHandle.releasePointerCapture?.(pointerId);
+            pointerId = null;
+            window.removeEventListener("pointermove", move);
+            window.removeEventListener("pointerup", end);
+            window.removeEventListener("pointercancel", end);
+          };
+          dockHandle.addEventListener("pointerdown",(e)=>{
+            pointerId = e.pointerId;
+            const rect = dock.getBoundingClientRect();
+            start = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            dock.classList.add("dragging");
+            dockHandle.setPointerCapture?.(pointerId);
+            window.addEventListener("pointermove", move);
+            window.addEventListener("pointerup", end);
+            window.addEventListener("pointercancel", end);
+          });
+        }
+        function setCompactMode(on){
+          dock.classList.toggle("compact", !!on);
+          localStorage.setItem(DOCK_COMPACT_KEY, on ? "1" : "0");
+        }
+
         const btnDmg  = document.getElementById("btnDmg");
         const btnHeal = document.getElementById("btnHeal");
+        const btnPrev = document.getElementById("btnPrev");
         const btnNext = document.getElementById("btnNext");
         const btnFlip = document.getElementById("btnFlip");
+        const btnCompact = document.getElementById("btnCompact");
         const btnSelectAll = document.getElementById("btnSelectAll");
         const btnClearSel  = document.getElementById("btnClearSel");
+        const btnPlayersDmg  = document.getElementById("btnPlayersDmg");
+        const btnPlayersHeal = document.getElementById("btnPlayersHeal");
         const btnGroupDmg  = document.getElementById("btnGroupDmg");
         const btnGroupHeal = document.getElementById("btnGroupHeal");
         function pulse(btn){ btn.classList.add("pulse"); setTimeout(()=>btn.classList.remove("pulse"), 200); }
+        function setBadge(btn, count){ if(!btn) return; btn.dataset.badge = count > 0 ? String(count) : ""; }
+        function updateContextualState(){
+          const vm = getVM();
+          const cc = vm?.CombatantCommander;
+          const enc = getEncounter(vm);
+          const selected = (koUnwrap(cc?.SelectedCombatants) || []).filter(c => typeof c?.Name === "function");
+          const selectedCount = selected.length;
+          const players = getPlayerVMs(vm);
+          const playerCount = players.length;
+          const hasActive = !!getActiveVM(vm);
+
+          btnGroupDmg.disabled = selectedCount === 0;
+          btnGroupHeal.disabled = selectedCount === 0;
+          btnPlayersDmg.disabled = playerCount === 0;
+          btnPlayersHeal.disabled = playerCount === 0;
+          btnPrev.disabled = !hasActive;
+
+          setBadge(btnGroupDmg, selectedCount);
+          setBadge(btnGroupHeal, selectedCount);
+          setBadge(btnPlayersDmg, playerCount);
+          setBadge(btnPlayersHeal, playerCount);
+
+          if(enc){
+            const round = koUnwrap(enc.EncounterFlow?.Round) || null;
+            dock.dataset.round = round ? `R${round}` : "";
+          }
+        }
 
         btnDmg.addEventListener("click", (e)=>{ pulse(e.currentTarget); openPad("dmg","active"); });
         btnHeal.addEventListener("click",(e)=>{ pulse(e.currentTarget); openPad("heal","active"); });
+        btnPrev.addEventListener("click",(e)=>{ pulse(e.currentTarget); doPrev(); });
         btnNext.addEventListener("click",(e)=>{ pulse(e.currentTarget); doNext(); });
         btnSelectAll.addEventListener("click",(e)=>{ pulse(e.currentTarget); selectAllCombatants(); });
         btnClearSel.addEventListener("click",(e)=>{ pulse(e.currentTarget); clearSelection(); });
+        btnPlayersDmg.addEventListener("click",(e)=>{ pulse(e.currentTarget); openPad("dmg","players"); });
+        btnPlayersHeal.addEventListener("click",(e)=>{ pulse(e.currentTarget); openPad("heal","players"); });
         btnGroupDmg.addEventListener("click",(e)=>{ pulse(e.currentTarget); openPad("dmg","group"); });
         btnGroupHeal.addEventListener("click",(e)=>{ pulse(e.currentTarget); openPad("heal","group"); });
         btnFlip.addEventListener("click",(e)=>{
-          const dock = document.getElementById("gmDock");
-          dock.classList.toggle("left");
-          localStorage.setItem("__iiDockLeft", dock.classList.contains("left") ? "1" : "0");
+          const toSide = dock.classList.contains("left") ? "right" : "left";
+          snapDock(toSide);
+        });
+        btnCompact.addEventListener("click",(e)=>{
+          const on = !dock.classList.contains("compact");
+          setCompactMode(on);
+          pulse(e.currentTarget);
+        });
+        sectionToggles.forEach(btn=>{
+          btn.addEventListener("click",()=>{
+            const id = btn.dataset.sectionToggle;
+            const sec = btn.closest(".section");
+            const collapsed = !sec.classList.contains("collapsed");
+            sec.classList.toggle("collapsed", collapsed);
+            setSectionState(id, collapsed);
+          });
         });
 
-        // restore dock side
-        (function initDockSide(){
-          const dock = document.getElementById("gmDock");
-          if(localStorage.getItem("__iiDockLeft")==="1") dock.classList.add("left");
-        })();
+        initDockPosition();
+        enableDockDrag();
+        applySectionState();
+        setCompactMode(localStorage.getItem(DOCK_COMPACT_KEY)==="1");
+        window.addEventListener("resize", ()=>{ const saved = readDockPos(); if(saved) setDockPos(saved); });
+        setInterval(updateContextualState, 800);
 
         // ready indicator
-        const dock = document.getElementById("gmDock");
         const readyCheck=setInterval(()=>{
           const ok=!!(window.II_DEBUG&&window.II_DEBUG.getTracker);
           dock.style.opacity=ok?"":"0.5"; if(ok) clearInterval(readyCheck);

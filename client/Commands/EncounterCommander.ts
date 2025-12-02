@@ -1,20 +1,24 @@
 import * as _ from "lodash";
 
 import { CombatStats } from "../../common/CombatStats";
+import { PersistentCharacter } from "../../common/PersistentCharacter";
 import { PostCombatStatsOption } from "../../common/Settings";
+import { CombatantViewModel } from "../Combatant/CombatantViewModel";
 import { UpdateLegacySavedEncounter } from "../Encounter/UpdateLegacySavedEncounter";
 import { env } from "../Environment";
+import { ApplyDamagePrompt } from "../Prompts/ApplyDamagePrompt";
+import { ApplyHealingPrompt } from "../Prompts/ApplyHealingPrompt";
+import { CombatStatsPrompt } from "../Prompts/CombatStatsPrompt";
+import { InitiativePrompt } from "../Prompts/InitiativePrompt";
+import { PlayerViewPrompt } from "../Prompts/PlayerViewPrompt";
+import { PromptProps } from "../Prompts/PendingPrompts";
+import { QuickAddPrompt } from "../Prompts/QuickAddPrompt";
+import { RollDicePrompt } from "../Prompts/RollDicePrompt";
 import { CurrentSettings } from "../Settings/Settings";
 import { TrackerViewModel } from "../TrackerViewModel";
 import { NotifyTutorialOfAction } from "../Tutorial/NotifyTutorialOfAction";
 import { Metrics } from "../Utility/Metrics";
-import { CombatStatsPrompt } from "../Prompts/CombatStatsPrompt";
-import { InitiativePrompt } from "../Prompts/InitiativePrompt";
-import { PlayerViewPrompt } from "../Prompts/PlayerViewPrompt";
-import { QuickAddPrompt } from "../Prompts/QuickAddPrompt";
-import { RollDicePrompt } from "../Prompts/RollDicePrompt";
 import { ToggleFullscreen } from "./ToggleFullscreen";
-import { PersistentCharacter } from "../../common/PersistentCharacter";
 
 export class EncounterCommander {
   constructor(private tracker: TrackerViewModel) {}
@@ -199,6 +203,39 @@ export class EncounterCommander {
     }
 
     return false;
+  };
+
+  private getPlayerCombatants = (): CombatantViewModel[] =>
+    this.tracker
+      .CombatantViewModels()
+      .filter(vm => vm.Combatant.IsPlayerCharacter());
+
+  private promptForPlayerHPChange = (
+    promptBuilder: (targets: CombatantViewModel[]) => PromptProps<any>
+  ): void => {
+    const playerCombatants = this.getPlayerCombatants();
+
+    if (playerCombatants.length === 0) {
+      this.tracker.EventLog.AddEvent(
+        "No player characters available for HP change."
+      );
+      return;
+    }
+
+    const prompt = promptBuilder(playerCombatants);
+    this.tracker.PromptQueue.Add(prompt);
+  };
+
+  public DamageAllPlayerCharacters = (): void => {
+    this.promptForPlayerHPChange(targets =>
+      ApplyDamagePrompt(targets, "", this.tracker.EventLog.LogHPChange)
+    );
+  };
+
+  public HealAllPlayerCharacters = (): void => {
+    this.promptForPlayerHPChange(targets =>
+      ApplyHealingPrompt(targets, "", this.tracker.EventLog.LogHPChange)
+    );
   };
 
   public RestoreAllPlayerCharacterHP = (): void => {

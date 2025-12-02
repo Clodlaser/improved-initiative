@@ -2,6 +2,10 @@
   display: flex;
   flex-flow: row;
   justify-content: space-between;
+  align-items: center;
+  padding-bottom: @small-spacer;
+  margin-bottom: @small-spacer;
+  border-bottom: 2px solid #a15a2f;
 }
 
 .c-listing-button {
@@ -35,16 +39,36 @@
 .library {
   flex: 1;
   overflow-x: hidden;
+  background: var(--card-background-white);
+  border: 1px solid var(--accent-white);
+  box-shadow: 0 6px 16px rgba(14, 27, 42, 0.08);
+  padding: @small-spacer;
 
   ul {
     overflow-y: auto;
     flex: 1;
+    background: var(--card-background-white);
   }
 
   li {
     list-style-type: none;
     display: flex;
     overflow-x: hidden;
+    background: var(--card-background-white);
+    border-bottom: 1px solid rgba(14, 27, 42, 0.06);
+
+    &:nth-child(2n) {
+      background: var(--zebra-white);
+    }
+
+    &:hover {
+      background: var(--hover-white);
+    }
+
+    &.c-listing--selected {
+      background: var(--hover-white);
+      box-shadow: inset 4px 0 0 var(--selection-border);
+    }
   }
 
   .search-controls {
