@@ -103,19 +103,22 @@ export class TrackerViewModel {
     // It's also probably impossible to test.
     this.Libraries = libraries;
 
-    this.StatBlockTextEnricher = new TextEnricher(
-      this.CombatantCommander.RollDice,
-      this.LibrariesCommander.ReferenceSpell,
-      this.LibrariesCommander.ReferenceCondition,
-      this.Libraries.Spells.GetAllListings,
-      this.LibrariesCommander.GetSpellsByNameRegex,
-      this.rules
-    );
+    this.StatBlockTextEnricher = this.GetTextEnricher();
 
     this.LibrariesCommander.SetLibraries(libraries);
   };
 
   public StatBlockTextEnricher: TextEnricher;
+  public GetTextEnricher = (sourceName?: string): TextEnricher =>
+    new TextEnricher(
+      this.CombatantCommander.RollDice,
+      this.LibrariesCommander.ReferenceSpell,
+      this.LibrariesCommander.ReferenceCondition,
+      this.Libraries.Spells.GetAllListings,
+      this.LibrariesCommander.GetSpellsByNameRegex,
+      this.rules,
+      sourceName
+    );
 
   public Encounter = new Encounter(
     this.PlayerViewClient,

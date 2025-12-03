@@ -6,6 +6,8 @@ export interface PromptProps<T extends object> {
   children: React.ReactChild;
   autoFocusSelector: string;
   initialValues: T;
+  autoDismissMs?: number;
+  autoSubmitOnDismiss?: boolean;
 }
 
 class Prompt<T extends object> extends React.Component<
@@ -14,6 +16,8 @@ class Prompt<T extends object> extends React.Component<
   }
 > {
   private formElement: HTMLFormElement;
+  private formikProps?: FormikProps<any>;
+  private autoTimer?: number;
 
   public render() {
     return (
@@ -23,26 +27,36 @@ class Prompt<T extends object> extends React.Component<
           this.props.onSubmit(values);
         }}
       >
-        {(props: FormikProps<any>) => (
-          <form
-            ref={r => (this.formElement = r)}
-            className="prompt"
-            onSubmit={props.handleSubmit}
-            onKeyUp={(e: React.KeyboardEvent<HTMLFormElement>) => {
-              if (e.key == "Escape") {
-                this.props.onCancel();
-              }
-            }}
-          >
-            {this.props.children}
-          </form>
-        )}
+        {(props: FormikProps<any>) => {
+          this.formikProps = props;
+          return (
+            <form
+              ref={r => (this.formElement = r)}
+              className="prompt"
+              onSubmit={props.handleSubmit}
+              onKeyUp={(e: React.KeyboardEvent<HTMLFormElement>) => {
+                if (e.key == "Escape") {
+                  this.props.onCancel();
+                }
+              }}
+            >
+              {this.props.children}
+            </form>
+          );
+        }}
       </Formik>
     );
   }
 
   public componentDidMount() {
     setTimeout(this.delaySoAutoFocusedFieldDoesntSwallowHotkey);
+    this.scheduleAutoDismiss();
+  }
+
+  public componentWillUnmount() {
+    if (this.autoTimer) {
+      clearTimeout(this.autoTimer);
+    }
   }
 
   private delaySoAutoFocusedFieldDoesntSwallowHotkey = () => {
@@ -65,6 +79,23 @@ class Prompt<T extends object> extends React.Component<
     if (element.select) {
       element.select();
     }
+  };
+
+  private scheduleAutoDismiss = () => {
+    if (this.props.autoDismissMs == null) {
+      return;
+    }
+    this.autoTimer = window.setTimeout(() => {
+      const values =
+        this.formikProps && this.formikProps.values
+          ? this.formikProps.values
+          : this.props.initialValues;
+      if (this.props.autoSubmitOnDismiss) {
+        this.props.onSubmit(values as any);
+      } else {
+        this.props.onCancel();
+      }
+    }, this.props.autoDismissMs);
   };
 }
 

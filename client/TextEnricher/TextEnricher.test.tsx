@@ -31,7 +31,7 @@ function getTestSpell() {
 describe("TextEnricher", () => {
   test("Spell Reference", async () => {
     const textEnricher = new TextEnricher(
-      () => {},
+      (_expr: string) => {},
       spell => {
         expect(spell.Meta().Name).toEqual("Test Spell");
       },
@@ -55,7 +55,7 @@ describe("TextEnricher", () => {
 
   test("Counter", async () => {
     const textEnricher = new TextEnricher(
-      () => {},
+      (_expr: string) => {},
       () => {},
       () => {},
       () => [getTestSpell()],

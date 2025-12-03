@@ -26,6 +26,7 @@ import { ApplyTemporaryHPPrompt } from "../Prompts/ApplyTemporaryHPPrompt";
 import { LinkInitiativePrompt } from "../Prompts/LinkInitiativePrompt";
 import { TextEnricherContext } from "../TextEnricher/TextEnricher";
 import { QuickEditStatBlockPrompt } from "../Prompts/QuickEditStatBlockPrompt";
+import { sendDiceHudRoll } from "../Utility/DiceHudClient";
 
 interface PendingLinkInitiative {
   combatant: CombatantViewModel;
@@ -76,9 +77,12 @@ export class CombatantCommander {
 
     if (this.HasOneSelected()) {
       const combatantViewModel = selectedCombatants[0];
+      const enrichedText = this.tracker.GetTextEnricher(
+        combatantViewModel.Name()
+      );
       return (
         <TextEnricherContext.Provider
-          value={this.tracker.StatBlockTextEnricher}
+          value={enrichedText}
         >
           <CombatantDetails
             combatantViewModel={combatantViewModel}
@@ -254,6 +258,32 @@ export class CombatantCommander {
       this.tracker.EventLog.LogHPChange
     );
     this.tracker.PromptQueue.Add(prompt);
+  }
+
+  private applyDamageToTargets(
+    allTargets: CombatantViewModel[],
+    targetIds: string[],
+    baseAmount: number,
+    perTargetAdjust?: Record<string, number>
+  ) {
+    const dmg = Number(baseAmount);
+    if (isNaN(dmg)) {
+      return;
+    }
+    const targets = allTargets.filter(t => targetIds.includes(t.Combatant.Id));
+    if (targets.length === 0) {
+      return;
+    }
+    const names = targets.map(t => t.Name()).join(", ");
+    targets.forEach(t => {
+      const adj = perTargetAdjust?.[t.Combatant.Id] || 0;
+      const total = dmg + adj;
+      if (isNaN(total)) {
+        return;
+      }
+      t.ApplyDamage(total.toString());
+    });
+    this.tracker.EventLog.LogHPChange(dmg, names);
   }
 
   public ApplyDamage = () => {
@@ -542,10 +572,54 @@ export class CombatantCommander {
     this.tracker.PromptQueue.Add(prompt);
   };
 
-  public RollDice = (diceExpression: string) => {
+  public RollDice = (diceExpression: string, sourceName?: string) => {
     const diceRoll = Dice.RollDiceExpression(diceExpression);
     this.latestRoll = diceRoll;
-    const prompt = ShowDiceRollPrompt(diceExpression, diceRoll);
+    const actorName =
+      sourceName ||
+      (this.HasSelected() ? this.SelectedCombatants()[0]?.Name() : undefined);
+    const title = actorName ? `Jet de ${actorName}` : undefined;
+    sendDiceHudRoll(diceExpression, diceRoll, title);
+
+    const allTargets = this.tracker
+      .CombatantViewModels()
+      .filter(vm => !vm.Combatant.IsPendingRemoval());
+
+    const playerTargets = allTargets.filter(vm => {
+      try {
+        return !!vm.Combatant.IsPlayerCharacter();
+      } catch {
+        return false;
+      }
+    });
+
+    let assignableTargets = playerTargets.length > 0 ? playerTargets : allTargets;
+    if (assignableTargets.length === 0) {
+      assignableTargets = allTargets;
+    }
+
+    const assignOptions =
+      assignableTargets.length > 0
+        ? {
+            targets: assignableTargets.map(vm => ({
+              id: vm.Combatant.Id,
+              name: vm.Name()
+            })),
+            applyDamage: (
+              targetIds: string[],
+              baseAmount: number,
+              perTargetAdjust?: Record<string, number>
+            ) =>
+              this.applyDamageToTargets(
+                assignableTargets,
+                targetIds,
+                baseAmount,
+                perTargetAdjust
+              )
+          }
+        : undefined;
+
+    const prompt = ShowDiceRollPrompt(diceExpression, diceRoll, assignOptions);
 
     Metrics.TrackEvent("DiceRolled", {
       Expression: diceExpression,

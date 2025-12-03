@@ -24,24 +24,32 @@ body{
   backdrop-filter: blur(6px);
   box-shadow:inset 0 12px 34px rgba(0,0,0,.45), 0 18px 38px rgba(0,0,0,.45);
   opacity:0; transition:opacity .35s ease;
+  padding:4% 4% 7%;
+  box-sizing:border-box;
 }
 .tile.active{ display:flex; opacity:1; }
 
 .value{
-  font-size:calc(var(--size)*0.42); font-weight:1000; line-height:1;
-  text-shadow:0 6px 22px rgba(0,0,0,.6);
+  font-size:clamp(48px, calc(var(--size)*0.28), calc(var(--size)*0.46));
+  font-weight:1000; line-height:1;
+  text-shadow:
+    0 6px 22px rgba(0,0,0,.6),
+    0 0 8px rgba(0,0,0,.55),
+    0 0 2px rgba(255,255,255,.12);
   transform:translateZ(0);
 }
 .sub{
-  position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
-  font-size:calc(var(--size)*0.075); color:#d7e7ff; opacity:.9;
+  position:absolute; bottom:5%; left:50%; transform:translateX(-50%);
+  font-size:clamp(16px, calc(var(--size)*0.08), 28px);
+  color:#d7e7ff; opacity:.9; text-align:center; max-width:88%;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   text-shadow:0 2px 10px rgba(0,0,0,.6);
 }
 @keyframes wobble {
-  0% { transform: rotate(-8deg) scale(.92); }
-  40% { transform: rotate(6deg) scale(1.05); }
-  70% { transform: rotate(-3deg) scale(1.02); }
-  100% { transform: rotate(0deg) scale(1); }
+  0% { transform: translateY(6px) rotate(-8deg) scale(.9); }
+  35% { transform: translateY(-6px) rotate(7deg) scale(1.08); }
+  70% { transform: translateY(3px) rotate(-3deg) scale(1.03); }
+  100% { transform: translateY(0) rotate(0deg) scale(1); }
 }
 .roll{ animation: wobble 520ms cubic-bezier(.2,.75,.2,1); }
 .crit{ box-shadow:inset 0 0 0 3px rgba(255,215,0,.85), 0 0 40px rgba(255,215,0,.35) }
@@ -51,6 +59,17 @@ body{
   background:#2e7d32; color:white; display:none; letter-spacing:.02em;
 }
 .ribbon.bad{ background:#c62828 }
+.title{
+  position:absolute; top:5%; left:50%; transform:translateX(-50%) translateY(-6%);
+  font-size:clamp(20px, calc(var(--size)*0.08), 48px); font-weight:800; color:#e7f1ff;
+  text-shadow:0 2px 10px rgba(0,0,0,.55), 0 0 4px rgba(0,0,0,.7);
+  display:none; white-space:normal; text-align:center; max-width:86%;
+  background:rgba(0,0,0,.10); padding:.25em .85em; border-radius:16px;
+  opacity:0; transition:opacity .35s ease, transform .35s ease;
+}
+.title.visible{
+  opacity:1; transform:translateX(-50%) translateY(0);
+}
 
 /* Formes par type de dé */
 .shape-d4{ clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
@@ -64,6 +83,7 @@ body{
 <body>
 <div class="wrap">
   <div id="tile" class="tile">
+    <div id="title" class="title"></div>
     <div id="val" class="value">—</div>
     <div id="sub" class="sub">Prêt</div>
     <div id="ribbon" class="ribbon">CRITIQUE</div>
@@ -99,6 +119,7 @@ function openBC(){
 const tile = document.getElementById('tile');
 const val  = document.getElementById('val');
 const sub  = document.getElementById('sub');
+const titleEl = document.getElementById('title');
 const rib  = document.getElementById('ribbon');
 let hideTimer=null, spinTimer=null;
 
@@ -127,12 +148,23 @@ function animateRandom(faces, duration=1500){
   });
 }
 
-function render(payload){
+function render(payload, titleText){
   const {rolls, mod=0, total, faces, n} = payload;
   setShape(faces);
 
   rib.style.display='none';
   tile.classList.remove('roll','crit','fail');
+
+  if(titleEl){
+    if(titleText){
+      titleEl.textContent = titleText;
+      titleEl.style.display = 'block';
+      requestAnimationFrame(()=> titleEl.classList.add('visible'));
+    }else{
+      titleEl.classList.remove('visible');
+      setTimeout(()=>{ titleEl.style.display='none'; }, 200);
+    }
+  }
 
   const modTxt = mod ? (mod>0? ` +${mod}`:` ${mod}`) : '';
   sub.textContent = `${n}d${faces}${modTxt}`;
@@ -170,7 +202,8 @@ function onIncoming(msg){
     const m=p.formula.match(/(\d*)d(\d+)([+-]\d+)?/i);
     if(m){ p.n=parseInt(m[1]||'1',10); p.faces=parseInt(m[2],10); }
   }
-  render(p);
+  const title = msg.title || p.title;
+  render(p, title);
 }
 </script>
 </body>

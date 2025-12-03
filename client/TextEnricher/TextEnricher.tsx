@@ -27,12 +27,13 @@ interface ReplaceConfig {
 
 export class TextEnricher {
   constructor(
-    private rollDice: (diceExpression: string) => void,
+    private rollDice: (diceExpression: string, sourceName?: string) => void,
     private referenceSpellListing: (listing: Listing<Spell>) => void,
     private referenceCondition: (condition: string) => void,
     private getSpellListings: () => Listing<Spell>[],
     private getSpellsByNameRegex: () => RegExp,
-    private rules: IRules
+    private rules: IRules,
+    private sourceName?: string
   ) {}
 
   private referenceSpell = (spellName: string) => {
@@ -54,7 +55,10 @@ export class TextEnricher {
   public EnrichModifier = (modifier: number): JSX.Element => {
     const modifierString = toModifierString(modifier);
     return (
-      <span className="rollable" onClick={() => this.rollDice(modifierString)}>
+      <span
+        className="rollable"
+        onClick={() => this.rollDice(modifierString, this.sourceName)}
+      >
         {modifierString}
       </span>
     );
@@ -115,7 +119,7 @@ export class TextEnricher {
           <span
             className="rollable"
             key={key}
-            onClick={() => this.rollDice(rawText)}
+            onClick={() => this.rollDice(rawText, this.sourceName)}
           >
             {rawText}
           </span>
@@ -227,7 +231,7 @@ export class TextEnricher {
 
 export const TextEnricherContext = React.createContext(
   new TextEnricher(
-    () => {},
+    (_expr: string, _sourceName?: string) => {},
     () => {},
     () => {},
     () => [],
