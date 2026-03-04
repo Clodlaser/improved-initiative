@@ -96,10 +96,11 @@
 
     <!-- App Container -->
     <div
-        class="relative flex h-full w-full flex-col max-w-md mx-auto bg-white dark:bg-slate-900 border-x border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+        class="relative flex h-full w-full flex-col md:max-w-3xl lg:max-w-5xl mx-auto md:my-4 md:h-[calc(100vh-2rem)] md:border-y bg-white dark:bg-slate-900 border-x border-slate-200 dark:border-slate-800 shadow-2xl xl:rounded-lg overflow-hidden md:flex-row">
 
         <!-- COMBAT VIEW -->
-        <div id="view-combat" class="view-section hidden flex-col h-full bg-white dark:bg-slate-900 font-inter pb-20">
+        <div id="view-combat"
+            class="view-section hidden flex-col flex-1 w-full h-full bg-white dark:bg-slate-900 font-inter pb-20 md:pb-0">
             <header class="pt-8 px-6 pb-4 border-b-4 border-black dark:border-white flex-none">
                 <div class="flex justify-between items-start">
                     <h1 class="text-4xl swiss-bold leading-[0.9] text-black dark:text-white uppercase tracking-tighter">
@@ -114,8 +115,10 @@
 
             <main class="flex-1 overflow-y-auto"
                 style="background-image: linear-gradient(to bottom, transparent 23px, rgba(0,0,0,0.02) 24px); background-size: 100% 1.5rem;">
-                <div id="combatList" class="flex flex-col w-full">
-                    <div class="p-8 text-center text-slate-500 font-bold uppercase tracking-widest text-sm">
+                <div id="combatList"
+                    class="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-px md:bg-slate-200 dark:md:bg-slate-800 w-full">
+                    <div
+                        class="p-8 text-center text-slate-500 font-bold uppercase tracking-widest text-sm md:col-span-full bg-white dark:bg-slate-900">
                         En attente du combat...
                     </div>
                 </div>
@@ -125,7 +128,7 @@
 
         <!-- HEALS VIEW (DEFAULT) -->
         <div id="view-heals"
-            class="view-section flex flex-col h-full pb-20 bg-background-light dark:bg-background-dark font-inter">
+            class="view-section flex flex-col flex-1 w-full h-full pb-20 md:pb-0 bg-background-light dark:bg-background-dark font-inter">
             <header
                 class="pt-8 px-6 pb-6 border-b-4 border-slate-900 dark:border-slate-100 flex-none bg-white dark:bg-background-dark z-10">
                 <div class="flex flex-col gap-1">
@@ -138,8 +141,10 @@
 
             <main class="flex-1 overflow-y-auto"
                 style="background-image: linear-gradient(to bottom, transparent 23px, rgba(0,0,0,0.02) 24px); background-size: 100% 1.5rem;">
-                <div id="playersList" class="flex flex-col w-full">
-                    <div class="p-8 text-center text-slate-500 font-bold uppercase tracking-widest text-sm">
+                <div id="playersList"
+                    class="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-px md:bg-slate-900 dark:md:bg-slate-100 w-full">
+                    <div
+                        class="p-8 text-center text-slate-500 font-bold uppercase tracking-widest text-sm bg-white dark:bg-background-dark md:col-span-full">
                         En attente des données...
                     </div>
                 </div>
@@ -159,17 +164,19 @@
 
 
         <!-- DICE VIEW -->
-        <div id="view-dice" class="view-section hidden flex-col h-full bg-white dark:bg-slate-900 font-inter pb-20">
+        <div id="view-dice"
+            class="view-section hidden flex-col flex-1 w-full h-full bg-white dark:bg-slate-900 font-inter pb-20 md:pb-0">
             <header class="pt-8 px-6 pb-4 border-b-4 border-black dark:border-white flex-none">
-                <div class="flex justify-between items-start">
+                <div class="flex justify-between items-start md:justify-center md:gap-4">
                     <h1 class="text-4xl swiss-bold leading-[0.9] text-black dark:text-white uppercase tracking-tighter">
                         Dés</h1>
                     <div class="material-symbols-outlined text-4xl text-primary">casino</div>
                 </div>
             </header>
 
-            <main class="flex-1 overflow-y-auto flex flex-col pt-2">
-                <section class="p-6 pb-2">
+            <main class="flex-1 overflow-y-auto flex flex-col pt-2 md:items-center">
+                <section
+                    class="p-6 pb-2 w-full md:max-w-md md:bg-slate-50 dark:md:bg-slate-800/50 md:mt-8 md:rounded-xl md:border md:border-black/10 dark:md:border-white/10 md:shadow-sm">
                     <!-- Count -->
                     <div class="flex justify-between items-baseline mb-2">
                         <h2 class="text-xs font-black uppercase tracking-widest text-black dark:text-white">Nombre de
@@ -280,7 +287,8 @@
 
                 <div class="flex-grow"></div>
 
-                <div class="px-6 pb-4 flex justify-start items-center overflow-x-auto no-scrollbar flex-none">
+                <div
+                    class="px-6 pb-4 flex justify-start md:justify-center items-center overflow-x-auto no-scrollbar flex-none w-full">
                     <div id="diceHistory" class="flex gap-2 whitespace-nowrap">
                         <span
                             class="text-[10px] font-black border-2 border-black dark:border-white px-2 py-0.5 text-black dark:text-white opacity-50">HISTORIQUE
@@ -289,9 +297,10 @@
                 </div>
             </main>
 
-            <footer class="p-0 border-t-8 border-black dark:border-white flex-none bg-white dark:bg-slate-900 z-10">
+            <footer
+                class="p-0 border-t-8 border-black dark:border-white flex-none bg-white dark:bg-slate-900 z-10 w-full md:flex md:justify-center">
                 <button onclick="executeRoll()"
-                    class="w-full bg-primary hover:bg-primary-hover active:bg-red-800 text-white py-6 text-4xl font-black uppercase tracking-tighter transition-colors">
+                    class="w-full md:max-w-md md:rounded-t-lg bg-primary hover:bg-primary-hover active:bg-red-800 text-white py-6 text-4xl font-black uppercase tracking-tighter transition-colors md:py-8 md:text-5xl">
                     Lancer <span id="btnSumm">1D6</span>
                 </button>
             </footer>
@@ -300,7 +309,7 @@
 
         <!-- LOGS VIEW -->
         <div id="view-logs"
-            class="view-section hidden flex-col h-full bg-background-light dark:bg-background-dark font-mono text-xs pb-20">
+            class="view-section hidden flex-col flex-1 w-full h-full bg-background-light dark:bg-background-dark font-mono text-xs pb-20 md:pb-0">
             <header class="pt-8 px-6 pb-4 border-b-2 border-ink/20 dark:border-white/20">
                 <h1 class="text-xl font-bold uppercase tracking-widest flex items-center gap-2">
                     <span class="material-symbols-outlined">terminal</span> SYSTEM LOGS
@@ -325,7 +334,13 @@
 
         <!-- BOTTOM NAVIGATION BAR -->
         <nav
-            class="absolute bottom-0 w-full h-20 flex border-t-2 border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md z-40 px-2 pb-2 pt-2 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)]">
+            class="md:w-32 md:h-full md:static md:flex-col md:order-first md:border-t-0 md:border-r-2 md:border-slate-200 dark:md:border-slate-800 md:bg-white dark:md:bg-slate-900 md:px-2 md:py-6 md:justify-start md:shadow-none absolute bottom-0 w-full h-20 flex border-t-2 border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md z-40 px-2 pb-2 pt-2 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)]">
+
+            <div
+                class="hidden md:flex flex-col items-center mb-8 pb-8 border-b-2 border-slate-200 dark:border-slate-800 w-full">
+                <span
+                    class="text-[10px] font-black uppercase tracking-widest text-primary text-center">TTRPG<br />COMPANION</span>
+            </div>
             <a href="#" onclick="switchView('combat'); return false;" id="nav-combat"
                 class="nav-item flex flex-1 flex-col items-center justify-center gap-1 text-slate-500 hover:text-ink dark:hover:text-white transition-colors">
                 <span class="material-symbols-outlined">swords</span>
@@ -368,10 +383,14 @@
             }
 
             // Update Nav Active State
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active', 'text-primary'));
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('active', 'text-primary', 'dark:text-primary', 'md:bg-primary/10', 'md:text-primary');
+                el.classList.add('text-slate-500'); // Ensure inactive state color is restored
+            });
             const activeNav = document.getElementById('nav-' + viewId);
             if (activeNav) {
-                activeNav.classList.add('active');
+                activeNav.classList.remove('text-slate-500');
+                activeNav.classList.add('active', 'text-primary', 'dark:text-primary', 'md:bg-primary/10', 'md:text-primary');
             }
         }
 
@@ -545,7 +564,7 @@
                 // Inject separator for round wrap
                 if (wrapIdx !== null && i === wrapIdx) {
                     htmlRender += `
-                    <div class="relative py-4 flex items-center justify-center">
+                    <div class="relative py-4 flex items-center justify-center md:col-span-full md:bg-white dark:md:bg-slate-900">
                         <div class="absolute inset-x-6 top-1/2 h-0.5 bg-slate-200 dark:bg-slate-800 -translate-y-1/2"></div>
                         <span class="relative bg-white dark:bg-slate-900 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Fin du Round</span>
                     </div>`;
@@ -570,7 +589,7 @@
                 const barWidth = isPC ? `${pct}%` : `100%`;
 
                 htmlRender += `
-                <div class="flex flex-col px-6 py-4 border-b-4 ${borderActiveColor} ${bgActiveColor} transition-colors border-l-4 ${isActive ? 'border-l-[6px]' : ''} ${frameColor}">
+                <div class="flex flex-col px-6 py-4 border-b-4 ${borderActiveColor} ${bgActiveColor} md:border-b-0 md:bg-white dark:md:bg-slate-900 md:border-b transition-colors border-l-4 ${isActive ? 'border-l-[6px]' : ''} ${frameColor}">
                     <div class="flex justify-between items-baseline mb-2">
                         <h3 class="text-xl font-black uppercase tracking-tighter leading-none ${isDead ? 'line-through opacity-50' : 'text-slate-900 dark:text-slate-100'}">
                             ${isActive ? '<span class="material-symbols-outlined text-lg mr-1 align-text-bottom">play_arrow</span>' : ''}${name}
@@ -619,10 +638,11 @@
                 const colorClass = getHpColorClass(pct);
                 const isFull = cur >= max;
 
+                // Adjust for grid
                 return `
-                <div class="flex items-center justify-between px-6 py-6 border-b border-slate-900 dark:border-slate-100 bg-white dark:bg-background-dark">
-                    <div class="flex flex-col">
-                        <h2 class="text-2xl font-black uppercase tracking-tighter leading-none text-black dark:text-white">${name}</h2>
+                <div class="flex md:flex-col items-center md:items-stretch justify-between px-6 py-6 md:p-6 border-b border-slate-900 dark:border-slate-100 bg-white dark:bg-background-dark md:border-b-0 md:border-slate-900 dark:md:border-slate-100">
+                    <div class="flex flex-col md:mb-4">
+                        <h2 class="text-2xl font-black uppercase tracking-tighter leading-none text-black dark:text-white md:truncate" title="${name}">${name}</h2>
                         <div class="mt-1 flex items-baseline gap-1">
                             <span class="text-3xl font-black ${colorClass}">${cur}</span>
                             <span class="text-lg font-bold text-slate-400">/ ${max} HP</span>
@@ -630,7 +650,7 @@
                         </div>
                     </div>
                     <button onclick="promptHealType('${name.replace(/'/g, "\\'")}')" 
-                        class="border-2 px-6 py-2 text-sm font-black uppercase tracking-widest transition-colors duration-200 
+                        class="border-2 px-6 py-2 md:py-4 text-sm font-black uppercase tracking-widest transition-colors duration-200 
                         ${isFull ? 'border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600' : 'border-primary text-primary hover:bg-primary hover:text-white active:bg-primary-hover'}">
                         ${isFull ? 'Plein' : 'Soin'}
                     </button>
@@ -640,7 +660,7 @@
         }
 
         function promptHealType(targetName) {
-            const val = prompt(`Combien de PV rendre à ${targetName === 'Group' ? 'tout le groupe' : targetName} ?\n(Négatif pour blesser)`, '10');
+            const val = prompt(`Combien de PV rendre à ${targetName === 'Group' ? 'tout le groupe' : targetName} ?`, '10');
             const amount = parseInt(val, 10);
             if (!isNaN(amount) && amount !== 0) {
                 if (targetName === 'Group') {
@@ -674,8 +694,11 @@
 
         function sendHeal(targetName, amount, toast = true) {
             if (ws && ws.readyState === WebSocket.OPEN) {
+                // Haptic feedback for healing action
+                if (navigator.vibrate) navigator.vibrate(40);
+
                 const payload = {
-                    type: 'player_heal',
+                    type: 'player_heal', // Assuming 'player_heal' is the correct type, not 'heals' as in the malformed diff
                     channel: CHANNEL,
                     target: targetName,
                     amount: amount
@@ -744,10 +767,12 @@
 
         function executeRoll() {
             if (!ws || ws.readyState !== WebSocket.OPEN) {
-                showToast("ERREUR: NO UPLINK", false);
-                addLog('Attempted roll without uplink', 'error');
+                addLog('Cannot roll, not connected', 'error');
                 return;
             }
+
+            // Haptic feedback on roll
+            if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
 
             const { count, type, mod } = currentDiceState;
             let rolls = [];
