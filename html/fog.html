@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fog of War (OBS)</title>
+  <style>
+    html, body { margin:0; padding:0; background: transparent; overflow:hidden; }
+    canvas { display:block; touch-action:none; }
+    /* Petit HUD discret en haut à gauche */
+    #hud {
+      position: absolute; left: 10px; top: 10px;
+      font: 14px system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: rgba(0,0,0,.45); color: #fff;
+      padding: 8px 10px; border-radius: 10px;
+      user-select: none; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">Mode: <b id="mode">Révéler</b> | [E] Révéler / [F] Cacher | [R] Reset | [ ] taille</div>
+  <canvas id="c"></canvas>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d", { alpha: true });
+
+  // Offscreen canvas qui contient le "mask" (fog opaque ou trous)
+  const mask = document.createElement("canvas");
+  const mctx = mask.getContext("2d");
+
+  // Texture procédurale (noise) pour styliser le fog
+  const tex = document.createElement("canvas");
+  const tctx = tex.getContext("2d");
+
+  // Réglages
+  let brush = 70;          // taille pinceau
+  let feather = 12;        // douceur bord
+  let fogAlpha = 0.92;     // opacité globale du fog
+  let reveal = true;       // true = efface (révèle), false = peint (cache)
+  let drawing = false;
+
+  // Animation brume
+  let ox = 0, oy = 0;
+  const driftX = 0.08, driftY = 0.05; // vitesse très lente
+
+  const modeEl = document.getElementById("mode");
+  const setModeText = () => modeEl.textContent = reveal ? "Révéler" : "Cacher";
+
+  function resize(w, h) {
+    canvas.width = w; canvas.height = h;
+    mask.width = w; mask.height = h;
+
+    // Reset: fog complet
+    mctx.clearRect(0,0,w,h);
+    mctx.fillStyle = "rgba(0,0,0,1)";
+    mctx.fillRect(0,0,w,h);
+
+    // Texture noise en 512x512 pour tuilage
+    tex.width = 512; tex.height = 512;
+    const img = tctx.createImageData(tex.width, tex.height);
+    // bruit simple
+    for (let i=0; i<img.data.length; i+=4) {
+      const v = Math.floor(110 + Math.random()*80); // gris
+      img.data[i] = v; img.data[i+1] = v; img.data[i+2] = v;
+      img.data[i+3] = 255;
+    }
+    tctx.putImageData(img, 0, 0);
+  }
+
+  function getObsSizeFallback() {
+    // OBS Browser Source peut ne pas exposer facilement sa taille ; on prend viewport
+    return { w: window.innerWidth, h: window.innerHeight };
+  }
+
+  function init() {
+    const {w,h} = getObsSizeFallback();
+    resize(w,h);
+    setModeText();
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener("resize", () => {
+    const {w,h} = getObsSizeFallback();
+    resize(w,h);
+  });
+
+  function pointerPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    return {x,y};
+  }
+
+  function drawAt(x, y) {
+    // Feather via shadow blur : donne un bord doux naturel
+    mctx.save();
+    mctx.globalCompositeOperation = reveal ? "destination-out" : "source-over";
+
+    // Dessin du pinceau
+    mctx.fillStyle = "rgba(0,0,0,1)";
+    mctx.shadowColor = "rgba(0,0,0,1)";
+    mctx.shadowBlur = feather;
+    mctx.beginPath();
+    mctx.arc(x, y, brush/2, 0, Math.PI*2);
+    mctx.fill();
+
+    mctx.restore();
+  }
+
+  canvas.addEventListener("pointerdown", (e) => {
+    drawing = true;
+    canvas.setPointerCapture(e.pointerId);
+    const {x,y} = pointerPos(e);
+    drawAt(x,y);
+  });
+
+  canvas.addEventListener("pointermove", (e) => {
+    if (!drawing) return;
+    const {x,y} = pointerPos(e);
+    drawAt(x,y);
+  });
+
+  canvas.addEventListener("pointerup", () => drawing = false);
+  canvas.addEventListener("pointercancel", () => drawing = false);
+
+  // Raccourcis clavier
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "e" || e.key === "E") { reveal = true; setModeText(); }
+    if (e.key === "f" || e.key === "F") { reveal = false; setModeText(); }
+    if (e.key === "r" || e.key === "R") {
+      mctx.globalCompositeOperation = "source-over";
+      mctx.fillStyle = "rgba(0,0,0,1)";
+      mctx.fillRect(0,0,mask.width,mask.height);
+    }
+    if (e.key === "[") brush = Math.max(10, brush - 10);
+    if (e.key === "]") brush = Math.min(300, brush + 10);
+  });
+
+  function renderFog() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // 1) Peindre la texture (tuilée) avec un alpha global
+    ctx.save();
+    ctx.globalAlpha = fogAlpha;
+
+    // Animer la texture en la décalant (drift)
+    ox = (ox + driftX) % tex.width;
+    oy = (oy + driftY) % tex.height;
+
+    // Remplissage tuilé
+    const pattern = ctx.createPattern(tex, "repeat");
+    ctx.translate(-ox, -oy);
+    ctx.fillStyle = pattern;
+    ctx.fillRect(ox, oy, canvas.width + tex.width, canvas.height + tex.height);
+    ctx.restore();
+
+    // 2) Appliquer le mask : on ne garde que les zones encore “fog”
+    //    En pratique: on utilise mask comme alpha (destination-in)
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-in";
+    ctx.drawImage(mask, 0, 0);
+    ctx.restore();
+
+    // 3) Petit “halo” sur la frontière révélée (optionnel, stylé)
+    //    On dessine le mask en mode screen très léger pour adoucir.
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = 0.10;
+    ctx.filter = "blur(6px)";
+    ctx.drawImage(mask, 0, 0);
+    ctx.restore();
+  }
+
+  function loop() {
+    renderFog();
+    requestAnimationFrame(loop);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

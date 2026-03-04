@@ -31,18 +31,19 @@ async function improvedInitiativeServer() {
 
   // --- HTTP (IPv4) : 8090 par défaut
   const defaultPort = Number(process.env.PORT) || 8090;
-  server.listen(defaultPort, "127.0.0.1", () => {
-    console.log(`HTTP listening on ${defaultPort} (IPv4)`);
+  server.listen(defaultPort, "0.0.0.0", () => {
+    console.log(`HTTP listening on ${defaultPort} (IPv4 - 0.0.0.0)`);
   });
 
   // ---------- WebSocket HUD dédié (port séparé) ----------
   const WS_PORT = Number(process.env.WS_PORT) || 8091;
   const wss = new WebSocketServer({
+    host: "0.0.0.0", // Support LAN connections
     port: WS_PORT,
     path: "/hud",
     perMessageDeflate: false,
   });
-  console.log(`WS /hud listening on ws://127.0.0.1:${WS_PORT}/hud`);
+  console.log(`WS /hud listening on ws://0.0.0.0:${WS_PORT}/hud`);
 
   // Registre de clients
   const clients = new Set<WebSocket>();

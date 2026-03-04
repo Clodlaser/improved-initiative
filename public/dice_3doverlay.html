@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dice 3D Overlay</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.0/umd/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: transparent;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .center-hud {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .result-card {
+            position: absolute;
+            width: 240px;
+            height: 130px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background:
+                radial-gradient(120% 120% at 30% 30%, rgba(255, 255, 255, .06) 0%, rgba(255, 255, 255, 0) 60%),
+                radial-gradient(60% 60% at 70% 80%, rgba(0, 0, 0, .35) 0%, rgba(0, 0, 0, 0) 60%),
+                linear-gradient(180deg, rgba(6, 12, 18, .95), rgba(6, 12, 18, .85));
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+            color: #fff;
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            backdrop-filter: blur(10px);
+            transform-origin: center center;
+        }
+
+        .center-hud.visible .result-card {
+            opacity: 1;
+        }
+
+        .card-bottom {
+            transform: translateY(80px) scale(0.5);
+        }
+
+        .center-hud.visible .card-bottom {
+            transform: translateY(80px) scale(1);
+        }
+
+        .card-top {
+            transform: translateY(-80px) rotate(180deg) scale(0.5);
+        }
+
+        .center-hud.visible .card-top {
+            transform: translateY(-80px) rotate(180deg) scale(1);
+        }
+
+        .card-left {
+            transform: translateX(-190px) rotate(90deg) scale(0.5);
+        }
+
+        .center-hud.visible .card-left {
+            transform: translateX(-190px) rotate(90deg) scale(1);
+        }
+
+        .card-right {
+            transform: translateX(190px) rotate(-90deg) scale(0.5);
+        }
+
+        .center-hud.visible .card-right {
+            transform: translateX(190px) rotate(-90deg) scale(1);
+        }
+
+        .total-value {
+            font-size: 64px;
+            font-weight: 800;
+            line-height: 1;
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3), 0 0 30px rgba(77, 163, 255, 0.5);
+            margin-bottom: 5px;
+        }
+
+        .details {
+            font-size: 15px;
+            color: #8faabf;
+            font-weight: 500;
+        }
+
+        .crit-label {
+            background: #2e7d32;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 800;
+            margin-top: 5px;
+            display: none;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .crit-label.fail {
+            background: #b71c1c;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="hud-container" class="center-hud">
+        <!-- Bottom -->
+        <div class="result-card card-bottom">
+            <div class="total-value"></div>
+            <div class="details"></div>
+            <div class="crit-label"></div>
+        </div>
+        <!-- Top -->
+        <div class="result-card card-top">
+            <div class="total-value"></div>
+            <div class="details"></div>
+            <div class="crit-label"></div>
+        </div>
+        <!-- Left -->
+        <div class="result-card card-left">
+            <div class="total-value"></div>
+            <div class="details"></div>
+            <div class="crit-label"></div>
+        </div>
+        <!-- Right -->
+        <div class="result-card card-right">
+            <div class="total-value"></div>
+            <div class="details"></div>
+            <div class="crit-label"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CONFIG & NETWORK ---
+        const qs = new URLSearchParams(location.search);
+        const WS_URL = qs.get("ws") || `ws://${location.hostname || "127.0.0.1"}:8091/hud`;
+        const ROOM = qs.get("room") || "session-1";
+
+        let ws, wsReady = false, bc = null;
+        function connectNetwork() {
+            try { ws = new WebSocket(WS_URL); } catch { openBC(); return; }
+            ws.onopen = () => wsReady = true;
+            ws.onclose = () => { wsReady = false; setTimeout(connectNetwork, 1000); if (!bc) openBC(); };
+            ws.onmessage = ev => handleMessage(JSON.parse(ev.data));
+        }
+        function openBC() {
+            if (bc) return;
+            try { bc = new BroadcastChannel("dice_room_" + ROOM); bc.onmessage = ev => handleMessage(ev.data); } catch (e) { }
+        }
+        connectNetwork();
+        setTimeout(() => { if (!wsReady && !bc) openBC(); }, 1200);
+
+        function handleMessage(msg) {
+            if (!msg || msg.type !== 'roll') return;
+            if (msg.room && msg.room !== ROOM) return;
+
+            let p = msg.payload || {};
+            if (p.formula && (p.faces == null || p.n == null)) {
+                const m = p.formula.match(/(\d*)d(\d+)([+-]\d+)?/i);
+                if (m) { p.n = parseInt(m[1] || '1', 10); p.faces = parseInt(m[2], 10); }
+            }
+            startRoll(p);
+        }
+
+        // --- 2. THREE.JS ENGINE ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 28, 12); // Slightly higher angle
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
+        renderer.setPixelRatio(1); // Force 1.0 for performance in OBS overlay
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambi = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambi);
+
+        const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+        dir.position.set(5, 20, 10);
+        dir.castShadow = true;
+        dir.shadow.mapSize.width = 1024;
+        dir.shadow.mapSize.height = 1024;
+        scene.add(dir);
+
+        const spot = new THREE.SpotLight(0xffffff, 0.5);
+        spot.position.set(-10, 20, -10);
+        spot.lookAt(0, 0, 0);
+        scene.add(spot);
+
+        // Invisible Floor
+        const floorGeo = new THREE.PlaneGeometry(100, 100);
+        const floorMat = new THREE.ShadowMaterial({ opacity: 0.25 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- 3. ASSETS & GEN ---
+
+        // Procedural Textures for realistic dice
+        function generateNoiseTexture() {
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const id = ctx.createImageData(size, size);
+            for (let i = 0; i < id.data.length; i += 4) {
+                const val = 120 + Math.random() * 50;
+                id.data[i] = val; id.data[i + 1] = val; id.data[i + 2] = val; id.data[i + 3] = 255;
+            }
+            ctx.putImageData(id, 0, 0);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+        const globalNoiseMap = generateNoiseTexture();
+
+        function createNormalMap(srcCanvas) {
+            const w = srcCanvas.width, h = srcCanvas.height;
+            const src = srcCanvas.getContext('2d').getImageData(0, 0, w, h).data;
+            const nCanvas = document.createElement('canvas');
+            nCanvas.width = w; nCanvas.height = h;
+            const nCtx = nCanvas.getContext('2d');
+            const nData = nCtx.createImageData(w, h);
+            const dst = nData.data;
+            const getH = (x, y) => {
+                x = Math.max(0, Math.min(w - 1, x));
+                y = Math.max(0, Math.min(h - 1, y));
+                return src[(y * w + x) * 4 + 3] / 255;
+            };
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    const i = (y * w + x) * 4;
+                    const dX = (getH(x + 1, y - 1) + 2 * getH(x + 1, y) + getH(x + 1, y + 1)) - (getH(x - 1, y - 1) + 2 * getH(x - 1, y) + getH(x - 1, y + 1));
+                    const dY = (getH(x - 1, y + 1) + 2 * getH(x, y + 1) + getH(x + 1, y + 1)) - (getH(x - 1, y - 1) + 2 * getH(x, y - 1) + getH(x + 1, y - 1));
+                    const v = new THREE.Vector3(-dX, -dY, 0.5).normalize();
+                    dst[i] = (v.x * 0.5 + 0.5) * 255; dst[i + 1] = (v.y * 0.5 + 0.5) * 255;
+                    dst[i + 2] = (v.z * 0.5 + 0.5) * 255; dst[i + 3] = 255;
+                }
+            }
+            nCtx.putImageData(nData, 0, 0);
+            return new THREE.CanvasTexture(nCanvas);
+        }
+
+        // High Contrast Texture with Normal Map
+        function createTextTexture(text) {
+            const canvas = document.createElement('canvas');
+            const size = 256;
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 160px Arial';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 14;
+            ctx.strokeText(text, size / 2, size / 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(text, size / 2, size / 2);
+
+            const colorTex = new THREE.CanvasTexture(canvas);
+            colorTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            const normalTex = createNormalMap(canvas);
+            return { color: colorTex, normal: normalTex };
+        }
+
+        function createDie(faces, resultValue) {
+            const size = 1.6;
+
+            // Procedural geometry for all dice
+            let geometry, color = 0xeeeeee;
+            switch (faces) {
+                case 4: geometry = new THREE.TetrahedronGeometry(size); color = 0xff4444; break;
+                case 6: geometry = new THREE.BoxGeometry(size, size, size); color = 0x4488ff; break;
+                case 8: geometry = new THREE.OctahedronGeometry(size); color = 0x44ff44; break;
+                case 10: geometry = new THREE.IcosahedronGeometry(size); color = 0xaa44ff; break;
+                case 12: geometry = new THREE.DodecahedronGeometry(size); color = 0xffaa44; break;
+                case 20: geometry = new THREE.IcosahedronGeometry(size); color = 0xff44aa; break;
+                default: geometry = new THREE.DodecahedronGeometry(size);
+            }
+
+            const material = new THREE.MeshPhysicalMaterial({
+                color: color,
+                metalness: 0.1,
+                roughness: 0.2,
+                roughnessMap: globalNoiseMap,
+                transmission: 0.0,
+                reflectivity: 0.5,
+                clearcoat: 0.8,
+                clearcoatRoughness: 0.1
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
+            // Add highlighted edges
+            const edges = new THREE.EdgesGeometry(geometry, 15); // threshold angle
+            const edgeMaterial = new THREE.LineBasicMaterial({
+                color: 0xffffff,
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.6
+            });
+            const edgeLines = new THREE.LineSegments(edges, edgeMaterial);
+            mesh.add(edgeLines);
+
+            // --- Robust Face Detection ---
+            mesh.geometry = mesh.geometry.toNonIndexed();
+            const pos = mesh.geometry.attributes.position;
+            const count = pos.count / 3;
+
+            // Group tris by plane (Normal + Constant)
+            const groups = [];
+
+            for (let i = 0; i < count; i++) {
+                // Get vertices
+                const a = new THREE.Vector3().fromBufferAttribute(pos, i * 3 + 0);
+                const b = new THREE.Vector3().fromBufferAttribute(pos, i * 3 + 1);
+                const c = new THREE.Vector3().fromBufferAttribute(pos, i * 3 + 2);
+
+                const center = new THREE.Vector3().addVectors(a, b).add(c).divideScalar(3);
+                // Compute Face Normal
+                const triNormal = new THREE.Vector3().crossVectors(new THREE.Vector3().subVectors(b, a), new THREE.Vector3().subVectors(c, a)).normalize();
+
+                // Find matching group
+                // Two planes are same if normals are parallel and they contain the same point (projected dist is same)
+                let found = null;
+                for (let g of groups) {
+                    // Check normal alignment (> 0.99)
+                    if (g.normal.dot(triNormal) > 0.95) {
+                        // Check coplanar: projected distance of center onto group normal
+                        // Plane eq: N.P = d
+                        const d1 = g.normal.dot(g.center);
+                        const d2 = g.normal.dot(center);
+                        if (Math.abs(d1 - d2) < 0.1) {
+                            found = g;
+                            break;
+                        }
+                    }
+                }
+
+                if (found) {
+                    found.tris.push(center);
+                    // Update average center
+                    found.center = new THREE.Vector3();
+                    found.tris.forEach(v => found.center.add(v));
+                    found.center.divideScalar(found.tris.length);
+                } else {
+                    groups.push({ normal: triNormal, center: center, tris: [center] });
+                }
+            }
+
+            // Assign Numbers
+            // Filter groups? Standard shapes should be clean.
+            // D10 (Octahedron) has 8 faces. If faces=10, we have an issue. 
+            // Workaround: If D10 and we are using Oct geometry, we only have 8 faces.
+            // Hack: If faces=10, use Icosahedron geometry (20 faces) logically, but visually?
+            // User script uses Standard Geometries.
+            // Let's stick strictly to labeling found groups.
+
+            // If we have fewer groups than faces (e.g. D10 requested but Oct geometry = 8 faces), we wrap.
+            // If we have more groups (Sphere?), we clamp.
+
+            const numberMap = [];
+            // Shuffle groups to randomize? No need.
+
+            groups.forEach((g, idx) => {
+                // Determine number
+                let numVal = (idx % faces) + 1;
+
+                // Only label if valid for dice type
+                // (e.g. don't put 9 on a D8)
+                if (idx >= faces && faces !== 10) return; // Special case D10 can double up on D20 geo if used
+
+                // Create Decal with Normal Map for engraved effect
+                const textures = createTextTexture(numVal.toString());
+                const decalGeo = new THREE.PlaneGeometry(0.8, 0.8);
+                const decalMat = new THREE.MeshStandardMaterial({
+                    map: textures.color,
+                    normalMap: textures.normal,
+                    normalScale: new THREE.Vector2(1.5, 1.5),
+                    transparent: true,
+                    depthTest: true,
+                    depthWrite: false,
+                    side: THREE.FrontSide,
+                    roughness: 0.4,
+                    metalness: 0.1
+                });
+                const decal = new THREE.Mesh(decalGeo, decalMat);
+
+                // Position slightly off surface
+                decal.position.copy(g.center).add(g.normal.clone().multiplyScalar(0.02));
+                decal.lookAt(new THREE.Vector3().addVectors(decal.position, g.normal));
+
+                mesh.add(decal);
+                numberMap.push({ num: numVal, normal: g.normal.clone() });
+            });
+
+            return { mesh, numberMap };
+        }
+
+        // --- 4. PHYSICS & LOOP ---
+        let dice = [];
+        let isSimulating = false;
+        let rollStart = 0;
+        let cleanupTimer = null;
+        const GRAVITY = -70; // Faster fall
+
+        function startRoll(payload) {
+            // Cancel pending cleanup to prevent removing new dice
+            if (cleanupTimer) {
+                clearTimeout(cleanupTimer);
+                cleanupTimer = null;
+            }
+
+            // Reset
+            dice.forEach(d => scene.remove(d.mesh));
+            dice = [];
+
+            const overlay = document.getElementById('hud-container');
+            overlay.classList.remove('visible');
+            overlay.style.transitionDelay = '0s';
+
+            let n = payload.n || 1;
+            let faces = payload.faces || 6;
+
+            let geoUsed = faces;
+
+            // Random throw direction (left or right)
+            const throwFromLeft = Math.random() > 0.5;
+            const dirSign = throwFromLeft ? 1 : -1;
+
+            for (let i = 0; i < n; i++) {
+                const res = payload.rolls[i];
+                const d = createDie(geoUsed, res);
+
+                // Physics Init - thrown from random side with spin and spread
+                const startX = dirSign * (-12 - i * 1.5); // More spread between dice
+                const startZ = (Math.random() - 0.5) * 6;
+                d.pos = new THREE.Vector3(startX, 6 + Math.random() * 3, startZ);
+                d.vel = new THREE.Vector3(
+                    dirSign * (18 + Math.random() * 6), // Horizontal velocity toward center
+                    3 + Math.random() * 2,
+                    (Math.random() - 0.5) * 6
+                );
+                d.rot = new THREE.Euler(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+                d.rotVel = new THREE.Vector3(
+                    (Math.random() - 0.5) * 25,
+                    (Math.random() - 0.5) * 25,
+                    (Math.random() - 0.5) * 25
+                );
+
+                // Identify target normal
+                const validFaces = d.numberMap.filter(x => x.num == res);
+                if (validFaces.length === 0) {
+                    console.warn(`No face found for result ${res} on D${faces}. Groups: ${d.numberMap.length}`);
+                    // Fallback to random face to avoid vertex-up weirdness
+                    d.targetNormal = d.numberMap.length > 0 ? d.numberMap[0].normal : new THREE.Vector3(0, 1, 0);
+                } else {
+                    console.log(`Targeting result ${res} on D${faces} (Faces found: ${validFaces.length})`);
+                    d.targetNormal = validFaces[0].normal;
+                }
+
+                d.mesh.position.copy(d.pos);
+                d.mesh.rotation.copy(d.rot);
+                scene.add(d.mesh);
+                dice.push(d);
+            }
+
+            isSimulating = true;
+            rollStart = Date.now();
+
+            setTimeout(() => showResult(payload), 800); // Faster result display
+        }
+
+        let lastTime = Date.now();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const now = Date.now();
+            let dt = (now - lastTime) / 1000;
+            lastTime = now;
+            if (dt > 0.1) dt = 0.1;
+
+            if (isSimulating) {
+                const age = now - rollStart;
+                const physicsActive = age < 700; // Faster settle
+
+                dice.forEach(d => {
+                    const m = d.mesh;
+
+                    if (physicsActive) {
+                        // Physics
+                        d.vel.y += GRAVITY * dt;
+
+                        // Walls - wider area
+                        if (d.pos.x > 10) { d.pos.x = 10; d.vel.x *= -0.4; }
+                        if (d.pos.x < -10) { d.pos.x = -10; d.vel.x *= -0.4; }
+                        if (d.pos.z > 6) { d.pos.z = 6; d.vel.z *= -0.4; }
+                        if (d.pos.z < -6) { d.pos.z = -6; d.vel.z *= -0.4; }
+
+                        // Ground collision with rolling effect
+                        if (d.pos.y < 1.0) {
+                            d.pos.y = 1.0;
+                            d.vel.y *= -0.25; // Less vertical bounce
+
+                            // Rolling: convert horizontal velocity to rotation
+                            const speed = Math.sqrt(d.vel.x * d.vel.x + d.vel.z * d.vel.z);
+                            if (speed > 0.5) {
+                                // Add rotation based on movement direction
+                                d.rotVel.x += d.vel.z * 0.8;
+                                d.rotVel.z -= d.vel.x * 0.8;
+                            }
+
+                            // Friction
+                            d.vel.x *= 0.92; d.vel.z *= 0.92;
+                            d.rotVel.multiplyScalar(0.95);
+                        }
+
+                        // Collisions between dice - improved separation
+                        for (let j = 0; j < dice.length; j++) {
+                            const other = dice[j];
+                            if (d === other) continue;
+                            const diff = new THREE.Vector3().subVectors(d.pos, other.pos);
+                            const dist = diff.length();
+                            const minDist = 2.8; // Slightly larger collision radius
+
+                            if (dist < minDist && dist > 0.001) {
+                                // Push dice apart more strongly
+                                const overlap = (minDist - dist) * 0.6;
+                                const norm = diff.clone().normalize();
+                                d.pos.addScaledVector(norm, overlap);
+                                other.pos.addScaledVector(norm, -overlap);
+
+                                // Velocity exchange
+                                const relVel = new THREE.Vector3().subVectors(d.vel, other.vel);
+                                const velAlongNormal = relVel.dot(norm);
+                                if (velAlongNormal < 0) {
+                                    const restitution = 0.6;
+                                    const jVal = -(1 + restitution) * velAlongNormal * 0.5;
+                                    d.vel.addScaledVector(norm, jVal);
+                                    other.vel.addScaledVector(norm, -jVal);
+
+                                    // Add spin on collision
+                                    d.rotVel.add(new THREE.Vector3(
+                                        (Math.random() - 0.5) * 8,
+                                        (Math.random() - 0.5) * 8,
+                                        (Math.random() - 0.5) * 8
+                                    ));
+                                }
+                            }
+                        }
+
+                        d.pos.addScaledVector(d.vel, dt);
+                        m.rotation.x += d.rotVel.x * dt;
+                        m.rotation.y += d.rotVel.y * dt;
+                        m.rotation.z += d.rotVel.z * dt;
+                        m.position.copy(d.pos);
+
+                    } else {
+                        // Orient to result
+                        if (!d.targetQ) {
+                            const up = new THREE.Vector3(0, 1, 0);
+                            const alignQ = new THREE.Quaternion().setFromUnitVectors(d.targetNormal, up);
+                            d.targetQ = alignQ;
+                        }
+                        m.quaternion.slerp(d.targetQ, 0.15);
+                        m.position.y = THREE.MathUtils.lerp(m.position.y, 1.0, 0.2);
+                    }
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        function showResult(payload) {
+            const overlay = document.getElementById('hud-container');
+
+            const totalText = payload.total;
+            const modTxt = payload.mod ? (payload.mod > 0 ? `+${payload.mod}` : payload.mod) : '';
+            const detailsText = `${payload.n}d${payload.faces}${modTxt} · [${payload.rolls.join(', ')}]`;
+
+            let critType = "";
+            let critText = "";
+
+            if (payload.faces === 20 && payload.n === 1) {
+                if (payload.rolls[0] === 20) {
+                    critType = "crit"; critText = "CRITIQUE";
+                } else if (payload.rolls[0] === 1) {
+                    critType = "fail"; critText = "ECHEC";
+                }
+            }
+
+            document.querySelectorAll('.result-card').forEach(card => {
+                card.querySelector('.total-value').textContent = totalText;
+                card.querySelector('.details').textContent = detailsText;
+
+                const cb = card.querySelector('.crit-label');
+                if (critType) {
+                    cb.textContent = critText;
+                    cb.style.display = 'block';
+                    cb.className = "crit-label " + (critType === 'fail' ? 'fail' : '');
+                } else {
+                    cb.style.display = 'none';
+                }
+            });
+
+            overlay.classList.add('visible');
+
+            cleanupTimer = setTimeout(() => {
+                overlay.classList.remove('visible');
+                setTimeout(() => {
+                    if (!cleanupTimer) return;
+                    dice.forEach(d => scene.remove(d.mesh));
+                    dice = [];
+                    isSimulating = false;
+                    cleanupTimer = null;
+                }, 500);
+            }, 5000);
+        }
+    </script>
+</body>
+
+</html>

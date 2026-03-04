@@ -343,7 +343,7 @@ function getHPStyle(props: CombatantRowProps) {
 function renderHPText(props: CombatantRowProps) {
   const maxHP = props.combatantState.StatBlock.HP.Value;
   if (props.combatantState.TemporaryHP) {
-    return `${props.combatantState.CurrentHP}+${props.combatantState.TemporaryHP}/${maxHP}`;
+    return `${props.combatantState.CurrentHP}/${maxHP} (+${props.combatantState.TemporaryHP})`;
   } else {
     return `${props.combatantState.CurrentHP}/${maxHP}`;
   }
