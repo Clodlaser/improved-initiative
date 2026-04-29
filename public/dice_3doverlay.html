@@ -130,6 +130,95 @@
         .crit-label.fail {
             background: #b71c1c;
         }
+
+        /* ---- Heal Notification Cards (mirrors result-card layout) ---- */
+        #heal-hud {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .heal-card {
+            position: absolute;
+            width: 240px;
+            height: 130px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            background:
+                radial-gradient(120% 120% at 30% 30%, rgba(74, 222, 128, .08) 0%, rgba(255, 255, 255, 0) 60%),
+                radial-gradient(60% 60% at 70% 80%, rgba(0, 0, 0, .35) 0%, rgba(0, 0, 0, 0) 60%),
+                linear-gradient(180deg, rgba(4, 18, 10, .96), rgba(6, 18, 12, .86));
+            border: 2px solid rgba(74, 222, 128, 0.25);
+            border-radius: 16px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(74, 222, 128, 0.15);
+            color: #fff;
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            backdrop-filter: blur(10px);
+            transform-origin: center center;
+        }
+
+        #heal-hud.visible .heal-card {
+            opacity: 1;
+        }
+
+        .heal-card-bottom {
+            transform: translateY(80px) scale(0.5);
+        }
+
+        #heal-hud.visible .heal-card-bottom {
+            transform: translateY(80px) scale(1);
+        }
+
+        .heal-card-top {
+            transform: translateY(-80px) rotate(180deg) scale(0.5);
+        }
+
+        #heal-hud.visible .heal-card-top {
+            transform: translateY(-80px) rotate(180deg) scale(1);
+        }
+
+        .heal-card-left {
+            transform: translateX(-190px) rotate(90deg) scale(0.5);
+        }
+
+        #heal-hud.visible .heal-card-left {
+            transform: translateX(-190px) rotate(90deg) scale(1);
+        }
+
+        .heal-card-right {
+            transform: translateX(190px) rotate(-90deg) scale(0.5);
+        }
+
+        #heal-hud.visible .heal-card-right {
+            transform: translateX(190px) rotate(-90deg) scale(1);
+        }
+
+        .heal-amount {
+            font-size: 56px;
+            font-weight: 800;
+            line-height: 1;
+            color: #4ade80;
+            text-shadow: 0 0 15px rgba(74, 222, 128, 0.5), 0 0 30px rgba(74, 222, 128, 0.3);
+        }
+
+        .heal-label {
+            font-size: 13px;
+            color: #86efac;
+            font-weight: 600;
+            text-align: center;
+            letter-spacing: 0.3px;
+        }
     </style>
 </head>
 
@@ -162,6 +251,26 @@
         </div>
     </div>
 
+    <!-- Heal Notification Cards -->
+    <div id="heal-hud">
+        <div class="heal-card heal-card-bottom">
+            <div class="heal-amount" id="heal-amount-b">+50 PV</div>
+            <div class="heal-label" id="heal-label-b">soins sur Joueur</div>
+        </div>
+        <div class="heal-card heal-card-top">
+            <div class="heal-amount" id="heal-amount-t">+50 PV</div>
+            <div class="heal-label" id="heal-label-t">soins sur Joueur</div>
+        </div>
+        <div class="heal-card heal-card-left">
+            <div class="heal-amount" id="heal-amount-l">+50 PV</div>
+            <div class="heal-label" id="heal-label-l">soins sur Joueur</div>
+        </div>
+        <div class="heal-card heal-card-right">
+            <div class="heal-amount" id="heal-amount-r">+50 PV</div>
+            <div class="heal-label" id="heal-label-r">soins sur Joueur</div>
+        </div>
+    </div>
+
     <script>
         // --- 1. CONFIG & NETWORK ---
         const qs = new URLSearchParams(location.search);
@@ -183,7 +292,13 @@
         setTimeout(() => { if (!wsReady && !bc) openBC(); }, 1200);
 
         function handleMessage(msg) {
-            if (!msg || msg.type !== 'roll') return;
+            if (!msg) return;
+            if (msg.type === 'heal_notification') {
+                if (msg.room && msg.room !== ROOM) return;
+                showHealBanner(msg.amount, msg.target);
+                return;
+            }
+            if (msg.type !== 'roll') return;
             if (msg.room && msg.room !== ROOM) return;
 
             let p = msg.payload || {};
@@ -192,6 +307,20 @@
                 if (m) { p.n = parseInt(m[1] || '1', 10); p.faces = parseInt(m[2], 10); }
             }
             startRoll(p);
+        }
+
+        let healBannerTimer = null;
+        function showHealBanner(amount, target) {
+            const hud = document.getElementById('heal-hud');
+            const amtText = `+${amount} PV`;
+            const lblText = `soins sur ${target}`;
+            ['b', 't', 'l', 'r'].forEach(k => {
+                document.getElementById('heal-amount-' + k).textContent = amtText;
+                document.getElementById('heal-label-' + k).textContent = lblText;
+            });
+            hud.classList.add('visible');
+            clearTimeout(healBannerTimer);
+            healBannerTimer = setTimeout(() => hud.classList.remove('visible'), 4500);
         }
 
         // --- 2. THREE.JS ENGINE ---
@@ -307,19 +436,127 @@
             return { color: colorTex, normal: normalTex };
         }
 
+        // Canvas texture: die-color background + elegant engraved number
+        function createD10FaceTex(numStr) {
+            const S = 512;
+            const c = document.createElement('canvas');
+            c.width = c.height = S;
+            const ctx = c.getContext('2d');
+            // Background gradient to add depth
+            const grad = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S * 0.6);
+            grad.addColorStop(0, '#9933ee');
+            grad.addColorStop(1, '#5511aa');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, S, S);
+            // Subtle shadow below number
+            ctx.shadowColor = 'rgba(0,0,0,0.6)';
+            ctx.shadowBlur = 12;
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = 4;
+            // Number – smaller, clean, elegant
+            const fs = Math.round(S * 0.32);
+            ctx.font = `800 ${fs}px Georgia, serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(numStr, S / 2, S * 0.5);
+            ctx.shadowColor = 'transparent';
+            // Thin highlight stroke
+            ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+            ctx.lineWidth = 2;
+            ctx.strokeText(numStr, S / 2, S * 0.5);
+            return new THREE.CanvasTexture(c);
+        }
+
+        // D10 pentagonal trapezohedron with UV-mapped per-face textures
+        // h=0.105572809 ensures flat kite faces; r_eq=sqrt(1-h²)
+        function createD10Data(radius) {
+            const H = 0.105572809;
+            const REQ = Math.sqrt(1 - H * H);
+            const hy = H * radius;
+            const req = REQ * radius;
+
+            const T = new THREE.Vector3(0, radius, 0);
+            const B = new THREE.Vector3(0, -radius, 0);
+
+            const upper = [], lower = [];
+            for (let i = 0; i < 5; i++) {
+                const a = i * (2 * Math.PI / 5);
+                upper.push(new THREE.Vector3(req * Math.cos(a), hy, req * Math.sin(a)));
+            }
+            for (let i = 0; i < 5; i++) {
+                const a = i * (2 * Math.PI / 5) + Math.PI / 5;
+                lower.push(new THREE.Vector3(req * Math.cos(a), -hy, req * Math.sin(a)));
+            }
+
+            // UVs for kite diamond: tip top, tail bottom, wings left/right
+            // tip=(0.5,0.95) wingL=(0.05,0.5) tail=(0.5,0.05) wingR=(0.95,0.5)
+            const UV = { tip: [0.5, 0.95], wL: [0.05, 0.5], tail: [0.5, 0.05], wR: [0.95, 0.5] };
+
+            const pos = [], uvArr = [], facesData = [];
+
+            function pushV(v, uv) { pos.push(v.x, v.y, v.z); uvArr.push(uv[0], uv[1]); }
+
+            function addKite(tip, wingL, tail, wingR, flipWinding, isTop) {
+                if (flipWinding) {
+                    // Tri1: tip, wingL, tail
+                    pushV(tip, UV.tip); pushV(wingL, UV.wL); pushV(tail, UV.tail);
+                    // Tri2: tip, tail, wingR
+                    pushV(tip, UV.tip); pushV(tail, UV.tail); pushV(wingR, UV.wR);
+                } else {
+                    // Tri1: tip, tail, wingL
+                    pushV(tip, UV.tip); pushV(tail, UV.tail); pushV(wingL, UV.wL);
+                    // Tri2: tip, wingR, tail
+                    pushV(tip, UV.tip); pushV(wingR, UV.wR); pushV(tail, UV.tail);
+                }
+
+                const center = new THREE.Vector3().add(tip).add(wingL).add(tail).add(wingR).divideScalar(4);
+                // Use first tri winding to get outward normal
+                const triA = flipWinding ? [tip, wingL, tail] : [tip, tail, wingL];
+                const n = new THREE.Vector3().crossVectors(
+                    new THREE.Vector3().subVectors(triA[1], triA[0]),
+                    new THREE.Vector3().subVectors(triA[2], triA[0])
+                ).normalize();
+                if (n.dot(center) < 0) n.negate();
+                facesData.push({ center: center.clone(), normal: n, top: isTop });
+            }
+
+            // Top 5: tip=T, wingL=upper[i], tail=lower[i], wingR=upper[(i+1)%5], outward winding=non-flip
+            for (let i = 0; i < 5; i++)
+                addKite(T, upper[i], lower[i], upper[(i + 1) % 5], false, true);
+            // Bottom 5: tip=B, wingL=lower[i], tail=upper[(i+1)%5], wingR=lower[(i+1)%5], outward winding=flip
+            for (let i = 0; i < 5; i++)
+                addKite(B, lower[i], upper[(i + 1) % 5], lower[(i + 1) % 5], true, false);
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvArr, 2));
+            geo.computeVertexNormals();
+            for (let i = 0; i < 10; i++) geo.addGroup(i * 6, 6, i);
+
+            return { geometry: geo, facesData };
+        }
+
         function createDie(faces, resultValue) {
             const size = 1.6;
 
             // Procedural geometry for all dice
             let geometry, color = 0xeeeeee;
-            switch (faces) {
-                case 4: geometry = new THREE.TetrahedronGeometry(size); color = 0xff4444; break;
-                case 6: geometry = new THREE.BoxGeometry(size, size, size); color = 0x4488ff; break;
-                case 8: geometry = new THREE.OctahedronGeometry(size); color = 0x44ff44; break;
-                case 10: geometry = new THREE.IcosahedronGeometry(size); color = 0xaa44ff; break;
-                case 12: geometry = new THREE.DodecahedronGeometry(size); color = 0xffaa44; break;
-                case 20: geometry = new THREE.IcosahedronGeometry(size); color = 0xff44aa; break;
-                default: geometry = new THREE.DodecahedronGeometry(size);
+            let d10FaceData = null;
+            if (faces === 10) {
+                const d10 = createD10Data(size);
+                geometry = d10.geometry;
+                d10FaceData = d10.facesData;
+                color = 0xaa44ff;
+            } else {
+                switch (faces) {
+                    case 4: geometry = new THREE.TetrahedronGeometry(size); color = 0xff4444; break;
+                    case 6: geometry = new THREE.BoxGeometry(size, size, size); color = 0x4488ff; break;
+                    case 8: geometry = new THREE.OctahedronGeometry(size); color = 0x44ff44; break;
+                    case 12: geometry = new THREE.DodecahedronGeometry(size); color = 0xffaa44; break;
+                    case 20: geometry = new THREE.IcosahedronGeometry(size); color = 0xff44aa; break;
+                    default: geometry = new THREE.DodecahedronGeometry(size);
+                }
             }
 
             const material = new THREE.MeshPhysicalMaterial({
@@ -338,7 +575,7 @@
             mesh.receiveShadow = true;
 
             // Add highlighted edges
-            const edges = new THREE.EdgesGeometry(geometry, 15); // threshold angle
+            const edges = new THREE.EdgesGeometry(geometry, 15);
             const edgeMaterial = new THREE.LineBasicMaterial({
                 color: 0xffffff,
                 linewidth: 2,
@@ -348,97 +585,94 @@
             const edgeLines = new THREE.LineSegments(edges, edgeMaterial);
             mesh.add(edgeLines);
 
-            // --- Robust Face Detection ---
-            mesh.geometry = mesh.geometry.toNonIndexed();
-            const pos = mesh.geometry.attributes.position;
-            const count = pos.count / 3;
+            const numberMap = [];
 
-            // Group tris by plane (Normal + Constant)
-            const groups = [];
+            if (d10FaceData) {
+                // D10: one material per kite face with UV-baked number texture
+                // Interleave top/bottom: 1,2,3,...,10 (top then bottom alternating)
+                const topFaces = d10FaceData.filter(f => f.top);
+                const botFaces = d10FaceData.filter(f => !f.top);
+                const ordered = [];
+                for (let i = 0; i < 5; i++) { ordered.push(topFaces[i]); ordered.push(botFaces[i]); }
 
-            for (let i = 0; i < count; i++) {
-                // Get vertices
-                const a = new THREE.Vector3().fromBufferAttribute(pos, i * 3 + 0);
-                const b = new THREE.Vector3().fromBufferAttribute(pos, i * 3 + 1);
-                const c = new THREE.Vector3().fromBufferAttribute(pos, i * 3 + 2);
+                const materials = ordered.map((f, idx) => {
+                    const num = idx + 1;
+                    const tex = createD10FaceTex(num.toString());
+                    numberMap.push({ num, normal: f.normal.clone() });
+                    return new THREE.MeshPhysicalMaterial({
+                        map: tex,
+                        metalness: 0.15,
+                        roughness: 0.25,
+                        clearcoat: 0.9,
+                        clearcoatRoughness: 0.1
+                    });
+                });
 
-                const center = new THREE.Vector3().addVectors(a, b).add(c).divideScalar(3);
-                // Compute Face Normal
-                const triNormal = new THREE.Vector3().crossVectors(new THREE.Vector3().subVectors(b, a), new THREE.Vector3().subVectors(c, a)).normalize();
+                // Remap group materialIndex to match interleaved order
+                const geoGroupOrder = [];
+                for (let i = 0; i < 5; i++) { geoGroupOrder.push(i); geoGroupOrder.push(5 + i); }
+                geometry.groups.forEach((g, gIdx) => { g.materialIndex = geoGroupOrder.indexOf(gIdx); });
 
-                // Find matching group
-                // Two planes are same if normals are parallel and they contain the same point (projected dist is same)
-                let found = null;
-                for (let g of groups) {
-                    // Check normal alignment (> 0.99)
-                    if (g.normal.dot(triNormal) > 0.95) {
-                        // Check coplanar: projected distance of center onto group normal
-                        // Plane eq: N.P = d
-                        const d1 = g.normal.dot(g.center);
-                        const d2 = g.normal.dot(center);
-                        if (Math.abs(d1 - d2) < 0.1) {
-                            found = g;
-                            break;
+                const d10Mesh = new THREE.Mesh(geometry, materials);
+                d10Mesh.castShadow = true;
+                d10Mesh.receiveShadow = true;
+                const edges = new THREE.EdgesGeometry(geometry, 5);
+                d10Mesh.add(new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 })));
+                return { mesh: d10Mesh, numberMap };
+            } else {
+                // Generic face detection for other dice
+                mesh.geometry = mesh.geometry.toNonIndexed();
+                const pos = mesh.geometry.attributes.position;
+                const count = pos.count / 3;
+
+                const groups = [];
+                for (let i = 0; i < count; i++) {
+                    const a = new THREE.Vector3().fromBufferAttribute(pos, i * 3 + 0);
+                    const b = new THREE.Vector3().fromBufferAttribute(pos, i * 3 + 1);
+                    const c = new THREE.Vector3().fromBufferAttribute(pos, i * 3 + 2);
+                    const center = new THREE.Vector3().addVectors(a, b).add(c).divideScalar(3);
+                    const triNormal = new THREE.Vector3().crossVectors(new THREE.Vector3().subVectors(b, a), new THREE.Vector3().subVectors(c, a)).normalize();
+                    let found = null;
+                    for (let g of groups) {
+                        if (g.normal.dot(triNormal) > 0.95) {
+                            const d1 = g.normal.dot(g.center);
+                            const d2 = g.normal.dot(center);
+                            if (Math.abs(d1 - d2) < 0.1) { found = g; break; }
                         }
+                    }
+                    if (found) {
+                        found.tris.push(center);
+                        found.center = new THREE.Vector3();
+                        found.tris.forEach(v => found.center.add(v));
+                        found.center.divideScalar(found.tris.length);
+                    } else {
+                        groups.push({ normal: triNormal, center: center, tris: [center] });
                     }
                 }
 
-                if (found) {
-                    found.tris.push(center);
-                    // Update average center
-                    found.center = new THREE.Vector3();
-                    found.tris.forEach(v => found.center.add(v));
-                    found.center.divideScalar(found.tris.length);
-                } else {
-                    groups.push({ normal: triNormal, center: center, tris: [center] });
-                }
-            }
-
-            // Assign Numbers
-            // Filter groups? Standard shapes should be clean.
-            // D10 (Octahedron) has 8 faces. If faces=10, we have an issue. 
-            // Workaround: If D10 and we are using Oct geometry, we only have 8 faces.
-            // Hack: If faces=10, use Icosahedron geometry (20 faces) logically, but visually?
-            // User script uses Standard Geometries.
-            // Let's stick strictly to labeling found groups.
-
-            // If we have fewer groups than faces (e.g. D10 requested but Oct geometry = 8 faces), we wrap.
-            // If we have more groups (Sphere?), we clamp.
-
-            const numberMap = [];
-            // Shuffle groups to randomize? No need.
-
-            groups.forEach((g, idx) => {
-                // Determine number
-                let numVal = (idx % faces) + 1;
-
-                // Only label if valid for dice type
-                // (e.g. don't put 9 on a D8)
-                if (idx >= faces && faces !== 10) return; // Special case D10 can double up on D20 geo if used
-
-                // Create Decal with Normal Map for engraved effect
-                const textures = createTextTexture(numVal.toString());
-                const decalGeo = new THREE.PlaneGeometry(0.8, 0.8);
-                const decalMat = new THREE.MeshStandardMaterial({
-                    map: textures.color,
-                    normalMap: textures.normal,
-                    normalScale: new THREE.Vector2(1.5, 1.5),
-                    transparent: true,
-                    depthTest: true,
-                    depthWrite: false,
-                    side: THREE.FrontSide,
-                    roughness: 0.4,
-                    metalness: 0.1
+                groups.forEach((g, idx) => {
+                    let numVal = (idx % faces) + 1;
+                    if (idx >= faces) return;
+                    const textures = createTextTexture(numVal.toString());
+                    const decalGeo = new THREE.PlaneGeometry(0.8, 0.8);
+                    const decalMat = new THREE.MeshStandardMaterial({
+                        map: textures.color,
+                        normalMap: textures.normal,
+                        normalScale: new THREE.Vector2(1.5, 1.5),
+                        transparent: true,
+                        depthTest: true,
+                        depthWrite: false,
+                        side: THREE.FrontSide,
+                        roughness: 0.4,
+                        metalness: 0.1
+                    });
+                    const decal = new THREE.Mesh(decalGeo, decalMat);
+                    decal.position.copy(g.center).add(g.normal.clone().multiplyScalar(0.02));
+                    decal.lookAt(new THREE.Vector3().addVectors(decal.position, g.normal));
+                    mesh.add(decal);
+                    numberMap.push({ num: numVal, normal: g.normal.clone() });
                 });
-                const decal = new THREE.Mesh(decalGeo, decalMat);
-
-                // Position slightly off surface
-                decal.position.copy(g.center).add(g.normal.clone().multiplyScalar(0.02));
-                decal.lookAt(new THREE.Vector3().addVectors(decal.position, g.normal));
-
-                mesh.add(decal);
-                numberMap.push({ num: numVal, normal: g.normal.clone() });
-            });
+            }
 
             return { mesh, numberMap };
         }

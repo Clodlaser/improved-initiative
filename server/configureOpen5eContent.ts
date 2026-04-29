@@ -26,8 +26,8 @@ export async function configureOpen5eContent(
   const includeSpellFields =
     "name,slug,level,school,document__title,document__slug";
 
-  const monstersSourceUrl = `https://api.open5e.com/monsters/?limit=500&fields=${includeMonsterFields}`;
-  const spellsSourceUrl = `https://api.open5e.com/spells/?limit=500&fields=${includeSpellFields}`;
+  const monstersSourceUrl = `https://api.open5e.com/v1/monsters/?limit=500&fields=${includeMonsterFields}`;
+  const spellsSourceUrl = `https://api.open5e.com/v1/spells/?limit=500&fields=${includeSpellFields}`;
 
   console.log("Loading Open5e monsters");
   const monsterListingsBySource = await getAllListings(
@@ -113,7 +113,7 @@ function getMetaForMonster(r: any): ListingMeta {
     Id: "open5e-" + r.slug,
     Name: r.name,
     Path: "",
-    Link: `https://api.open5e.com/monsters/${r.slug}`,
+    Link: `https://api.open5e.com/v1/monsters/${r.slug}`,
     LastUpdateMs: 0,
     SearchHint: `${r.name} ${r.type} ${r.subtype} ${r.alignment}`
       .toLocaleLowerCase()
@@ -132,7 +132,7 @@ function getMetaForSpell(r: any): ListingMeta {
     Id: "open5e-spell-" + r.slug,
     Name: r.name,
     Path: "",
-    Link: `https://api.open5e.com/spells/${r.slug}`,
+    Link: `https://api.open5e.com/v1/spells/${r.slug}`,
     LastUpdateMs: 0,
     SearchHint: `${r.name} ${r.level} ${r.school}`
       .toLocaleLowerCase()

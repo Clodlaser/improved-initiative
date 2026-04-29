@@ -131,8 +131,7 @@ export default async function (
 
     session.encounterId = await playerViews.InitializeNew();
 
-    const renderOptions = getClientOptions(session);
-    return res.render("landing", renderOptions);
+    return res.redirect("/e/");
   });
 
   configureAffiliateRoutes(app);

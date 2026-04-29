@@ -64,11 +64,38 @@
             .dark .input-underline {
                 background-image: linear-gradient(to right, white 50%, transparent 50%);
             }
-            .nav-item.active {
+            .dark .nav-item.active {
                 @apply text-primary;
             }
             .nav-item.active .material-symbols-outlined {
                 font-variation-settings: 'FILL' 1;
+            }
+
+            @keyframes fadeInUp {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            
+            .active-view {
+                display: flex !important;
+                animation: fadeInUp 0.3s ease-out forwards;
+            }
+
+            @keyframes healTextPulse {
+                0% { color: #10b981; transform: scale(1.3); }
+                100% { transform: scale(1); }
+            }
+            @keyframes dmgTextPulse {
+                0% { color: #ef4444; transform: scale(1.3); }
+                100% { transform: scale(1); }
+            }
+            .animate-heal-pulse {
+                display: inline-block;
+                animation: healTextPulse 1s ease-out;
+            }
+            .animate-dmg-pulse {
+                display: inline-block;
+                animation: dmgTextPulse 1s ease-out;
             }
         }
     </style>
@@ -100,16 +127,27 @@
 
         <!-- COMBAT VIEW -->
         <div id="view-combat"
-            class="view-section hidden flex-col flex-1 w-full h-full bg-white dark:bg-slate-900 font-inter pb-20 md:pb-0">
+            class="view-section flex flex-col flex-1 w-full h-full bg-white dark:bg-slate-900 font-inter pb-20 md:pb-0">
             <header class="pt-8 px-6 pb-4 border-b-4 border-black dark:border-white flex-none">
                 <div class="flex justify-between items-start">
-                    <h1 class="text-4xl swiss-bold leading-[0.9] text-black dark:text-white uppercase tracking-tighter">
-                        Combat</h1>
-                    <div class="material-symbols-outlined text-4xl text-primary">swords</div>
-                </div>
-                <div class="flex justify-between items-end mt-4">
-                    <p id="uiRoundCounter" class="text-[10px] font-black tracking-widest uppercase opacity-60">ROUND 1
-                    </p>
+                    <div class="flex flex-col">
+                        <div class="flex items-center gap-2">
+                            <h1
+                                class="text-4xl swiss-bold leading-[0.9] text-black dark:text-white uppercase tracking-tighter">
+                                Combat</h1>
+                            <div class="material-symbols-outlined text-4xl text-primary">swords</div>
+                        </div>
+                        <p id="uiRoundCounter" class="text-[10px] font-black tracking-widest uppercase opacity-60 mt-2">
+                            ROUND 1</p>
+                    </div>
+                    <div class="flex gap-4 items-center">
+                        <button onclick="toggleDarkMode()"
+                            class="text-slate-400 hover:text-ink dark:hover:text-white transition-colors active:scale-95 flex items-center justify-center p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"><span
+                                class="material-symbols-outlined">light_mode</span></button>
+                        <button onclick="switchView('logs')"
+                            class="text-slate-400 hover:text-ink dark:hover:text-white transition-colors active:scale-95 flex items-center justify-center p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"><span
+                                class="material-symbols-outlined">receipt_long</span></button>
+                    </div>
                 </div>
             </header>
 
@@ -128,14 +166,23 @@
 
         <!-- HEALS VIEW (DEFAULT) -->
         <div id="view-heals"
-            class="view-section flex flex-col flex-1 w-full h-full pb-20 md:pb-0 bg-background-light dark:bg-background-dark font-inter">
+            class="view-section hidden flex flex-col flex-1 w-full h-full pb-20 md:pb-0 bg-background-light dark:bg-background-dark font-inter">
             <header
                 class="pt-8 px-6 pb-6 border-b-4 border-slate-900 dark:border-slate-100 flex-none bg-white dark:bg-background-dark z-10">
-                <div class="flex flex-col gap-1">
-                    <h1
-                        class="text-4xl font-black leading-[0.9] tracking-tighter uppercase text-slate-900 dark:text-slate-100">
-                        Soins
-                    </h1>
+                <div class="flex justify-between items-start">
+                    <div class="flex flex-col gap-1">
+                        <h1
+                            class="text-4xl font-black leading-[0.9] tracking-tighter uppercase text-slate-900 dark:text-slate-100">
+                            Soins</h1>
+                    </div>
+                    <div class="flex gap-4 items-center mt-1">
+                        <button onclick="toggleDarkMode()"
+                            class="text-slate-400 hover:text-ink dark:hover:text-white transition-colors active:scale-95 flex items-center justify-center p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"><span
+                                class="material-symbols-outlined">light_mode</span></button>
+                        <button onclick="switchView('logs')"
+                            class="text-slate-400 hover:text-ink dark:hover:text-white transition-colors active:scale-95 flex items-center justify-center p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"><span
+                                class="material-symbols-outlined">receipt_long</span></button>
+                    </div>
                 </div>
             </header>
 
@@ -167,10 +214,21 @@
         <div id="view-dice"
             class="view-section hidden flex-col flex-1 w-full h-full bg-white dark:bg-slate-900 font-inter pb-20 md:pb-0">
             <header class="pt-8 px-6 pb-4 border-b-4 border-black dark:border-white flex-none">
-                <div class="flex justify-between items-start md:justify-center md:gap-4">
-                    <h1 class="text-4xl swiss-bold leading-[0.9] text-black dark:text-white uppercase tracking-tighter">
-                        Dés</h1>
-                    <div class="material-symbols-outlined text-4xl text-primary">casino</div>
+                <div class="flex justify-between items-start md:justify-center md:gap-4 w-full">
+                    <div class="flex items-center gap-2">
+                        <h1
+                            class="text-4xl swiss-bold leading-[0.9] text-black dark:text-white uppercase tracking-tighter">
+                            Dés</h1>
+                        <div class="material-symbols-outlined text-4xl text-primary">casino</div>
+                    </div>
+                    <div class="flex gap-4 items-center md:absolute md:right-6">
+                        <button onclick="toggleDarkMode()"
+                            class="text-slate-400 hover:text-ink dark:hover:text-white transition-colors active:scale-95 flex items-center justify-center p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"><span
+                                class="material-symbols-outlined">light_mode</span></button>
+                        <button onclick="switchView('logs')"
+                            class="text-slate-400 hover:text-ink dark:hover:text-white transition-colors active:scale-95 flex items-center justify-center p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"><span
+                                class="material-symbols-outlined">receipt_long</span></button>
+                    </div>
                 </div>
             </header>
 
@@ -200,13 +258,13 @@
                     <!-- Dice Grid -->
                     <h2 class="text-xs font-black uppercase tracking-widest mb-2 text-black dark:text-white">Type de dés
                     </h2>
-                    <div class="grid grid-cols-4 swiss-grid mb-6">
+                    <div class="grid grid-cols-4 swiss-grid mb-6" id="diceTypeGrid">
                         <!-- D4 -->
                         <label class="aspect-square relative cursor-pointer swiss-grid-item group">
                             <input type="radio" name="dice_type" value="4" class="peer absolute opacity-0"
                                 onchange="updateDiceType(4)" />
                             <div
-                                class="w-full h-full flex flex-col items-center justify-center peer-checked:bg-primary peer-checked:text-white text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
+                                class="dice-type-btn w-full h-full flex flex-col items-center justify-center text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
                                 <span class="text-xl font-black italic">D4</span>
                             </div>
                         </label>
@@ -215,7 +273,7 @@
                             <input type="radio" name="dice_type" value="6" class="peer absolute opacity-0"
                                 onchange="updateDiceType(6)" checked />
                             <div
-                                class="w-full h-full flex flex-col items-center justify-center peer-checked:bg-primary peer-checked:text-white text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
+                                class="dice-type-btn w-full h-full flex flex-col items-center justify-center bg-primary text-white transition-colors">
                                 <span class="text-xl font-black italic">D6</span>
                             </div>
                         </label>
@@ -223,7 +281,7 @@
                             <input type="radio" name="dice_type" value="8" class="peer absolute opacity-0"
                                 onchange="updateDiceType(8)" />
                             <div
-                                class="w-full h-full flex flex-col items-center justify-center peer-checked:bg-primary peer-checked:text-white text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
+                                class="dice-type-btn w-full h-full flex flex-col items-center justify-center text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
                                 <span class="text-xl font-black italic">D8</span>
                             </div>
                         </label>
@@ -231,7 +289,7 @@
                             <input type="radio" name="dice_type" value="10" class="peer absolute opacity-0"
                                 onchange="updateDiceType(10)" />
                             <div
-                                class="w-full h-full flex flex-col items-center justify-center peer-checked:bg-primary peer-checked:text-white text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
+                                class="dice-type-btn w-full h-full flex flex-col items-center justify-center text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
                                 <span class="text-xl font-black italic">D10</span>
                             </div>
                         </label>
@@ -239,7 +297,7 @@
                             <input type="radio" name="dice_type" value="12" class="peer absolute opacity-0"
                                 onchange="updateDiceType(12)" />
                             <div
-                                class="w-full h-full flex flex-col items-center justify-center peer-checked:bg-primary peer-checked:text-white text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
+                                class="dice-type-btn w-full h-full flex flex-col items-center justify-center text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
                                 <span class="text-xl font-black italic">D12</span>
                             </div>
                         </label>
@@ -247,7 +305,7 @@
                             <input type="radio" name="dice_type" value="20" class="peer absolute opacity-0"
                                 onchange="updateDiceType(20)" />
                             <div
-                                class="w-full h-full flex flex-col items-center justify-center peer-checked:bg-primary peer-checked:text-white text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
+                                class="dice-type-btn w-full h-full flex flex-col items-center justify-center text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
                                 <span class="text-xl font-black italic">D20</span>
                             </div>
                         </label>
@@ -255,7 +313,7 @@
                             <input type="radio" name="dice_type" value="100" class="peer absolute opacity-0"
                                 onchange="updateDiceType(100)" />
                             <div
-                                class="w-full h-full flex flex-col items-center justify-center peer-checked:bg-primary peer-checked:text-white text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
+                                class="dice-type-btn w-full h-full flex flex-col items-center justify-center text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
                                 <span class="text-xl font-black italic text-sm">D100</span>
                             </div>
                         </label>
@@ -311,9 +369,13 @@
         <div id="view-logs"
             class="view-section hidden flex-col flex-1 w-full h-full bg-background-light dark:bg-background-dark font-mono text-xs pb-20 md:pb-0">
             <header class="pt-8 px-6 pb-4 border-b-2 border-ink/20 dark:border-white/20">
-                <h1 class="text-xl font-bold uppercase tracking-widest flex items-center gap-2">
-                    <span class="material-symbols-outlined">terminal</span> SYSTEM LOGS
-                </h1>
+                <div class="flex justify-between items-start">
+                    <h1 class="text-xl font-bold uppercase tracking-widest flex items-center gap-2">
+                        <span class="material-symbols-outlined">terminal</span> SYSTEM LOGS
+                    </h1>
+                    <button onclick="switchView('combat')"
+                        class="text-primary hover:text-primary-hover transition-colors font-bold text-xs uppercase tracking-widest active:scale-95 border-b-2 border-primary">Fermer</button>
+                </div>
             </header>
             <main class="flex-1 overflow-y-auto p-4 flex flex-col" id="logContainer">
                 <!-- Logs will be appended here -->
@@ -334,35 +396,123 @@
 
         <!-- BOTTOM NAVIGATION BAR -->
         <nav
-            class="md:w-32 md:h-full md:static md:flex-col md:order-first md:border-t-0 md:border-r-2 md:border-slate-200 dark:md:border-slate-800 md:bg-white dark:md:bg-slate-900 md:px-2 md:py-6 md:justify-start md:shadow-none absolute bottom-0 w-full h-20 flex border-t-2 border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md z-40 px-2 pb-2 pt-2 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)]">
+            class="md:w-32 md:h-full md:relative md:flex-col md:order-first md:border-t-0 md:border-r-2 md:border-slate-200 dark:md:border-slate-800 md:bg-white dark:md:bg-slate-900 md:px-2 md:py-6 md:justify-start md:shadow-none absolute bottom-0 w-full h-20 flex border-t-2 border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md z-40 px-2 pb-2 pt-2 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)]">
+
+            <div id="nav-indicator"
+                class="absolute top-2 bottom-2 w-[calc(33.33%-0.33rem)] md:h-16 md:w-[calc(100%-1rem)] md:left-2 md:top-[88px] rounded-xl bg-primary/10 dark:bg-primary/20 transition-transform duration-300 pointer-events-none z-0">
+            </div>
 
             <div
-                class="hidden md:flex flex-col items-center mb-8 pb-8 border-b-2 border-slate-200 dark:border-slate-800 w-full">
+                class="hidden md:flex flex-col items-center mb-8 pb-8 border-b-2 border-slate-200 dark:border-slate-800 w-full z-10">
                 <span
                     class="text-[10px] font-black uppercase tracking-widest text-primary text-center">TTRPG<br />COMPANION</span>
             </div>
+
             <a href="#" onclick="switchView('combat'); return false;" id="nav-combat"
-                class="nav-item flex flex-1 flex-col items-center justify-center gap-1 text-slate-500 hover:text-ink dark:hover:text-white transition-colors">
-                <span class="material-symbols-outlined">swords</span>
+                class="nav-item active flex flex-1 flex-col items-center justify-center gap-1 text-primary hover:text-ink dark:hover:text-white transition-colors z-10 relative group">
+                <span class="material-symbols-outlined group-active:scale-90 transition-transform">swords</span>
                 <span class="text-[9px] font-black uppercase tracking-widest">Combat</span>
             </a>
             <a href="#" onclick="switchView('heals'); return false;" id="nav-heals"
-                class="nav-item active flex flex-1 flex-col items-center justify-center gap-1 text-primary hover:text-ink dark:hover:text-white transition-colors">
-                <span class="material-symbols-outlined"
+                class="nav-item flex flex-1 flex-col items-center justify-center gap-1 text-slate-500 hover:text-ink dark:hover:text-white transition-colors z-10 relative group">
+                <span class="material-symbols-outlined group-active:scale-90 transition-transform"
                     style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
                 <span class="text-[9px] font-black uppercase tracking-widest">Soins</span>
             </a>
             <a href="#" onclick="switchView('dice'); return false;" id="nav-dice"
-                class="nav-item flex flex-1 flex-col items-center justify-center gap-1 text-slate-500 hover:text-ink dark:hover:text-white transition-colors">
-                <span class="material-symbols-outlined">casino</span>
+                class="nav-item flex flex-1 flex-col items-center justify-center gap-1 text-slate-500 hover:text-ink dark:hover:text-white transition-colors z-10 relative group">
+                <span class="material-symbols-outlined group-active:scale-90 transition-transform">casino</span>
                 <span class="text-[9px] font-black uppercase tracking-widest">Dés</span>
             </a>
-            <a href="#" onclick="switchView('logs'); return false;" id="nav-logs"
-                class="nav-item flex flex-1 flex-col items-center justify-center gap-1 text-slate-500 hover:text-ink dark:hover:text-white transition-colors">
-                <span class="material-symbols-outlined">receipt_long</span>
-                <span class="text-[9px] font-black uppercase tracking-widest">Logs</span>
-            </a>
         </nav>
+
+        <!-- HEAL PICKER MODAL -->
+        <div id="healPickerModal"
+            class="absolute inset-0 z-50 flex flex-col justify-end pointer-events-none overflow-hidden">
+            <!-- Backdrop -->
+            <div id="healPickerBackdrop"
+                class="absolute inset-0 bg-ink/60 dark:bg-black/80 opacity-0 transition-opacity duration-300 pointer-events-none backdrop-blur-sm"
+                onclick="closeHealPicker()"></div>
+
+            <!-- Panel -->
+            <div id="healPickerPanel"
+                class="relative bg-white dark:bg-slate-900 shadow-[0_-20px_40px_rgba(0,0,0,0.3)] transform md:translate-y-0 translate-y-full md:opacity-0 transition-all duration-300 pointer-events-none flex flex-col h-[60dvh] max-h-[450px] rounded-t-3xl md:rounded-2xl md:h-[450px] md:w-[400px] md:m-auto border border-slate-200 dark:border-slate-800">
+
+                <!-- Header -->
+                <div
+                    class="px-6 py-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-800/80">
+                    <button onclick="closeHealPicker()"
+                        class="text-slate-400 font-bold uppercase tracking-widest text-sm hover:text-slate-900 dark:hover:text-white transition-colors py-2 active:scale-95">Annuler</button>
+                    <h3 id="healPickerTitle"
+                        class="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white mt-1">Soins
+                    </h3>
+                    <div class="w-16"></div> <!-- spacer -->
+                </div>
+
+                <!-- Picker Area -->
+                <div
+                    class="flex-1 relative flex items-center justify-center bg-slate-50 dark:bg-slate-800/30 overflow-hidden">
+                    <!-- Selection Highlighter -->
+                    <div
+                        class="absolute inset-x-8 top-1/2 -translate-y-1/2 h-16 bg-primary/10 dark:bg-primary/20 rounded-xl border-2 border-primary/20 pointer-events-none">
+                    </div>
+
+                    <!-- Scroll Container -->
+                    <div id="healPickerScroll"
+                        class="w-full h-full overflow-y-auto overflow-x-hidden snap-y snap-mandatory no-scrollbar relative flex flex-col items-center">
+                        <div class="flex-none h-[calc(50%-32px)] w-full"></div> <!-- Top Padding -->
+                        <!-- Items generated by JS -->
+                        <div id="healPickerItems" class="flex flex-col items-center w-full"></div>
+                        <div class="flex-none h-[calc(50%-32px)] w-full"></div> <!-- Bottom Padding -->
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800/80">
+                    <button onclick="confirmHealPicker()"
+                        class="w-full bg-primary text-white py-4 rounded-xl text-2xl font-black uppercase tracking-tighter hover:bg-primary-hover active:bg-primary-hover transition-all duration-200 shadow-[0_8px_16px_rgba(236,62,19,0.25)] active:shadow-none active:translate-y-1 flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined pb-1">health_and_safety</span>
+                        Valider <span id="healPickerConfirmVal" class="opacity-90">+10 PV</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- DICE RESULT MODAL -->
+        <div id="diceResultModal"
+            class="absolute inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none overflow-hidden">
+            <!-- Backdrop -->
+            <div id="diceResultBackdrop"
+                class="absolute inset-0 bg-ink/80 dark:bg-black/90 opacity-0 transition-opacity duration-300 pointer-events-none backdrop-blur-md"
+                onclick="closeDiceResult()"></div>
+
+            <!-- Panel -->
+            <div id="diceResultPanel"
+                class="relative flex flex-col items-center justify-center transform scale-90 opacity-0 transition-all duration-300 pointer-events-none w-[90%] max-w-sm">
+
+                <div class="text-white/60 font-black uppercase tracking-widest text-sm mb-2" id="diceResultFormula">1D20
+                    + 5</div>
+
+                <div
+                    class="relative bg-gradient-to-b from-slate-800 to-slate-900 border-2 border-slate-700 shadow-2xl rounded-3xl p-8 w-full flex flex-col items-center animate-bounce-short">
+
+                    <div class="text-[80px] leading-none font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] mb-6"
+                        id="diceResultTotal">24</div>
+
+                    <div class="w-full h-px bg-white/10 mb-6"></div>
+
+                    <div class="flex flex-wrap justify-center gap-3 w-full" id="diceResultDetails">
+                        <!-- Dice dots will go here -->
+                        <div
+                            class="w-8 h-8 rounded bg-slate-700 flex items-center justify-center font-bold text-white shadow-inner">
+                            19</div>
+                    </div>
+                </div>
+
+                <button onclick="closeDiceResult()"
+                    class="mt-8 px-8 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold uppercase tracking-widest text-xs transition-colors backdrop-blur-sm border border-white/10">Fermer</button>
+            </div>
+        </div>
 
     </div>
 
@@ -370,29 +520,96 @@
     <script>
         // --- ROUTING / SPA LOGIC ---
         function switchView(viewId) {
-            // Hide all
+            if (viewId === 'logs') {
+                // Just toggle visibility directly for logs
+                document.getElementById('view-logs').classList.remove('hidden');
+                document.getElementById('view-logs').classList.add('active-view', 'z-50', 'absolute', 'inset-0');
+                return;
+            } else {
+                // If switching to a main view, make sure logs is hidden
+                const logsView = document.getElementById('view-logs');
+                if (logsView) logsView.classList.add('hidden');
+                logsView.classList.remove('active-view', 'z-50', 'absolute', 'inset-0');
+            }
+
+            // Hide all main views
             document.querySelectorAll('.view-section').forEach(el => {
-                el.classList.add('hidden');
-                el.classList.remove('flex');
+                if (el.id !== 'view-logs') {
+                    el.classList.add('hidden');
+                    el.classList.remove('active-view');
+                }
             });
             // Show target
             const target = document.getElementById('view-' + viewId);
             if (target) {
                 target.classList.remove('hidden');
-                target.classList.add('flex');
+                // trigger reflow
+                void target.offsetWidth;
+                target.classList.add('active-view');
             }
 
             // Update Nav Active State
             document.querySelectorAll('.nav-item').forEach(el => {
-                el.classList.remove('active', 'text-primary', 'dark:text-primary', 'md:bg-primary/10', 'md:text-primary');
+                el.classList.remove('active', 'text-primary', 'dark:text-primary', 'md:text-primary');
                 el.classList.add('text-slate-500'); // Ensure inactive state color is restored
             });
             const activeNav = document.getElementById('nav-' + viewId);
+            const indicator = document.getElementById('nav-indicator');
+
             if (activeNav) {
                 activeNav.classList.remove('text-slate-500');
-                activeNav.classList.add('active', 'text-primary', 'dark:text-primary', 'md:bg-primary/10', 'md:text-primary');
+                activeNav.classList.add('active', 'text-primary', 'dark:text-primary', 'md:text-primary');
+
+                // Move indicator
+                if (indicator) {
+                    const navRect = activeNav.parentElement.getBoundingClientRect();
+                    const itemRect = activeNav.getBoundingClientRect();
+                    const isDesktop = window.innerWidth >= 768; // md breakpoint
+
+                    if (isDesktop) {
+                        // The items have flex-1 and are very tall. We center the 64px indicator vertically inside the flex item.
+                        const indicatorHeight = 64; // md:h-16
+                        const exactY = itemRect.top - navRect.top + (itemRect.height - indicatorHeight) / 2;
+                        indicator.style.transform = `translateY(${exactY - 88}px)`; // 88 is the top offset md:top-[88px]
+                    } else {
+                        // padding left is 8px (px-2)
+                        indicator.style.transform = `translateX(${itemRect.left - navRect.left - 8}px)`;
+                    }
+                }
             }
         }
+
+        // --- THEME ---
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                html.classList.add('light');
+                localStorage.theme = 'light';
+            } else {
+                html.classList.remove('light');
+                html.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+        }
+
+        // Initialize Theme
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+        } else {
+            document.documentElement.classList.add('light');
+            document.documentElement.classList.remove('dark');
+        }
+
+        // Handle resize for indicator alignment
+        window.addEventListener('resize', () => {
+            const activeNav = document.querySelector('.nav-item.active');
+            if (activeNav) {
+                const viewId = activeNav.id.replace('nav-', '');
+                switchView(viewId);
+            }
+        });
 
         // --- GLOBAL STATE ---
         const qs = new URLSearchParams(location.search);
@@ -407,6 +624,7 @@
         let currentPlayers = [];
         let lastAction = null;
         let toastTimeout = null;
+        let previousHpValues = {}; // Track previous HP for animations
 
         // --- LOGGING ---
         function addLog(msg, type = 'info') {
@@ -585,12 +803,25 @@
 
                 // Color scaling matching overlay.html
                 const hpColor = !isFinite(pct) ? '#42d07c' : pct <= 5 ? '#4a155a' : pct <= 20 ? '#a3082a' : pct <= 40 ? '#ff5d5d' : pct <= 80 ? '#ff9f43' : '#42d07c';
-                const hpDisplay = isPC ? `<span class="font-mono text-sm font-bold text-slate-500 dark:text-slate-400">${cur}/${max}</span>` : '';
                 const barWidth = isPC ? `${pct}%` : `100%`;
 
+                // HP Animation
+                const charId = c.id ?? c.uuid ?? c.name;
+                const prevHp = previousHpValues[charId];
+                let hpAnimClass = '';
+                if (prevHp !== undefined && cur !== prevHp) {
+                    hpAnimClass = cur > prevHp ? 'animate-heal-pulse' : 'animate-dmg-pulse';
+                }
+                previousHpValues[charId] = cur;
+
+                const hpDisplay = isPC ? `<span class="font-mono text-sm font-bold text-slate-500 dark:text-slate-400 ${hpAnimClass}">${cur}/${max}</span>` : '';
+
                 htmlRender += `
-                <div class="flex flex-col px-6 py-4 border-b-4 ${borderActiveColor} ${bgActiveColor} md:border-b-0 md:bg-white dark:md:bg-slate-900 md:border-b transition-colors border-l-4 ${isActive ? 'border-l-[6px]' : ''} ${frameColor}">
-                    <div class="flex justify-between items-baseline mb-2">
+                <div class="flex flex-col px-6 py-4 border-b-4 ${borderActiveColor} ${bgActiveColor} md:border-b-0 md:bg-white dark:md:bg-slate-900 md:border-b transition-colors border-l-4 ${isActive ? 'border-l-[6px]' : ''} ${frameColor} relative overflow-hidden">
+                    <!-- Subtle Background HP Bar -->
+                    <div class="absolute inset-y-0 left-0 opacity-10 dark:opacity-20 transition-all duration-500 pointer-events-none" style="width: ${barWidth}; background-color: ${hpColor};"></div>
+                    
+                    <div class="flex justify-between items-baseline mb-2 relative z-10">
                         <h3 class="text-xl font-black uppercase tracking-tighter leading-none ${isDead ? 'line-through opacity-50' : 'text-slate-900 dark:text-slate-100'}">
                             ${isActive ? '<span class="material-symbols-outlined text-lg mr-1 align-text-bottom">play_arrow</span>' : ''}${name}
                         </h3>
@@ -638,42 +869,203 @@
                 const colorClass = getHpColorClass(pct);
                 const isFull = cur >= max;
 
+                // Color scaling matching overlay.html
+                const hpColor = !isFinite(pct) ? '#42d07c' : pct <= 5 ? '#4a155a' : pct <= 20 ? '#a3082a' : pct <= 40 ? '#ff5d5d' : pct <= 80 ? '#ff9f43' : '#42d07c';
+
+                // HP Animation
+                const charId = c.id ?? c.uuid ?? c.name;
+                const prevHp = previousHpValues[charId];
+                let hpAnimClass = '';
+                if (prevHp !== undefined && cur !== prevHp) {
+                    hpAnimClass = cur > prevHp ? 'animate-heal-pulse' : 'animate-dmg-pulse';
+                }
+                previousHpValues[charId] = cur;
+
                 // Adjust for grid
                 return `
-                <div class="flex md:flex-col items-center md:items-stretch justify-between px-6 py-6 md:p-6 border-b border-slate-900 dark:border-slate-100 bg-white dark:bg-background-dark md:border-b-0 md:border-slate-900 dark:md:border-slate-100">
-                    <div class="flex flex-col md:mb-4">
+                <div class="flex md:flex-col items-center md:items-stretch justify-between px-6 py-6 md:p-6 border-b border-slate-900 dark:border-slate-100 bg-white dark:bg-background-dark md:border-b-0 md:border-slate-900 dark:md:border-slate-100 relative overflow-hidden group">
+                    <!-- Subtle Background HP Bar -->
+                    <div class="absolute inset-y-0 left-0 opacity-[0.05] dark:opacity-10 transition-all duration-500 pointer-events-none" style="width: ${pct}%; background-color: ${hpColor};"></div>
+                    
+                    <div class="flex flex-col md:mb-4 relative z-10">
                         <h2 class="text-2xl font-black uppercase tracking-tighter leading-none text-black dark:text-white md:truncate" title="${name}">${name}</h2>
                         <div class="mt-1 flex items-baseline gap-1">
-                            <span class="text-3xl font-black ${colorClass}">${cur}</span>
-                            <span class="text-lg font-bold text-slate-400">/ ${max} HP</span>
+                            <span class="text-3xl font-black ${colorClass} ${hpAnimClass}">${cur}</span>
+                            <span class="text-lg font-bold text-slate-400 transition-opacity">/ ${max}</span>
                             ${temp > 0 ? `<span class="text-sm font-bold text-blue-500 ml-2">(+${temp})</span>` : ''}
                         </div>
                     </div>
                     <button onclick="promptHealType('${name.replace(/'/g, "\\'")}')" 
-                        class="border-2 px-6 py-2 md:py-4 text-sm font-black uppercase tracking-widest transition-colors duration-200 
-                        ${isFull ? 'border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600' : 'border-primary text-primary hover:bg-primary hover:text-white active:bg-primary-hover'}">
-                        ${isFull ? 'Plein' : 'Soin'}
+                        class="relative z-10 border-2 px-6 py-2 md:py-4 text-sm font-black uppercase tracking-widest transition-all duration-200 active:scale-95
+                        ${isFull ? 'border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600' : 'border-primary text-primary hover:bg-primary shadow-[0_0_0_0_rgba(236,62,19,0)] hover:shadow-[0_4px_15px_rgba(236,62,19,0.3)] hover:text-white active:bg-primary-hover'}">
+                        ${isFull ? 'Full' : 'Soin'}
                     </button>
                 </div>
                 `;
             }).join('');
         }
 
+        // --- DRUM PICKER HEAL LOGIC ---
+        let healPickerTarget = null;
+        let healPickerValue = 10;
+        let pickerItems = [];
+        let lastClosest = null;
+        let scrollTimeout = null;
+
         function promptHealType(targetName) {
-            const val = prompt(`Combien de PV rendre à ${targetName === 'Group' ? 'tout le groupe' : targetName} ?`, '10');
-            const amount = parseInt(val, 10);
-            if (!isNaN(amount) && amount !== 0) {
-                if (targetName === 'Group') {
-                    lastAction = { type: 'group', amount: amount, targets: [...currentPlayers] };
-                    currentPlayers.forEach(p => sendHeal(p, amount, false));
-                    showToast(`Groupe soigné: ${amount} PV`, true);
-                    addLog(`SOIN GROUPE: ${amount} PV`, 'success');
-                } else {
-                    lastAction = { type: 'single', amount: amount, target: targetName };
-                    sendHeal(targetName, amount, false);
-                    showToast(`${amount > 0 ? '+' : ''}${amount} PV > ${targetName}`, true);
-                    addLog(`SOIN: ${targetName} ${amount > 0 ? '+' : ''}${amount} PV`, 'success');
+            openHealPicker(targetName);
+        }
+
+        function initHealPicker() {
+            const container = document.getElementById('healPickerItems');
+            if (!container) return;
+
+            let html = '';
+            // Generate values 1 to 200
+            for (let i = 1; i <= 200; i++) {
+                html += `<div class="heal-picker-item flex-none h-16 flex items-center justify-center w-full snap-center text-4xl font-black text-slate-300 dark:text-slate-600 transition-all duration-150 cursor-pointer" data-val="${i}" onclick="setPickerValue(${i})">${i}</div>`;
+            }
+            container.innerHTML = html;
+            pickerItems = Array.from(document.querySelectorAll('.heal-picker-item'));
+
+            const scrollEl = document.getElementById('healPickerScroll');
+            scrollEl.addEventListener('scroll', () => {
+                requestAnimationFrame(updatePickerHighlight);
+
+                // Clear the timeout throughout the scroll
+                window.clearTimeout(scrollTimeout);
+                // Set a timeout to run after scrolling ends
+                scrollTimeout = setTimeout(() => {
+                    // Snap has finished, ensure perfectly matched index
+                }, 100);
+            }, { passive: true });
+        }
+
+        function updatePickerHighlight() {
+            const scrollEl = document.getElementById('healPickerScroll');
+            if (!scrollEl || !pickerItems.length) return;
+
+            const center = scrollEl.scrollTop + (scrollEl.clientHeight / 2);
+            let closest = null;
+            let minDist = Infinity;
+
+            // Find item closest to center
+            for (let i = 0; i < pickerItems.length; i++) {
+                const item = pickerItems[i];
+                const itemCenter = item.offsetTop + (item.offsetHeight / 2);
+                const dist = Math.abs(center - itemCenter);
+
+                if (dist < 32) { // shortcut, within half an item height
+                    closest = item;
+                    break;
+                } else if (dist < minDist) {
+                    minDist = dist;
+                    closest = item;
                 }
+            }
+
+            if (closest && closest !== lastClosest) {
+                if (lastClosest) {
+                    lastClosest.classList.remove('text-primary', 'dark:text-primary', 'scale-125', 'opacity-100');
+                    lastClosest.classList.add('text-slate-300', 'dark:text-slate-600');
+                }
+                closest.classList.remove('text-slate-300', 'dark:text-slate-600');
+                closest.classList.add('text-primary', 'dark:text-primary', 'scale-125', 'opacity-100');
+
+                healPickerValue = parseInt(closest.getAttribute('data-val'), 10);
+                document.getElementById('healPickerConfirmVal').innerText = `+${healPickerValue} PV`;
+                lastClosest = closest;
+
+                // Subtle haptic feedback for each tick
+                if (navigator.vibrate) navigator.vibrate(5);
+            }
+        }
+
+        function setPickerValue(val) {
+            const scrollEl = document.getElementById('healPickerScroll');
+            if (!pickerItems.length || !scrollEl) return;
+
+            const targetItem = pickerItems[val - 1]; // items start at 1
+            if (targetItem) {
+                scrollEl.style.scrollBehavior = 'auto'; // instant jump
+                const targetScroll = targetItem.offsetTop - (scrollEl.clientHeight / 2) + (targetItem.offsetHeight / 2);
+                scrollEl.scrollTo({ top: targetScroll });
+
+                // restore smooth scroll after jump
+                setTimeout(() => {
+                    scrollEl.style.scrollBehavior = 'smooth';
+                    updatePickerHighlight();
+                }, 50);
+            }
+        }
+
+        function openHealPicker(targetName) {
+            healPickerTarget = targetName;
+            document.getElementById('healPickerTitle').innerText = targetName === 'Group' ? 'Soigner le groupe' : `Soigner ${targetName}`;
+
+            const modal = document.getElementById('healPickerModal');
+            const backdrop = document.getElementById('healPickerBackdrop');
+            const panel = document.getElementById('healPickerPanel');
+
+            if (!pickerItems.length) initHealPicker();
+
+            modal.classList.remove('pointer-events-none');
+            backdrop.classList.remove('opacity-0', 'pointer-events-none');
+            backdrop.classList.add('opacity-100', 'pointer-events-auto');
+
+            // Animation for panel
+            panel.classList.remove('pointer-events-none');
+            panel.classList.remove('translate-y-full', 'md:opacity-0');
+
+            // Default to 10 PV or previous perfectly aligned
+            setTimeout(() => setPickerValue(10), 10);
+        }
+
+        function closeHealPicker() {
+            const modal = document.getElementById('healPickerModal');
+            const backdrop = document.getElementById('healPickerBackdrop');
+            const panel = document.getElementById('healPickerPanel');
+
+            backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            backdrop.classList.add('opacity-0', 'pointer-events-none');
+
+            panel.classList.add('translate-y-full', 'md:opacity-0');
+            panel.classList.add('pointer-events-none');
+
+            setTimeout(() => {
+                modal.classList.add('pointer-events-none');
+            }, 300);
+        }
+
+        function confirmHealPicker() {
+            if (!healPickerTarget) return;
+            const amount = healPickerValue;
+
+            if (healPickerTarget === 'Group') {
+                lastAction = { type: 'group', amount: amount, targets: [...currentPlayers] };
+                currentPlayers.forEach(p => sendHeal(p, amount, false));
+                showToast(`Groupe soigné: ${amount} PV`, true);
+                addLog(`SOIN GROUPE: ${amount} PV`, 'success');
+                broadcastHealNotification(amount, 'le groupe');
+            } else {
+                lastAction = { type: 'single', amount: amount, target: healPickerTarget };
+                sendHeal(healPickerTarget, amount, false);
+                showToast(`${amount > 0 ? '+' : ''}${amount} PV > ${healPickerTarget}`, true);
+                addLog(`SOIN: ${healPickerTarget} ${amount > 0 ? '+' : ''}${amount} PV`, 'success');
+                broadcastHealNotification(amount, healPickerTarget);
+            }
+
+            closeHealPicker();
+        }
+
+        function broadcastHealNotification(amount, targetName) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'heal_notification',
+                    room: CHANNEL,
+                    amount: amount,
+                    target: targetName
+                }));
             }
         }
 
@@ -721,6 +1113,25 @@
                 } else if (msg && msg.list) {
                     renderPlayers(msg.list);
                     renderCombat(msg);
+                } else if (msg && msg.type === 'roll') {
+                    // Update history for everyone
+                    if (msg.payload) {
+                        const { n, faces, total, mod } = msg.payload;
+                        const modStr = mod === 0 ? '' : (mod > 0 ? "+" + mod : mod);
+                        const rollStr = `${n}D${faces}${modStr} -> ${total}`;
+
+                        const item = { type: 'roll', desc: rollStr };
+                        diceHistoryArr.unshift(item);
+                        if (diceHistoryArr.length > 10) diceHistoryArr.pop();
+                        renderDiceHistory();
+
+                        // Show a small toast for others (not the big modal)
+                        // But we don't want to show the toast twice for the roller.
+                        // Since we don't have a reliable sender ID yet, we'll just show the toast.
+                        // Actually, if it's the roller, they already showed a toast in executeRoll.
+                        // Let's just add it to history for everyone here.
+                        addLog(`JET: ${rollStr}`, 'info');
+                    }
                 } else if (msg && msg.type !== 'debug') {
                     // don't log hearbeats
                     // addLog(`RECV: ${msg.type}`, 'info');
@@ -743,6 +1154,18 @@
         function updateDiceType(faces) {
             currentDiceState.type = parseInt(faces, 10);
             updateBtnSumm();
+
+            // Visual update
+            document.querySelectorAll('.dice-type-btn').forEach(el => {
+                el.classList.remove('bg-primary', 'text-white');
+                el.classList.add('text-black', 'dark:text-white');
+            });
+            const activeInput = document.querySelector(`input[name="dice_type"][value="${faces}"]`);
+            if (activeInput) {
+                const activeDiv = activeInput.nextElementSibling;
+                activeDiv.classList.remove('text-black', 'dark:text-white');
+                activeDiv.classList.add('bg-primary', 'text-white');
+            }
         }
 
         function updateDiceMod(delta) {
@@ -798,30 +1221,102 @@
 
             ws.send(JSON.stringify(payload));
 
+            // Show result locally immediate for the roller
+            showDiceResult(payload.payload);
+
             const rollStr = `${count}D${type}${mod !== 0 ? (mod > 0 ? "+" + mod : mod) : ''} -> ${total}`;
             showToast(`<span class="font-normal opacity-70 border-r border-white/30 pr-2 mr-2">${count}D${type}</span> <span class="text-xl">${total}</span>`);
-            addLog(`ROLL: ${rollStr} [${rolls.join(',')}]`, 'info');
 
-            // Add to history
-            diceHistoryArr.unshift(total);
-            if (diceHistoryArr.length > 5) diceHistoryArr.pop();
+            const item = { type: 'roll', desc: rollStr };
+            diceHistoryArr.unshift(item);
+            if (diceHistoryArr.length > 10) diceHistoryArr.pop();
             renderDiceHistory();
         }
 
+        let diceResultTimer = null;
+
+        function showDiceResult(rollData) {
+            const modal = document.getElementById('diceResultModal');
+            const backdrop = document.getElementById('diceResultBackdrop');
+            const panel = document.getElementById('diceResultPanel');
+
+            const formulaEl = document.getElementById('diceResultFormula');
+            const totalEl = document.getElementById('diceResultTotal');
+            const detailsEl = document.getElementById('diceResultDetails');
+
+            // Format formula
+            const modStr = rollData.mod === 0 ? '' : (rollData.mod > 0 ? ` + ${rollData.mod}` : ` - ${Math.abs(rollData.mod)}`);
+            formulaEl.innerText = `${rollData.n}D${rollData.faces}${modStr}`;
+
+            // Set total
+            totalEl.innerText = rollData.total;
+
+            // Generate individual dice HTML
+            let diceHtml = '';
+            rollData.rolls.forEach(r => {
+                let isMin = r === 1;
+                let isMax = r === rollData.faces;
+                let colorClass = (isMin || isMax) ? 'bg-primary text-white shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]' : 'bg-slate-700 text-white shadow-inner';
+                // Extra glow for max, darker for min
+                if (isMax && rollData.faces === 20) colorClass += ' ring-2 ring-primary ring-offset-2 ring-offset-slate-900';
+
+                diceHtml += `<div class="w-10 h-10 rounded-lg flex items-center justify-center font-black text-lg shadow-lg ${colorClass}">${r}</div>`;
+            });
+            detailsEl.innerHTML = diceHtml;
+
+            // Show UI
+            modal.classList.remove('pointer-events-none');
+
+            backdrop.classList.remove('opacity-0', 'pointer-events-none');
+            backdrop.classList.add('opacity-100', 'pointer-events-auto');
+
+            panel.classList.remove('opacity-0', 'scale-90', 'pointer-events-none');
+            panel.classList.add('opacity-100', 'scale-100', 'pointer-events-auto');
+
+            // Auto-hide after 4.5s
+            clearTimeout(diceResultTimer);
+            diceResultTimer = setTimeout(closeDiceResult, 4500);
+        }
+
+        function closeDiceResult() {
+            const modal = document.getElementById('diceResultModal');
+            const backdrop = document.getElementById('diceResultBackdrop');
+            const panel = document.getElementById('diceResultPanel');
+
+            backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            backdrop.classList.add('opacity-0', 'pointer-events-none');
+
+            panel.classList.remove('opacity-100', 'scale-100', 'pointer-events-auto');
+            panel.classList.add('opacity-0', 'scale-90', 'pointer-events-none');
+
+            setTimeout(() => {
+                modal.classList.add('pointer-events-none');
+            }, 300);
+
+            clearTimeout(diceResultTimer);
+        }
+
+        // --- HISTORY ---
         function renderDiceHistory() {
             const histContainer = document.getElementById('diceHistory');
             if (diceHistoryArr.length === 0) return;
 
-            histContainer.innerHTML = diceHistoryArr.map((v, i) => {
-                if (i === 0) return `<span class="text-[10px] font-black border-2 border-black dark:border-white px-2 py-0.5 text-black dark:text-white bg-slate-100 dark:bg-slate-800">LAST: ${v}</span>`;
-                return `<span class="text-[10px] font-black border-2 border-black dark:border-white px-2 py-0.5 text-black dark:text-white opacity-50">${v}</span>`;
+            histContainer.innerHTML = diceHistoryArr.map((item, i) => {
+                if (i === 0) return `<span class="text-[10px] font-black border-2 border-black dark:border-white px-2 py-0.5 text-black dark:text-white bg-slate-100 dark:bg-slate-800">LAST: ${item.desc}</span>`;
+                return `<span class="text-[10px] font-black border-2 border-black dark:border-white px-2 py-0.5 text-black dark:text-white opacity-50">${item.desc}</span>`;
             }).join('');
         }
 
-        // Init initial view
+        // --- INITIALIZATION ---
         updateBtnSumm();
         addLog(`App initialized. Connecting to ${WS_URL} on channel ${CHANNEL}...`, 'success');
         connectWS();
+
+        // Initial tab placement
+        document.addEventListener('DOMContentLoaded', () => {
+            // Need a tiny delay to ensure fonts/layout are calculated for the correct flex height
+            setTimeout(() => switchView('combat'), 100);
+        });
 
     </script>
 </body>
