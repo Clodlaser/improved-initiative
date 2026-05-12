@@ -279,7 +279,7 @@
       const pTrackEl = document.getElementById('playersTrack');
       const roundText = document.getElementById('roundText');
       const qs = new URLSearchParams(location.search);
-      const WS_URL = qs.get('ws') || 'ws://127.0.0.1:8091/hud';
+      const WS_URL = qs.get('ws') || `ws://${location.hostname}:8091/hud`;
       const SHOW_GM = qs.get('gm') === '1'; const SHOW_HIDDEN = qs.get('showHidden') === '1';
       const playersParam = (qs.get('players') || '').split(',').map(s => s.trim()).filter(Boolean);
       const PC_SET = new Set(playersParam.length ? playersParam : ['Pierre', 'Loic', 'Gabriele', 'Joel', 'Ana\u00ebl', 'AnaÃ«l', 'Tristan', 'Maureen', 'Vincent']);

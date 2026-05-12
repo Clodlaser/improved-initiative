@@ -171,7 +171,7 @@ button:active{ transform:scale(.98) }
 <script>
 /* ---------- Params ---------- */
 const qs = new URLSearchParams(location.search);
-const WS_URL  = qs.get("ws") || "ws://127.0.0.1:8091/hud";
+const WS_URL  = qs.get("ws") || `ws://${location.hostname}:8091/hud`;
 const ROOM    = qs.get("room") || "session-1";
 const PLAYER  = qs.get("player") || "1";
 

@@ -5,7 +5,7 @@
   const LS_PJS = '__iiHUD_PJs', LS_CH = '__iiHUD_Channel';
   const DEFAULT_CHANNEL = 'session-1', POLL_MS = 5000, DEBOUNCE_MS = 200;
   const sp = new URLSearchParams(location.search);
-  const WS_URL = sp.get('ws') || (location.protocol === 'https:' ? 'wss' : 'ws') + '://127.0.0.1:8091/hud';
+  const WS_URL = sp.get('ws') || (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.hostname + ':8091/hud';
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const qFirst = (arr, root) => { for (const s of arr) { const el = $(s, root); if (el) return el; } return null; };
