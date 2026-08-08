@@ -1,4 +1,6 @@
 import * as express from "express";
+import { readFileSync, writeFileSync, existsSync } from "fs";
+import { join } from "path";
 
 import { Listable } from "../common/Listable";
 import { PersistentCharacter } from "../common/PersistentCharacter";
@@ -163,6 +165,21 @@ function configureEntityRoute<T extends Listable>(
     }
     const entityId = parsePossiblyMalformedIdFromParams(req.params);
 
+    if (route === "persistentcharacters") {
+      DB.getEntity(route, req.session.userId, entityId)
+        .then(entity => {
+          if (entity && entity.StatBlock && entity.StatBlock.Description) {
+            const match = entity.StatBlock.Description.match(/characters\/(\d+)/);
+            if (match) {
+              removeUrlFromSyncFile(match[1]);
+            }
+          }
+        })
+        .catch(err => {
+          console.error("Failed to fetch entity for DDB sync file cleanup:", err);
+        });
+    }
+
     return DB.deleteEntity(route, req.session.userId, entityId, result => {
       if (!result) {
         return res.sendStatus(404);
@@ -174,4 +191,34 @@ function configureEntityRoute<T extends Listable>(
       return res.status(500).send(err);
     });
   });
+}
+
+function removeUrlFromSyncFile(characterId: string) {
+  const urlsPath = process.env.DDB_URLS_PATH || join(process.cwd(), "public", "sync", "ddb-urls.txt");
+  if (!existsSync(urlsPath)) {
+    return;
+  }
+  try {
+    const content = readFileSync(urlsPath, "utf8");
+    const lines = content.split(/\r?\n/);
+    
+    const newLines = lines.filter(line => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) return true;
+      const parts = trimmed.split("|").map(s => s.trim());
+      const url = parts[0];
+      const match = url.match(/characters\/(\d+)/);
+      if (match && match[1] === characterId) {
+        return false;
+      }
+      return true;
+    });
+    
+    if (newLines.length !== lines.length) {
+      writeFileSync(urlsPath, newLines.join("\n"), "utf8");
+      console.log(`[sync-ddb] Removed character ID ${characterId} from ${urlsPath}`);
+    }
+  } catch (err) {
+    console.error(`[sync-ddb] Failed to remove URL from sync file:`, err);
+  }
 }
