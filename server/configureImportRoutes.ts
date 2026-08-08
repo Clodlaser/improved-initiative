@@ -119,6 +119,7 @@ export function configureImportRoutes(
 function cleanHtml(html: string): string {
   if (!html) return "";
   return html
+    .replace(/\[rollable\](.*?);\{[^}]*\}\[\/rollable\]/gi, "$1") // clean D&D Beyond rollable tags
     .replace(/<p>/gi, "")
     .replace(/<\/p>/gi, "\n\n")
     .replace(/<br\s*\/?>/gi, "\n")
@@ -496,6 +497,139 @@ function mapDndBeyondCharacter(charData: any, originalUrl: string) {
         list.forEach(addActionToList);
       }
     }
+  }
+
+  // Calculate Weapon attacks from equipped inventory
+  const isProficientWithWeapon = (def: any): boolean => {
+    if (!charData.modifiers) return false;
+    const categories = ["race", "class", "background", "item", "feat"];
+    const weaponName = def.name?.toLowerCase() || "";
+    const classification = def.weaponClassificationId === 1 ? "simple-weapons" : "martial-weapons";
+    
+    for (const cat of categories) {
+      const list = charData.modifiers[cat];
+      if (Array.isArray(list)) {
+        for (const mod of list) {
+          if (mod.type === "proficiency") {
+            const sub = mod.subType?.toLowerCase() || "";
+            if (sub === weaponName || sub === classification) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    return false;
+  };
+
+  const getWeaponMagicBonus = (item: any): { attack: number; damage: number } => {
+    let attack = 0;
+    let damage = 0;
+    
+    const modifiers = item.definition?.grantedModifiers;
+    if (Array.isArray(modifiers)) {
+      for (const mod of modifiers) {
+        if (mod.type === "bonus") {
+          const subType = mod.subType;
+          if (subType === "magic" || subType === "attacks" || subType === "to-hit-and-damage-rolls") {
+            attack += mod.value || 0;
+            damage += mod.value || 0;
+          } else if (subType === "to-hit" || subType === "attack-rolls") {
+            attack += mod.value || 0;
+          } else if (subType === "damage" || subType === "damage-rolls") {
+            damage += mod.value || 0;
+          }
+        }
+      }
+    }
+    
+    return { attack, damage };
+  };
+
+  let archeryBonus = 0;
+  let duelingBonus = 0;
+
+  if (charData.modifiers) {
+    const categories = ["class", "feat"];
+    for (const cat of categories) {
+      const list = charData.modifiers[cat];
+      if (Array.isArray(list)) {
+        for (const mod of list) {
+          if (mod.type === "bonus") {
+            if (mod.subType === "ranged-attacks") {
+              archeryBonus += mod.value || 0;
+            }
+            if (mod.subType === "melee-damage") {
+              duelingBonus += mod.value || 0;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (charData.inventory && Array.isArray(charData.inventory)) {
+    for (const item of charData.inventory) {
+      if (item.equipped && item.definition) {
+        const def = item.definition;
+        const isWeapon = def.filterType === "Weapon" || def.attackType || def.weaponClassificationId;
+        
+        if (isWeapon) {
+          const weaponName = def.name;
+          const magic = getWeaponMagicBonus(item);
+          const isProficient = isProficientWithWeapon(def);
+          
+          const isFinesse = def.properties?.some((p: any) => p.name === "Finesse") || false;
+          const isRanged = def.attackType === 2 || def.properties?.some((p: any) => p.name === "Ranged") || def.range || def.longRange;
+          
+          const strMod = Math.floor((abilities.Str - 10) / 2);
+          const dexMod = Math.floor((abilities.Dex - 10) / 2);
+          
+          let abMod = strMod;
+          if (isRanged || (isFinesse && dexMod > strMod)) {
+            abMod = dexMod;
+          }
+          
+          const toHit = abMod + (isProficient ? profBonus : 0) + magic.attack + (isRanged ? archeryBonus : 0);
+          const toHitSign = toHit >= 0 ? `+${toHit}` : `${toHit}`;
+          
+          const diceCount = def.damage?.diceCount || 1;
+          const diceValue = def.damage?.diceValue || 4;
+          const damageType = (def.damageType || def.damage?.damageType || "slashing").toLowerCase();
+          
+          const damageBonus = abMod + magic.damage + (isRanged ? 0 : duelingBonus);
+          const damageBonusStr = damageBonus > 0 ? ` + ${damageBonus}` : damageBonus < 0 ? ` - ${Math.abs(damageBonus)}` : "";
+          const avgDamage = Math.floor(diceCount * (diceValue + 1) / 2) + damageBonus;
+          
+          const rangeStr = def.range ? `range ${def.range}/${def.longRange || def.range * 4} ft.` : "reach 5 ft.";
+          const weaponType = isRanged ? "Ranged Weapon Attack" : "Melee Weapon Attack";
+          
+          const content = `${weaponType}: ${toHitSign} to hit, ${rangeStr}, one target. Hit: ${avgDamage} (${diceCount}d${diceValue}${damageBonusStr}) ${damageType} damage.`;
+          
+          if (!actions.some(a => a.Name === weaponName)) {
+            actions.push({
+              Name: weaponName,
+              Content: content,
+              Usage: ""
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Default Unarmed Strike
+  const strMod = Math.floor((abilities.Str - 10) / 2);
+  const unarmedToHit = strMod + profBonus;
+  const unarmedToHitSign = unarmedToHit >= 0 ? `+${unarmedToHit}` : `${unarmedToHit}`;
+  const unarmedDamage = 1 + strMod;
+  
+  if (!actions.some(a => a.Name.toLowerCase() === "unarmed strike")) {
+    actions.push({
+      Name: "Unarmed Strike",
+      Content: `Melee Weapon Attack: ${unarmedToHitSign} to hit, reach 5 ft., one target. Hit: ${unarmedDamage > 0 ? unarmedDamage : 1} bludgeoning damage.`,
+      Usage: ""
+    });
   }
 
   const raceName = charData.race?.fullName || charData.race?.baseName || "Player Character";
