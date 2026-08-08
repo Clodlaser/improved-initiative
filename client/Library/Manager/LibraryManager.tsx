@@ -95,6 +95,7 @@ export function LibraryManager(props: LibraryManagerProps): JSX.Element {
             activeTab={activeTab}
             libraries={props.libraries}
             editListing={setEditorTarget}
+            librariesCommander={props.librariesCommander}
           />
         </div>
         <VerticalResizer

@@ -367,5 +367,67 @@ export class LibrariesCommander {
     
     this.tracker.PromptQueue.Add(prompt);
   };
+
+  public ResyncPersistentCharacter = async (
+    listing: Listing<PersistentCharacter>,
+    url: string
+  ): Promise<void> => {
+    this.tracker.EventLog.AddEvent("Fetching updated character from D&D Beyond...");
+    try {
+      const response = await axios.get(`/import/dndbeyond?url=${encodeURIComponent(url)}`);
+      const characterData = response.data;
+      
+      const originalCharacter = await listing.GetWithTemplate(PersistentCharacter.Default());
+      
+      const reviewPrompt = DndBeyondReviewPrompt(characterData, async (finalData) => {
+        const statBlock: StatBlock = {
+          ...originalCharacter.StatBlock,
+          Name: finalData.Name,
+          HP: finalData.HP,
+          AC: finalData.AC,
+          Abilities: finalData.Abilities,
+          InitiativeModifier: finalData.InitiativeModifier,
+          Type: finalData.Type,
+          Challenge: finalData.Challenge,
+          ImageURL: finalData.ImageURL,
+          Description: finalData.Description,
+          Speed: finalData.Speed,
+          Saves: finalData.Saves,
+          Skills: finalData.Skills,
+          Senses: finalData.Senses,
+          Languages: finalData.Languages,
+          DamageVulnerabilities: finalData.DamageVulnerabilities,
+          DamageResistances: finalData.DamageResistances,
+          DamageImmunities: finalData.DamageImmunities,
+          ConditionImmunities: finalData.ConditionImmunities,
+          Traits: finalData.Traits,
+          Actions: finalData.Actions,
+          Reactions: finalData.Reactions,
+          BonusActions: finalData.BonusActions
+        };
+        
+        const updatedCharacter = {
+          ...originalCharacter,
+          Name: finalData.Name,
+          CurrentHP: finalData.CurrentHP,
+          StatBlock: statBlock,
+          LastUpdateMs: now()
+        };
+        
+        await this.libraries.PersistentCharacters.SaveEditedListing(listing, updatedCharacter);
+        this.tracker.Encounter.UpdatePersistentCharacterStatBlock(listing.Meta().Id, statBlock);
+        
+        this.tracker.EventLog.AddEvent(`Successfully synchronized ${statBlock.Name} with D&D Beyond.`);
+      });
+      
+      this.tracker.PromptQueue.Add(reviewPrompt);
+    } catch (err: any) {
+      const errMsg = err.response?.data || err.message || "Unknown error";
+      this.tracker.EventLog.AddEvent(`Failed to resynchronize character: ${errMsg}`);
+      
+      const errorPrompt = DndBeyondErrorPrompt(errMsg);
+      this.tracker.PromptQueue.Add(errorPrompt);
+    }
+  };
 }
 

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { saveAs } from "browser-filesaver";
-
 import { useState } from "react";
+import { LibrariesCommander } from "../../Commands/LibrariesCommander";
 import { Listable } from "../../../common/Listable";
 import { Button } from "../../Components/Button";
 import {
@@ -22,15 +22,33 @@ import { ListingSelectionContext } from "./ListingSelectionContext";
 
 type PromptTypeAndTargets = ["move" | "delete", Listing<Listable>[]] | null;
 
+import { PersistentCharacter } from "../../../common/PersistentCharacter";
+
 export function SelectedItemsManager(props: {
   activeTab: LibraryType;
   libraries: Libraries;
   editListing: (listing: Listing<Listable>) => void;
+  librariesCommander: LibrariesCommander;
 }) {
   const [promptTypeAndTargets, setPromptTypeAndTargets] =
     useState<PromptTypeAndTargets>(null);
 
+  const [selectedCharacter, setSelectedCharacter] = useState<PersistentCharacter | null>(null);
+
   const selection = React.useContext(ListingSelectionContext);
+
+  React.useEffect(() => {
+    if (props.activeTab === "PersistentCharacters" && selection.selected.length === 1) {
+      selection.selected[0].GetAsyncWithUpdatedId(char => {
+        setSelectedCharacter(char);
+      });
+    } else {
+      setSelectedCharacter(null);
+    }
+  }, [selection.selected, props.activeTab]);
+
+  const ddbUrlMatch = selectedCharacter?.StatBlock?.Description?.match(/Imported from D&D Beyond: (.*)/);
+  const ddbUrl = ddbUrlMatch ? ddbUrlMatch[1] : null;
 
   const preloadedContentSelected = selection.selected.some(
     l => l.Origin === "open5e" || l.Origin === "open5e-additional"
@@ -48,6 +66,13 @@ export function SelectedItemsManager(props: {
               text="Edit"
               fontAwesomeIcon="edit"
               onClick={() => props.editListing(selection.selected[0])}
+            />
+          )}
+          {ddbUrl && (
+            <Button
+              text="Resync"
+              fontAwesomeIcon="sync"
+              onClick={() => props.librariesCommander.ResyncPersistentCharacter(selection.selected[0], ddbUrl)}
             />
           )}
           <Button
