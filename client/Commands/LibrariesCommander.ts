@@ -343,7 +343,20 @@ export class LibrariesCommander {
             Challenge: finalData.Challenge,
             ImageURL: finalData.ImageURL,
             Description: finalData.Description,
-            Player: "player"
+            Player: "player",
+            Speed: finalData.Speed || [],
+            Saves: finalData.Saves || [],
+            Skills: finalData.Skills || [],
+            Senses: finalData.Senses || [],
+            Languages: finalData.Languages || [],
+            DamageVulnerabilities: finalData.DamageVulnerabilities || [],
+            DamageResistances: finalData.DamageResistances || [],
+            DamageImmunities: finalData.DamageImmunities || [],
+            ConditionImmunities: finalData.ConditionImmunities || [],
+            Traits: finalData.Traits || [],
+            Actions: finalData.Actions || [],
+            Reactions: finalData.Reactions || [],
+            BonusActions: finalData.BonusActions || []
           };
           
           const persistentCharacter = {
