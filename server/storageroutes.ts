@@ -171,7 +171,15 @@ function configureEntityRoute<T extends Listable>(
           if (entity && entity.StatBlock && entity.StatBlock.Description) {
             const match = entity.StatBlock.Description.match(/characters\/(\d+)/);
             if (match) {
-              removeUrlFromSyncFile(match[1]);
+              const ddbId = match[1];
+              removeUrlFromSyncFile(ddbId);
+              // Also delete the sync-created entity with the DDB ID, if it's different from the deleted entityId!
+              if (ddbId !== entityId) {
+                console.log(`[sync-ddb] Also deleting duplicate DDB character ID ${ddbId} from MongoDB`);
+                DB.deleteEntity(route, req.session.userId, ddbId, () => {}).catch(err => {
+                  console.error("Failed to delete duplicate DDB character from MongoDB:", err);
+                });
+              }
             }
           }
         })

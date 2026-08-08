@@ -337,7 +337,7 @@ export class LibrariesCommander {
         const reviewPrompt = DndBeyondReviewPrompt(characterData, (finalData) => {
           const statBlock: StatBlock = {
             ...StatBlock.Default(),
-            Id: probablyUniqueString(),
+            Id: finalData.Id || probablyUniqueString(),
             Name: finalData.Name,
             HP: finalData.HP,
             AC: finalData.AC,

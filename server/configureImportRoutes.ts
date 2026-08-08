@@ -769,6 +769,7 @@ function mapDndBeyondCharacter(charData: any, originalUrl: string) {
   const avatarUrl = charData.decorations?.avatarUrl || charData.avatarUrl || "";
 
   return {
+    Id: String(charData.id),
     Name: name,
     HP: { Value: maxHP, Notes: "" },
     CurrentHP: currentHP,
