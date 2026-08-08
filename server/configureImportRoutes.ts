@@ -464,6 +464,86 @@ function mapDndBeyondCharacter(charData: any, originalUrl: string) {
     }
   }
 
+  // Spellcasting trait generation
+  const spellLevels: Record<number, string[]> = {
+    0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: []
+  };
+
+  const collectSpells = (list: any[]) => {
+    if (!Array.isArray(list)) return;
+    for (const s of list) {
+      const def = s.definition;
+      if (!def) continue;
+      
+      const level = def.level ?? 0;
+      const isPrepared = s.prepared || s.alwaysPrepared || level === 0;
+      
+      if (isPrepared && level >= 0 && level <= 9) {
+        const spellName = def.name;
+        if (spellName && !spellLevels[level].includes(spellName)) {
+          spellLevels[level].push(spellName);
+        }
+      }
+    }
+  };
+
+  if (charData.spells) {
+    collectSpells(charData.spells.class);
+    collectSpells(charData.spells.race);
+    collectSpells(charData.spells.feat);
+    collectSpells(charData.spells.item);
+  }
+
+  let primaryCastingAbility = "Wis";
+  let castingAbilityName = "Wisdom";
+  let casterLevel = 1;
+
+  if (charData.classes && Array.isArray(charData.classes)) {
+    casterLevel = charData.classes.reduce((sum: number, c: any) => sum + (c.level || 0), 0);
+    for (const c of charData.classes) {
+      const className = c.definition?.name?.toLowerCase() || "";
+      if (["wizard", "artificer"].includes(className)) {
+        primaryCastingAbility = "Int";
+        castingAbilityName = "Intelligence";
+        break;
+      }
+      if (["cleric", "druid", "ranger"].includes(className)) {
+        primaryCastingAbility = "Wis";
+        castingAbilityName = "Wisdom";
+        break;
+      }
+      if (["bard", "sorcerer", "warlock", "paladin"].includes(className)) {
+        primaryCastingAbility = "Cha";
+        castingAbilityName = "Charisma";
+        break;
+      }
+    }
+  }
+
+  const castingMod = Math.floor((abilities[primaryCastingAbility as keyof typeof abilities] - 10) / 2);
+  const spellDC = 8 + castingMod + profBonus;
+  const spellAttack = castingMod + profBonus;
+  const spellAttackSign = spellAttack >= 0 ? `+${spellAttack}` : `${spellAttack}`;
+
+  let hasAnySpells = false;
+  const levelNames = ["Cantrips (at will)", "1st level", "2nd level", "3rd level", "4th level", "5th level", "6th level", "7th level", "8th level", "9th level"];
+  let spellcastingContent = `The character's spellcasting ability is ${castingAbilityName} (spell save DC ${spellDC}, ${spellAttackSign} to hit with spell attacks). It has the following spells prepared:\n\n`;
+
+  for (let lvl = 0; lvl <= 9; lvl++) {
+    const list = spellLevels[lvl];
+    if (list && list.length > 0) {
+      hasAnySpells = true;
+      spellcastingContent += `* **${levelNames[lvl]}**: ${list.join(", ")}\n`;
+    }
+  }
+
+  if (hasAnySpells) {
+    traits.push({
+      Name: "Spellcasting",
+      Content: spellcastingContent
+    });
+  }
+
   // Actions, Bonus Actions, Reactions
   const actions: { Name: string; Content: string; Usage?: string }[] = [];
   const bonusActions: { Name: string; Content: string; Usage?: string }[] = [];
