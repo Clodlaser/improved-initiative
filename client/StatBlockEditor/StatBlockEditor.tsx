@@ -1,6 +1,7 @@
 import { Field, Form, Formik, FormikProps } from "formik";
 import * as _ from "lodash";
 import * as moment from "moment";
+import axios from "axios";
 
 import * as React from "react";
 import { Listable } from "../../common/Listable";
@@ -42,6 +43,8 @@ export interface StatBlockEditorProps {
 interface StatBlockEditorState {
   editorMode: "standard" | "json";
   renderError?: string;
+  isSyncing?: boolean;
+  syncError?: string;
 }
 
 export class StatBlockEditor extends React.Component<
@@ -50,7 +53,7 @@ export class StatBlockEditor extends React.Component<
 > {
   constructor(props) {
     super(props);
-    this.state = { editorMode: "standard" };
+    this.state = { editorMode: "standard", isSyncing: false };
   }
 
   public componentDidCatch(error, info) {
@@ -59,6 +62,44 @@ export class StatBlockEditor extends React.Component<
       renderError: error.toString()
     });
   }
+
+  private resyncFromDndBeyond = async (api: FormikProps<any>, url: string) => {
+    this.setState({ isSyncing: true, syncError: undefined });
+    try {
+      const response = await axios.get(`/import/dndbeyond?url=${encodeURIComponent(url)}`);
+      const characterData = response.data;
+      
+      api.setValues({
+        ...api.values,
+        Name: characterData.Name,
+        HP: characterData.HP,
+        AC: characterData.AC,
+        Abilities: characterData.Abilities,
+        InitiativeModifier: characterData.InitiativeModifier,
+        Type: characterData.Type,
+        Challenge: characterData.Challenge,
+        ImageURL: characterData.ImageURL,
+        Description: characterData.Description,
+        Speed: characterData.Speed || [],
+        Saves: characterData.Saves || [],
+        Skills: characterData.Skills || [],
+        Senses: characterData.Senses || [],
+        Languages: characterData.Languages || [],
+        DamageVulnerabilities: characterData.DamageVulnerabilities || [],
+        DamageResistances: characterData.DamageResistances || [],
+        DamageImmunities: characterData.DamageImmunities || [],
+        ConditionImmunities: characterData.ConditionImmunities || [],
+        Traits: characterData.Traits || [],
+        Actions: characterData.Actions || [],
+        Reactions: characterData.Reactions || [],
+        BonusActions: characterData.BonusActions || []
+      });
+      this.setState({ isSyncing: false });
+    } catch (err: any) {
+      const errMsg = err.response?.data || err.message || "Unknown error";
+      this.setState({ isSyncing: false, syncError: errMsg });
+    }
+  };
 
   public render() {
     if (!this.props.statBlock) {
@@ -72,8 +113,16 @@ export class StatBlockEditor extends React.Component<
         persistentcharacter: "Edit Character Statblock"
       }[this.props.editorTarget] || "Edit StatBlock";
 
-    const buttons = (
+    const buttons = (api: FormikProps<any>, ddbUrl: string | null) => (
       <>
+        {ddbUrl && (
+          <Button
+            onClick={() => this.resyncFromDndBeyond(api, ddbUrl)}
+            fontAwesomeIcon={this.state.isSyncing ? "spinner fa-spin" : "sync"}
+            tooltip={this.state.isSyncing ? "Syncing..." : "Resync from D&D Beyond"}
+            disabled={this.state.isSyncing}
+          />
+        )}
         <Button
           onClick={this.close}
           fontAwesomeIcon="times"
@@ -102,39 +151,49 @@ export class StatBlockEditor extends React.Component<
         validate={this.validate}
         validateOnBlur
       >
-        {api => (
-          <Form
-            className="c-statblock-editor"
-            autoComplete="false"
-            translate="no"
-          >
-            <div className="c-statblock-editor__title-row">
-              <h2 className="c-statblock-editor__title">{header}</h2>
-              {buttons}
-            </div>
-            <div className="c-statblock-editor__identity">
-              <IdentityFields
-                formApi={api}
-                allowFolder={
-                  this.props.editorTarget === "library" ||
-                  this.props.editorTarget === "persistentcharacter"
-                }
-                allowSaveAsCopy={this.props.onSaveAsCopy !== undefined}
-                allowSaveAsCharacter={
-                  this.props.onSaveAsCharacter !== undefined
-                }
-                currentListings={this.props.currentListings}
-                setEditorMode={(editorMode: "standard" | "json") =>
-                  this.setState({ editorMode })
-                }
-              />
-            </div>
-            {this.state.editorMode == "standard"
-              ? this.fieldEditor(api)
-              : this.jsonEditor(api)}
-            <div className="c-statblock-editor__buttons">{buttons}</div>
-          </Form>
-        )}
+        {api => {
+          const ddbUrlMatch = api.values.Description?.match(/Imported from D&D Beyond: (.*)/);
+          const ddbUrl = ddbUrlMatch ? ddbUrlMatch[1] : null;
+
+          return (
+            <Form
+              className="c-statblock-editor"
+              autoComplete="false"
+              translate="no"
+            >
+              <div className="c-statblock-editor__title-row">
+                <h2 className="c-statblock-editor__title">{header}</h2>
+                {buttons(api, ddbUrl)}
+              </div>
+              {this.state.syncError && (
+                <div style={{ color: "#d9534f", padding: "10px", fontWeight: "bold" }}>
+                  Sync failed: {this.state.syncError}
+                </div>
+              )}
+              <div className="c-statblock-editor__identity">
+                <IdentityFields
+                  formApi={api}
+                  allowFolder={
+                    this.props.editorTarget === "library" ||
+                    this.props.editorTarget === "persistentcharacter"
+                  }
+                  allowSaveAsCopy={this.props.onSaveAsCopy !== undefined}
+                  allowSaveAsCharacter={
+                    this.props.onSaveAsCharacter !== undefined
+                  }
+                  currentListings={this.props.currentListings}
+                  setEditorMode={(editorMode: "standard" | "json") =>
+                    this.setState({ editorMode })
+                  }
+                />
+              </div>
+              {this.state.editorMode == "standard"
+                ? this.fieldEditor(api)
+                : this.jsonEditor(api)}
+              <div className="c-statblock-editor__buttons">{buttons(api, ddbUrl)}</div>
+            </Form>
+          );
+        }}
       </Formik>
     );
   }
