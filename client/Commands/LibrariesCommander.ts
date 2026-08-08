@@ -34,6 +34,7 @@ import {
 
 export class LibrariesCommander {
   private libraries: Libraries;
+  private spellsUpdated = ko.observable(0);
 
   constructor(
     private tracker: TrackerViewModel,
@@ -46,6 +47,7 @@ export class LibrariesCommander {
     // on a React hook. This will probably catch fire at some point.
     // It's also probably impossible to test.
     this.libraries = libraries;
+    this.spellsUpdated(this.spellsUpdated() + 1);
   };
 
   public ShowLibraries = (): void => this.tracker.LibrariesVisible(true);
@@ -255,12 +257,14 @@ export class LibrariesCommander {
   };
 
   public GetSpellsByNameRegex = ko.pureComputed(
-    (): RegExp =>
-      concatenatedStringRegex(
+    (): RegExp => {
+      this.spellsUpdated();
+      return concatenatedStringRegex(
         this.libraries.Spells.GetAllListings() //TODO: Ensure that computed is updated with this
           .map(s => s.Meta().Name)
           .filter(n => n.length > 2)
-      )
+      );
+    }
   );
 
   public LoadEncounter = (
