@@ -10,6 +10,7 @@ import { ListingGroup } from "../Components/BuildListingTree";
 import { LibraryReferencePane } from "./LibraryReferencePane";
 import { ListingRow } from "../Components/ListingRow";
 import { Library } from "../useLibrary";
+import { Button } from "../../Components/Button";
 
 export type PersistentCharacterLibraryReferencePaneProps = {
   librariesCommander: LibrariesCommander;
@@ -51,6 +52,10 @@ export class PersistentCharacterLibraryReferencePane extends React.Component<Per
     this.editStatBlock(listing);
   };
 
+  private importFromDndBeyond = () => {
+    this.props.librariesCommander.ImportFromDndBeyond();
+  };
+
   private renderListingRow = (
     l: Listing<PersistentCharacter>,
     onPreview,
@@ -81,6 +86,14 @@ export class PersistentCharacterLibraryReferencePane extends React.Component<Per
         renderListingRow={this.renderListingRow}
         listingGroups={this.listingGroups}
         addNewItem={this.createAndEditStatBlock}
+        additionalButtons={
+          <Button
+            text="D&D Beyond"
+            additionalClassNames="dndbeyond"
+            fontAwesomeIcon="download"
+            onClick={this.importFromDndBeyond}
+          />
+        }
         renderPreview={character => (
           <StatBlockComponent
             statBlock={character.StatBlock}

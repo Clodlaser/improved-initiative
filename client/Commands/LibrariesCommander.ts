@@ -24,6 +24,13 @@ import { SavedEncounter } from "../../common/SavedEncounter";
 import { now } from "moment";
 import { Library } from "../Library/useLibrary";
 import { CurrentSettings } from "../Settings/Settings";
+import axios from "axios";
+import {
+  DndBeyondUrlPrompt,
+  DndBeyondReviewPrompt,
+  DndBeyondErrorPrompt
+} from "../Prompts/DndBeyondPrompts";
+
 
 export class LibrariesCommander {
   private libraries: Libraries;
@@ -315,4 +322,50 @@ export class LibrariesCommander {
     const persistentCharacter = PersistentCharacter.Initialize(statBlock);
     this.libraries.PersistentCharacters.SaveNewListing(persistentCharacter);
   };
+
+  public ImportFromDndBeyond = (): void => {
+    const prompt = DndBeyondUrlPrompt(async (url: string) => {
+      this.tracker.EventLog.AddEvent("Fetching character from D&D Beyond...");
+      try {
+        const response = await axios.get(`/import/dndbeyond?url=${encodeURIComponent(url)}`);
+        const characterData = response.data;
+        
+        const reviewPrompt = DndBeyondReviewPrompt(characterData, (finalData) => {
+          const statBlock: StatBlock = {
+            ...StatBlock.Default(),
+            Id: probablyUniqueString(),
+            Name: finalData.Name,
+            HP: finalData.HP,
+            AC: finalData.AC,
+            Abilities: finalData.Abilities,
+            InitiativeModifier: finalData.InitiativeModifier,
+            Type: finalData.Type,
+            Challenge: finalData.Challenge,
+            ImageURL: finalData.ImageURL,
+            Description: finalData.Description,
+            Player: "player"
+          };
+          
+          const persistentCharacter = {
+            ...PersistentCharacter.Initialize(statBlock),
+            CurrentHP: finalData.CurrentHP
+          };
+          
+          this.libraries.PersistentCharacters.SaveNewListing(persistentCharacter);
+          this.tracker.EventLog.AddEvent(`Successfully imported ${statBlock.Name} from D&D Beyond.`);
+        });
+        
+        this.tracker.PromptQueue.Add(reviewPrompt);
+      } catch (err: any) {
+        const errMsg = err.response?.data || err.message || "Unknown error";
+        this.tracker.EventLog.AddEvent(`Failed to import character: ${errMsg}`);
+        
+        const errorPrompt = DndBeyondErrorPrompt(errMsg);
+        this.tracker.PromptQueue.Add(errorPrompt);
+      }
+    });
+    
+    this.tracker.PromptQueue.Add(prompt);
+  };
 }
+

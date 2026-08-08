@@ -28,6 +28,7 @@ interface LibraryReferencePaneProps<T extends Listable> {
   showPreloadInfo?: boolean;
   showSortControl?: boolean;
   launchQuickAddPrompt?: () => void;
+  additionalButtons?: React.ReactNode;
 }
 
 interface State<T extends Listable> {
@@ -177,6 +178,7 @@ export class LibraryReferencePane<T extends Listable> extends React.Component<
             fontAwesomeIcon="plus"
             onClick={this.props.addNewItem}
           />
+          {this.props.additionalButtons}
         </div>
         {previewVisible && (
           <Overlay
