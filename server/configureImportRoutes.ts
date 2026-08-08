@@ -116,6 +116,25 @@ export function configureImportRoutes(
   });
 }
 
+function cleanHtml(html: string): string {
+  if (!html) return "";
+  return html
+    .replace(/<p>/gi, "")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<strong>(.*?)<\/strong>/gi, "**$1**")
+    .replace(/<b>(.*?)<\/b>/gi, "**$1**")
+    .replace(/<em>(.*?)<\/em>/gi, "*$1*")
+    .replace(/<i>(.*?)<\/i>/gi, "*$1*")
+    .replace(/<\/?[a-z][a-z0-9]*[^<>]*>/gi, "") // strip all other HTML tags
+    .replace(/&nbsp;/g, " ")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&lsquo;/g, "'")
+    .replace(/&ldquo;/g, '"')
+    .replace(/&rdquo;/g, '"')
+    .trim();
+}
+
 function mapDndBeyondCharacter(charData: any, originalUrl: string) {
   const name = charData.name || "D&D Beyond Character";
 
@@ -168,11 +187,13 @@ function mapDndBeyondCharacter(charData: any, originalUrl: string) {
   const conMod = Math.floor((abilities.Con - 10) / 2);
   const dexMod = Math.floor((abilities.Dex - 10) / 2);
   const totalLevel = charData.classes?.reduce((sum: number, c: any) => sum + (c.level || 0), 0) || 1;
+  const profBonus = Math.floor((totalLevel - 1) / 4) + 2;
 
   const calculatedMaxHP = (charData.baseHitPoints || 0) + (charData.bonusHitPoints || 0) + (conMod * totalLevel);
   const maxHP = Math.max(1, calculatedMaxHP);
   const currentHP = Math.max(0, maxHP - (charData.removedHitPoints || 0));
 
+  // Armor Class calculation
   let baseAC = 10 + dexMod;
   let shieldBonus = 0;
   if (charData.inventory && Array.isArray(charData.inventory)) {
@@ -196,6 +217,287 @@ function mapDndBeyondCharacter(charData: any, originalUrl: string) {
   }
   const ac = baseAC + shieldBonus;
 
+  // Speed
+  const baseSpeed = charData.race?.baseWalkingSpeed || 30;
+  let speedBonus = 0;
+  if (charData.modifiers) {
+    const categories = ["race", "class", "background", "item", "feat", "condition"];
+    for (const cat of categories) {
+      const list = charData.modifiers[cat];
+      if (Array.isArray(list)) {
+        for (const mod of list) {
+          if (mod.type === "bonus" && mod.subType === "speed") {
+            speedBonus += mod.value || 0;
+          }
+        }
+      }
+    }
+  }
+  const speed = [`${baseSpeed + speedBonus} ft.`];
+
+  // Saves
+  const saves: { Name: string; Modifier: number }[] = [];
+  const statNames = ["Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma"];
+  const statShortNames = ["Str", "Dex", "Con", "Int", "Wis", "Cha"];
+  const statAbilities = [abilities.Str, abilities.Dex, abilities.Con, abilities.Int, abilities.Wis, abilities.Cha];
+
+  for (let i = 0; i < 6; i++) {
+    const statName = statNames[i];
+    const shortName = statShortNames[i];
+    const abScore = statAbilities[i];
+    const abMod = Math.floor((abScore - 10) / 2);
+    
+    let isProficient = false;
+    let bonus = 0;
+    
+    if (charData.modifiers) {
+      const categories = ["race", "class", "background", "item", "feat", "condition"];
+      for (const cat of categories) {
+        const list = charData.modifiers[cat];
+        if (Array.isArray(list)) {
+          for (const mod of list) {
+            if (mod.type === "proficiency" && mod.subType === `${statName.toLowerCase()}-saving-throws`) {
+              isProficient = true;
+            }
+            if (mod.type === "bonus") {
+              if (mod.subType === "saving-throws") {
+                bonus += mod.value || 0;
+              } else if (mod.subType === `${statName.toLowerCase()}-saving-throws`) {
+                bonus += mod.value || 0;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    if (isProficient || bonus !== 0) {
+      saves.push({
+        Name: shortName,
+        Modifier: abMod + (isProficient ? profBonus : 0) + bonus
+      });
+    }
+  }
+
+  // Skills
+  const skillList = [
+    { name: "Acrobatics", key: "acrobatics", ability: "Dex" },
+    { name: "Animal Handling", key: "animal-handling", ability: "Wis" },
+    { name: "Arcana", key: "arcana", ability: "Int" },
+    { name: "Athletics", key: "athletics", ability: "Str" },
+    { name: "Deception", key: "deception", ability: "Cha" },
+    { name: "History", key: "history", ability: "Int" },
+    { name: "Insight", key: "insight", ability: "Wis" },
+    { name: "Intimidation", key: "intimidation", ability: "Cha" },
+    { name: "Investigation", key: "investigation", ability: "Int" },
+    { name: "Medicine", key: "medicine", ability: "Wis" },
+    { name: "Nature", key: "nature", ability: "Int" },
+    { name: "Perception", key: "perception", ability: "Wis" },
+    { name: "Performance", key: "performance", ability: "Cha" },
+    { name: "Persuasion", key: "persuasion", ability: "Cha" },
+    { name: "Religion", key: "religion", ability: "Int" },
+    { name: "Sleight of Hand", key: "sleight-of-hand", ability: "Dex" },
+    { name: "Stealth", key: "stealth", ability: "Dex" },
+    { name: "Survival", key: "survival", ability: "Wis" }
+  ] as const;
+
+  const skills: { Name: string; Modifier: number }[] = [];
+
+  for (const skill of skillList) {
+    const abMod = Math.floor((abilities[skill.ability] - 10) / 2);
+    let profMultiplier = 0;
+    let bonus = 0;
+    let hasJackOfAllTrades = false;
+    
+    if (charData.modifiers) {
+      const categories = ["race", "class", "background", "item", "feat", "condition"];
+      for (const cat of categories) {
+        const list = charData.modifiers[cat];
+        if (Array.isArray(list)) {
+          for (const mod of list) {
+            if (mod.type === "half-proficiency" && mod.subType === "ability-checks") {
+              hasJackOfAllTrades = true;
+            }
+            if (mod.subType === skill.key) {
+              if (mod.type === "proficiency") {
+                profMultiplier = Math.max(profMultiplier, 1);
+              } else if (mod.type === "expertise" || mod.type === "twice-proficiency") {
+                profMultiplier = Math.max(profMultiplier, 2);
+              } else if (mod.type === "half-proficiency") {
+                profMultiplier = Math.max(profMultiplier, 0.5);
+              }
+              if (mod.type === "bonus") {
+                bonus += mod.value || 0;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    if (profMultiplier === 0 && hasJackOfAllTrades) {
+      profMultiplier = 0.5;
+    }
+    
+    if (profMultiplier > 0 || bonus !== 0) {
+      const profBonusToAdd = Math.floor(profBonus * profMultiplier);
+      skills.push({
+        Name: skill.name,
+        Modifier: abMod + profBonusToAdd + bonus
+      });
+    }
+  }
+
+  // Senses
+  const perceptionMod = skills.find(s => s.Name === "Perception")?.Modifier ?? Math.floor((abilities.Wis - 10) / 2);
+  const passivePerception = 10 + perceptionMod;
+  const senses = [`passive Perception ${passivePerception}`];
+  
+  if (charData.modifiers) {
+    const categories = ["race", "class", "background", "item", "feat", "condition"];
+    for (const cat of categories) {
+      const list = charData.modifiers[cat];
+      if (Array.isArray(list)) {
+        for (const mod of list) {
+          if (mod.type === "sense") {
+            const senseName = mod.friendlySubtypeName || mod.subType;
+            if (senseName) {
+              const senseValue = mod.value ? ` ${mod.value} ft.` : "";
+              const senseStr = `${senseName}${senseValue}`.toLowerCase();
+              if (!senses.includes(senseStr)) {
+                senses.push(senseStr);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Languages
+  const languages: string[] = [];
+  if (charData.modifiers) {
+    const categories = ["race", "class", "background", "item", "feat", "condition"];
+    for (const cat of categories) {
+      const list = charData.modifiers[cat];
+      if (Array.isArray(list)) {
+        for (const mod of list) {
+          if (mod.type === "language") {
+            const langName = mod.friendlySubtypeName || mod.friendlyName || mod.subType;
+            if (langName) {
+              const formattedLang = langName.charAt(0).toUpperCase() + langName.slice(1);
+              if (!languages.includes(formattedLang)) {
+                languages.push(formattedLang);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Resistances and Immunities
+  const damageVulnerabilities: string[] = [];
+  const damageResistances: string[] = [];
+  const damageImmunities: string[] = [];
+  const conditionImmunities: string[] = [];
+  
+  if (charData.modifiers) {
+    const categories = ["race", "class", "background", "item", "feat", "condition"];
+    for (const cat of categories) {
+      const list = charData.modifiers[cat];
+      if (Array.isArray(list)) {
+        for (const mod of list) {
+          const type = mod.type;
+          const name = mod.friendlySubtypeName || mod.friendlyName || mod.subType;
+          if (!name) continue;
+          const formattedName = name.toLowerCase();
+          
+          if (type === "damage-vulnerability" && !damageVulnerabilities.includes(formattedName)) {
+            damageVulnerabilities.push(formattedName);
+          } else if (type === "damage-resistance" && !damageResistances.includes(formattedName)) {
+            damageResistances.push(formattedName);
+          } else if (type === "damage-immunity" && !damageImmunities.includes(formattedName)) {
+            damageImmunities.push(formattedName);
+          } else if (type === "condition-immunity" && !conditionImmunities.includes(formattedName)) {
+            conditionImmunities.push(formattedName);
+          }
+        }
+      }
+    }
+  }
+
+  // Traits (Passive racial traits & class features)
+  const traits: { Name: string; Content: string }[] = [];
+  const addTrait = (tName: string, tDesc: string) => {
+    if (tName && tDesc) {
+      const cleanedDesc = cleanHtml(tDesc);
+      if (!traits.some(t => t.Name === tName)) {
+        traits.push({ Name: tName, Content: cleanedDesc });
+      }
+    }
+  };
+
+  if (charData.race?.racialTraits && Array.isArray(charData.race.racialTraits)) {
+    for (const rt of charData.race.racialTraits) {
+      const definition = rt.definition;
+      if (definition && definition.name && definition.description) {
+        addTrait(definition.name, definition.description);
+      }
+    }
+  }
+
+  if (charData.classes && Array.isArray(charData.classes)) {
+    for (const c of charData.classes) {
+      if (c.classFeatures && Array.isArray(c.classFeatures)) {
+        for (const cf of c.classFeatures) {
+          const definition = cf.definition;
+          if (definition && definition.name && definition.description) {
+            // Only import as passive trait if it doesn't have an action activation type
+            if (!definition.activation?.activationType) {
+              addTrait(definition.name, definition.description);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Actions, Bonus Actions, Reactions
+  const actions: { Name: string; Content: string; Usage?: string }[] = [];
+  const bonusActions: { Name: string; Content: string; Usage?: string }[] = [];
+  const reactions: { Name: string; Content: string; Usage?: string }[] = [];
+
+  const addActionToList = (act: any) => {
+    if (!act.name) return;
+    const nameStr = act.name;
+    const descStr = cleanHtml(act.description || "");
+    const item = {
+      Name: nameStr,
+      Content: descStr,
+      Usage: ""
+    };
+    
+    const actType = act.activation?.activationType;
+    if (actType === 1) {
+      if (!actions.some(a => a.Name === nameStr)) actions.push(item);
+    } else if (actType === 2) {
+      if (!bonusActions.some(ba => ba.Name === nameStr)) bonusActions.push(item);
+    } else if (actType === 3) {
+      if (!reactions.some(r => r.Name === nameStr)) reactions.push(item);
+    }
+  };
+
+  if (charData.actions) {
+    const actionCategories = ["class", "race", "feat", "item"];
+    for (const cat of actionCategories) {
+      const list = charData.actions[cat];
+      if (Array.isArray(list)) {
+        list.forEach(addActionToList);
+      }
+    }
+  }
+
   const raceName = charData.race?.fullName || charData.race?.baseName || "Player Character";
   const classList = charData.classes?.map((c: any) => `${c.definition?.name || ""} ${c.level || ""}`).join(" / ") || "";
   const avatarUrl = charData.decorations?.avatarUrl || charData.avatarUrl || "";
@@ -210,7 +512,22 @@ function mapDndBeyondCharacter(charData: any, originalUrl: string) {
     Type: raceName,
     Challenge: classList,
     ImageURL: avatarUrl,
-    Description: `Imported from D&D Beyond: ${originalUrl}`
+    Description: `Imported from D&D Beyond: ${originalUrl}`,
+    Speed: speed,
+    Saves: saves,
+    Skills: skills,
+    Senses: senses,
+    Languages: languages,
+    DamageVulnerabilities: damageVulnerabilities,
+    DamageResistances: damageResistances,
+    DamageImmunities: damageImmunities,
+    ConditionImmunities: conditionImmunities,
+    Traits: traits,
+    Actions: actions,
+    Reactions: reactions,
+    LegendaryActions: [],
+    BonusActions: bonusActions
   };
 }
+
 
