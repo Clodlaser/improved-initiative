@@ -429,40 +429,8 @@ function mapDndBeyondCharacter(charData: any, originalUrl: string) {
   }
 
   // Traits (Passive racial traits & class features)
+  // We keep only the Spellcasting trait to avoid massive clutter.
   const traits: { Name: string; Content: string }[] = [];
-  const addTrait = (tName: string, tDesc: string) => {
-    if (tName && tDesc) {
-      const cleanedDesc = cleanHtml(tDesc);
-      if (!traits.some(t => t.Name === tName)) {
-        traits.push({ Name: tName, Content: cleanedDesc });
-      }
-    }
-  };
-
-  if (charData.race?.racialTraits && Array.isArray(charData.race.racialTraits)) {
-    for (const rt of charData.race.racialTraits) {
-      const definition = rt.definition;
-      if (definition && definition.name && definition.description) {
-        addTrait(definition.name, definition.description);
-      }
-    }
-  }
-
-  if (charData.classes && Array.isArray(charData.classes)) {
-    for (const c of charData.classes) {
-      if (c.classFeatures && Array.isArray(c.classFeatures)) {
-        for (const cf of c.classFeatures) {
-          const definition = cf.definition;
-          if (definition && definition.name && definition.description) {
-            // Only import as passive trait if it doesn't have an action activation type
-            if (!definition.activation?.activationType) {
-              addTrait(definition.name, definition.description);
-            }
-          }
-        }
-      }
-    }
-  }
 
   // Spellcasting trait generation
   const spellLevels: Record<number, string[]> = {
@@ -493,30 +461,106 @@ function mapDndBeyondCharacter(charData: any, originalUrl: string) {
     collectSpells(charData.spells.feat);
     collectSpells(charData.spells.item);
   }
+  if (charData.classSpells && Array.isArray(charData.classSpells)) {
+    for (const classSpellInfo of charData.classSpells) {
+      if (Array.isArray(classSpellInfo.spells)) {
+        collectSpells(classSpellInfo.spells);
+      }
+    }
+  }
 
   let primaryCastingAbility = "Wis";
   let castingAbilityName = "Wisdom";
-  let casterLevel = 1;
+  let fullCasterLevels = 0;
+  let halfCasterLevels = 0;
+  let warlockLevels = 0;
+  let thirdCasterLevels = 0;
 
   if (charData.classes && Array.isArray(charData.classes)) {
-    casterLevel = charData.classes.reduce((sum: number, c: any) => sum + (c.level || 0), 0);
     for (const c of charData.classes) {
       const className = c.definition?.name?.toLowerCase() || "";
+      const lvl = c.level || 0;
+      
+      if (["cleric", "wizard", "druid", "sorcerer", "bard"].includes(className)) {
+        fullCasterLevels += lvl;
+      } else if (["paladin", "ranger"].includes(className)) {
+        halfCasterLevels += lvl;
+      } else if (className === "warlock") {
+        warlockLevels += lvl;
+      } else if (className === "fighter" || className === "rogue") {
+        const subclass = c.subclassDefinition?.name?.toLowerCase() || "";
+        if (subclass === "eldritch knight" || subclass === "arcane trickster") {
+          thirdCasterLevels += lvl;
+        }
+      }
+      
+      // Determine casting ability (first class with casting ability)
       if (["wizard", "artificer"].includes(className)) {
         primaryCastingAbility = "Int";
         castingAbilityName = "Intelligence";
-        break;
-      }
-      if (["cleric", "druid", "ranger"].includes(className)) {
+      } else if (["cleric", "druid", "ranger"].includes(className)) {
         primaryCastingAbility = "Wis";
         castingAbilityName = "Wisdom";
-        break;
-      }
-      if (["bard", "sorcerer", "warlock", "paladin"].includes(className)) {
+      } else if (["bard", "sorcerer", "warlock", "paladin"].includes(className)) {
         primaryCastingAbility = "Cha";
         castingAbilityName = "Charisma";
-        break;
       }
+    }
+  }
+
+  const totalCasterLevel = Math.max(0, fullCasterLevels + Math.floor(halfCasterLevels / 2) + Math.floor(thirdCasterLevels / 3));
+
+  // Calculate spell slots
+  const getSpellSlots = (casterLevel: number): Record<number, number> => {
+    const table: Record<number, number[]> = {
+      1: [2],
+      2: [3],
+      3: [4, 2],
+      4: [4, 3],
+      5: [4, 3, 2],
+      6: [4, 3, 3],
+      7: [4, 3, 3, 1],
+      8: [4, 3, 3, 2],
+      9: [4, 3, 3, 3, 1],
+      10: [4, 3, 3, 3, 2],
+      11: [4, 3, 3, 3, 2, 1],
+      12: [4, 3, 3, 3, 2, 1],
+      13: [4, 3, 3, 3, 2, 1, 1],
+      14: [4, 3, 3, 3, 2, 1, 1],
+      15: [4, 3, 3, 3, 2, 1, 1, 1],
+      16: [4, 3, 3, 3, 2, 1, 1, 1],
+      17: [4, 3, 3, 3, 2, 1, 1, 1, 1],
+      18: [4, 3, 3, 3, 3, 1, 1, 1, 1],
+      19: [4, 3, 3, 3, 3, 2, 1, 1, 1],
+      20: [4, 3, 3, 3, 3, 2, 2, 1, 1]
+    };
+    const slots = table[Math.min(20, Math.max(1, casterLevel))] || [];
+    const result: Record<number, number> = {};
+    for (let i = 0; i < slots.length; i++) {
+      result[i + 1] = slots[i];
+    }
+    return result;
+  };
+
+  const getWarlockSlots = (wLevel: number): { slots: number; level: number } => {
+    if (wLevel <= 0) return { slots: 0, level: 0 };
+    const slots = wLevel >= 11 ? 3 : 2;
+    let lvl = 1;
+    if (wLevel >= 3) lvl = 2;
+    if (wLevel >= 5) lvl = 3;
+    if (wLevel >= 7) lvl = 4;
+    if (wLevel >= 9) lvl = 5;
+    return { slots, level: lvl };
+  };
+
+  const slotsByLevel: Record<number, number> = {};
+  if (totalCasterLevel > 0) {
+    Object.assign(slotsByLevel, getSpellSlots(totalCasterLevel));
+  }
+  if (warlockLevels > 0) {
+    const wSlots = getWarlockSlots(warlockLevels);
+    if (wSlots.level > 0 && wSlots.slots > 0) {
+      slotsByLevel[wSlots.level] = (slotsByLevel[wSlots.level] || 0) + wSlots.slots;
     }
   }
 
@@ -526,14 +570,22 @@ function mapDndBeyondCharacter(charData: any, originalUrl: string) {
   const spellAttackSign = spellAttack >= 0 ? `+${spellAttack}` : `${spellAttack}`;
 
   let hasAnySpells = false;
-  const levelNames = ["Cantrips (at will)", "1st level", "2nd level", "3rd level", "4th level", "5th level", "6th level", "7th level", "8th level", "9th level"];
   let spellcastingContent = `The character's spellcasting ability is ${castingAbilityName} (spell save DC ${spellDC}, ${spellAttackSign} to hit with spell attacks). It has the following spells prepared:\n\n`;
+
+  const suffixes = ["th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th"];
+  const getLevelName = (lvl: number): string => {
+    if (lvl === 0) return "Cantrips (at will)";
+    const suffix = suffixes[lvl] || "th";
+    const slotsCount = slotsByLevel[lvl] || 0;
+    const slotsStr = slotsCount > 0 ? ` (${slotsCount} slots)` : "";
+    return `${lvl}${suffix} level${slotsStr}`;
+  };
 
   for (let lvl = 0; lvl <= 9; lvl++) {
     const list = spellLevels[lvl];
     if (list && list.length > 0) {
       hasAnySpells = true;
-      spellcastingContent += `* **${levelNames[lvl]}**: ${list.join(", ")}\n`;
+      spellcastingContent += `* **${getLevelName(lvl)}**: ${list.join(", ")}\n`;
     }
   }
 
