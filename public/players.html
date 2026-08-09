@@ -209,6 +209,34 @@
 
                     <!-- Tab content: Spells -->
                     <div id="details-spells" class="hidden flex flex-col gap-6">
+                        <!-- Concentration Section -->
+                        <div id="conc-section" class="flex flex-col gap-2">
+                            <h3 class="text-xs font-black uppercase tracking-widest text-slate-400">Concentration</h3>
+                            <div id="conc-box" class="flex flex-col gap-3 p-4 rounded-xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/20 transition-all">
+                                <!-- Row 1: toggle + spell name input -->
+                                <div class="flex items-center gap-3">
+                                    <button id="conc-toggle" onclick="toggleConcentration()"
+                                        class="flex-shrink-0 w-8 h-8 rounded-full border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center transition-all">
+                                        <span id="conc-dot" class="w-3 h-3 rounded-full bg-transparent transition-all"></span>
+                                    </button>
+                                    <input id="conc-spell-input" type="text" placeholder="Nom du sort…"
+                                        oninput="onConcSpellInput(this.value)"
+                                        class="flex-1 bg-transparent border-b-2 border-slate-200 dark:border-slate-700 focus:border-primary outline-none text-sm font-bold text-slate-800 dark:text-slate-100 placeholder-slate-400 pb-1 transition-colors" />
+                                </div>
+                                <!-- Row 2: roll Constitution save button (shown when concentrating) -->
+                                <div id="conc-roll-row" class="hidden">
+                                    <button onclick="rollConcentrationSave()"
+                                        class="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-amber-500/10 border-2 border-amber-500/30 hover:bg-amber-500/20 active:scale-95 transition-all">
+                                        <div class="flex flex-col items-start">
+                                            <span class="text-xs font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">Jet de Concentration</span>
+                                            <span class="text-[10px] text-slate-400 uppercase tracking-wider">Sauvegarde de Constitution</span>
+                                        </div>
+                                        <span id="conc-save-mod" class="text-xl font-black text-amber-600 dark:text-amber-400">+0</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Spell Slots Section -->
                         <div class="flex flex-col gap-3">
                             <h3 class="text-xs font-black uppercase tracking-widest text-slate-400">Emplacements de sorts</h3>
@@ -950,7 +978,69 @@
             }
         }
 
+        // --- CONCENTRATION ---
+        const characterConcentration = {}; // { [charKey]: { active: bool, spell: string } }
+
+        function updateConcentrationUI() {
+            const charKey = getCharacterKey(currentDetailsName);
+            const state = characterConcentration[charKey] || { active: false, spell: '' };
+
+            const toggle = document.getElementById('conc-toggle');
+            const dot = document.getElementById('conc-dot');
+            const box = document.getElementById('conc-box');
+            const rollRow = document.getElementById('conc-roll-row');
+            const input = document.getElementById('conc-spell-input');
+            const modSpan = document.getElementById('conc-save-mod');
+            if (!toggle || !dot || !box) return;
+
+            if (state.active) {
+                dot.className = 'w-3 h-3 rounded-full bg-amber-500 transition-all';
+                toggle.className = 'flex-shrink-0 w-8 h-8 rounded-full border-2 border-amber-500 bg-amber-500/10 flex items-center justify-center transition-all';
+                box.className = 'flex flex-col gap-3 p-4 rounded-xl border-2 border-amber-500/40 bg-amber-500/5 transition-all';
+                rollRow.classList.remove('hidden');
+            } else {
+                dot.className = 'w-3 h-3 rounded-full bg-transparent transition-all';
+                toggle.className = 'flex-shrink-0 w-8 h-8 rounded-full border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center transition-all';
+                box.className = 'flex flex-col gap-3 p-4 rounded-xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/20 transition-all';
+                rollRow.classList.add('hidden');
+            }
+            if (input && input.value !== state.spell) input.value = state.spell || '';
+
+            // Show Constitution save modifier
+            if (modSpan && currentDetailsData) {
+                const conMod = currentDetailsData.saves?.['Constitution'] || '+0';
+                modSpan.textContent = conMod;
+            }
+        }
+
+        function toggleConcentration() {
+            const charKey = getCharacterKey(currentDetailsName);
+            if (!characterConcentration[charKey]) characterConcentration[charKey] = { active: false, spell: '' };
+            characterConcentration[charKey].active = !characterConcentration[charKey].active;
+            updateConcentrationUI();
+        }
+
+        function onConcSpellInput(value) {
+            const charKey = getCharacterKey(currentDetailsName);
+            if (!characterConcentration[charKey]) characterConcentration[charKey] = { active: false, spell: '' };
+            characterConcentration[charKey].spell = value;
+            // Auto-activate when typing a spell name
+            if (value.trim().length > 0 && !characterConcentration[charKey].active) {
+                characterConcentration[charKey].active = true;
+                updateConcentrationUI();
+            }
+        }
+
+        function rollConcentrationSave() {
+            const charKey = getCharacterKey(currentDetailsName);
+            const spellName = (characterConcentration[charKey]?.spell || 'Concentration').trim();
+            const conMod = currentDetailsData?.saves?.['Constitution'] || '+0';
+            const formula = `1d20${conMod}`;
+            executeCustomRoll(formula, `Concentration (${spellName}) — Save Con`);
+        }
+
         function checkMyTurn(orderedList) {
+
             if (!myCharacterName || !orderedList || orderedList.length === 0) return;
             const active = orderedList[0];
             if (!active) return;
@@ -2044,6 +2134,7 @@
                 tabSpl.classList.add('border-primary', 'text-primary');
                 viewSpl.classList.remove('hidden');
                 renderSpellsView();
+                updateConcentrationUI();
             }
         }
 
