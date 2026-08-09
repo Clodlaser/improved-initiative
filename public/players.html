@@ -97,6 +97,14 @@
                 display: inline-block;
                 animation: dmgTextPulse 1s ease-out;
             }
+            @keyframes myTurnFlash {
+                0%   { box-shadow: inset 0 0 0 4px #42d07c; background: rgba(66,208,124,0.08); }
+                40%  { box-shadow: inset 0 0 0 6px #42d07c; background: rgba(66,208,124,0.15); }
+                100% { box-shadow: inset 0 0 0 0px transparent; background: transparent; }
+            }
+            .my-turn-flash {
+                animation: myTurnFlash 1.2s ease-out forwards;
+            }
         }
     </style>
 
@@ -698,6 +706,8 @@
         let lastAction = null;
         let toastTimeout = null;
         let previousHpValues = {}; // Track previous HP for animations
+        let myCharacterName = localStorage.getItem('__iiHUD_myChar') || '';
+        let lastActiveName = '';
 
         // --- LOGGING ---
         function addLog(msg, type = 'info') {
@@ -894,26 +904,86 @@
 
                 const hpDisplay = isPC ? `<span class="font-mono text-sm font-bold text-slate-500 dark:text-slate-400 ${hpAnimClass}">${cur}/${max}</span>` : '';
 
+                const isMyChar = myCharacterName && myCharacterName.toLowerCase() === name.toLowerCase();
                 htmlRender += `
-                <div onclick="openCharacterDetails('${name.replace(/'/g, "\\'")}')" class="cursor-pointer flex flex-col px-6 py-4 border-b-4 ${borderActiveColor} ${bgActiveColor} md:border-b-0 md:bg-white dark:md:bg-slate-900 md:border-b transition-colors border-l-4 ${isActive ? 'border-l-[6px]' : ''} ${frameColor} relative overflow-hidden hover:opacity-90 active:scale-[0.99]">
+                <div class="flex items-stretch border-b-4 ${borderActiveColor} ${bgActiveColor} md:border-b-0 md:bg-white dark:md:bg-slate-900 md:border-b transition-colors border-l-4 ${isActive ? 'border-l-[6px]' : ''} ${frameColor} relative overflow-hidden">
                     <!-- Subtle Background HP Bar -->
                     <div class="absolute inset-y-0 left-0 opacity-10 dark:opacity-20 transition-all duration-500 pointer-events-none" style="width: ${barWidth}; background-color: ${hpColor};"></div>
-                    
-                    <div class="flex justify-between items-baseline mb-2 relative z-10">
-                        <h3 class="text-xl font-black uppercase tracking-tighter leading-none ${isDead ? 'line-through opacity-50' : 'text-slate-900 dark:text-slate-100'}">
-                            ${isActive ? '<span class="material-symbols-outlined text-lg mr-1 align-text-bottom">play_arrow</span>' : ''}${name}
-                        </h3>
-                        ${hpDisplay}
+
+                    <!-- Checkbox: tap to mark as my character -->
+                    <button onclick="toggleMyCharacter('${name.replace(/'/g, "\\'")}')" class="relative z-10 flex items-center justify-center w-12 flex-shrink-0 border-r border-slate-100 dark:border-slate-800 transition-colors ${isMyChar ? 'bg-primary/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}" title="Mon personnage">
+                        <span class="material-symbols-outlined text-lg ${isMyChar ? 'text-primary' : 'text-slate-300 dark:text-slate-600'}">${isMyChar ? 'person' : 'person_outline'}</span>
+                    </button>
+
+                    <!-- Card content -->
+                    <div onclick="openCharacterDetails('${name.replace(/'/g, "\\'")}')" class="cursor-pointer flex flex-col flex-1 px-4 py-4 hover:opacity-90 active:scale-[0.99]">
+                        <div class="flex justify-between items-baseline mb-2 relative z-10">
+                            <h3 class="text-xl font-black uppercase tracking-tighter leading-none ${isDead ? 'line-through opacity-50' : 'text-slate-900 dark:text-slate-100'}">
+                                ${isActive ? '<span class="material-symbols-outlined text-lg mr-1 align-text-bottom">play_arrow</span>' : ''}${name}
+                            </h3>
+                            ${hpDisplay}
+                        </div>
+                        ${!isDead ? `
+                        <div class="h-2 w-full bg-slate-200 dark:bg-slate-800 overflow-hidden relative">
+                            <div class="absolute top-0 right-0 h-full transition-all duration-300" style="width: ${barWidth}; background-color: ${hpColor}; right: ${isPC ? 'auto' : '0'}; left: ${isPC ? '0' : 'auto'};"></div>
+                        </div>` : '<div class="text-xs font-bold uppercase tracking-widest text-slate-400">💀 DEAD</div>'}
                     </div>
-                    ${!isDead ? `
-                    <div class="h-2 w-full bg-slate-200 dark:bg-slate-800 overflow-hidden relative">
-                        <div class="absolute top-0 right-0 h-full transition-all duration-300" style="width: ${barWidth}; background-color: ${hpColor}; right: ${isPC ? 'auto' : '0'}; left: ${isPC ? '0' : 'auto'};"></div>
-                    </div>` : '<div class="text-xs font-bold uppercase tracking-widest text-slate-400">💀 DEAD</div>'}
                 </div>
                 `;
             });
 
             listEl.innerHTML = htmlRender;
+            checkMyTurn(ord);
+        }
+
+        function toggleMyCharacter(name) {
+            // If already selected, deselect; otherwise select
+            if (myCharacterName.toLowerCase() === name.toLowerCase()) {
+                myCharacterName = '';
+            } else {
+                myCharacterName = name;
+            }
+            localStorage.setItem('__iiHUD_myChar', myCharacterName);
+            // Re-render without waiting for next WS message
+            if (currentCombatants.length > 0) {
+                renderCombat({ list: currentCombatants, turn: currentCombatants.findIndex(c => c.active) });
+            }
+        }
+
+        function checkMyTurn(orderedList) {
+            if (!myCharacterName || !orderedList || orderedList.length === 0) return;
+            const active = orderedList[0];
+            if (!active) return;
+            const activeName = active.name || '';
+
+            // Only trigger when the active character changes to MY character
+            if (activeName.toLowerCase() === myCharacterName.toLowerCase() && activeName !== lastActiveName) {
+                lastActiveName = activeName;
+                // Vibration pattern: short-pause-long
+                if (navigator.vibrate) navigator.vibrate([150, 80, 400]);
+                // Play a soft alert tone
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.setValueAtTime(660, ctx.currentTime);
+                    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+                    gain.gain.setValueAtTime(0.35, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.6);
+                } catch(e) {}
+                // Visual flash on the view
+                const view = document.getElementById('view-combat');
+                if (view) {
+                    view.classList.add('my-turn-flash');
+                    setTimeout(() => view.classList.remove('my-turn-flash'), 1200);
+                }
+            } else if (activeName.toLowerCase() !== myCharacterName.toLowerCase()) {
+                lastActiveName = activeName;
+            }
         }
 
         // --- HEALING LOGIC ---
