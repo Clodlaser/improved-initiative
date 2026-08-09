@@ -241,18 +241,15 @@
                             dés
                         </h2>
                     </div>
-                    <div class="flex items-center swiss-grid h-16 w-full max-w-[200px] mb-6">
-                        <button onclick="updateDiceCount(-1)"
-                            class="w-16 h-full swiss-grid-item flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 transition-colors">
-                            <span class="material-symbols-outlined text-2xl font-bold">remove</span>
-                        </button>
-                        <div class="flex-1 h-full swiss-grid-item flex items-center justify-center">
-                            <span id="uiDiceCount" class="text-3xl font-black text-black dark:text-white">1</span>
+                    <div class="relative flex items-center justify-center swiss-grid h-36 w-full max-w-[200px] mb-6 bg-slate-50 dark:bg-slate-800/30 overflow-hidden">
+                        <!-- Selection Highlighter -->
+                        <div class="absolute inset-x-2 top-1/2 -translate-y-1/2 h-12 bg-primary/10 dark:bg-primary/20 border-2 border-primary/20 pointer-events-none"></div>
+                        <!-- Scroll Container -->
+                        <div id="diceCountScroll" class="w-full h-full overflow-y-auto overflow-x-hidden snap-y snap-mandatory no-scrollbar relative flex flex-col items-center">
+                            <div class="flex-none h-[calc(50%-24px)] w-full"></div> <!-- Top Padding -->
+                            <div id="diceCountItems" class="flex flex-col items-center w-full"></div>
+                            <div class="flex-none h-[calc(50%-24px)] w-full"></div> <!-- Bottom Padding -->
                         </div>
-                        <button onclick="updateDiceCount(1)"
-                            class="w-16 h-full swiss-grid-item flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 transition-colors">
-                            <span class="material-symbols-outlined text-2xl font-bold">add</span>
-                        </button>
                     </div>
 
                     <!-- Dice Grid -->
@@ -328,18 +325,15 @@
                         <h2 class="text-xs font-black uppercase tracking-widest text-black dark:text-white">Modificateur
                             (+/-)</h2>
                     </div>
-                    <div class="flex items-center swiss-grid h-16 w-full max-w-[200px]">
-                        <button onclick="updateDiceMod(-1)"
-                            class="w-16 h-full swiss-grid-item flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 transition-colors">
-                            <span class="material-symbols-outlined text-2xl font-bold">remove</span>
-                        </button>
-                        <div class="flex-1 h-full swiss-grid-item flex items-center justify-center">
-                            <span id="uiDiceMod" class="text-3xl font-black text-black dark:text-white">+0</span>
+                    <div class="relative flex items-center justify-center swiss-grid h-36 w-full max-w-[200px] bg-slate-50 dark:bg-slate-800/30 overflow-hidden">
+                        <!-- Selection Highlighter -->
+                        <div class="absolute inset-x-2 top-1/2 -translate-y-1/2 h-12 bg-primary/10 dark:bg-primary/20 border-2 border-primary/20 pointer-events-none"></div>
+                        <!-- Scroll Container -->
+                        <div id="diceModScroll" class="w-full h-full overflow-y-auto overflow-x-hidden snap-y snap-mandatory no-scrollbar relative flex flex-col items-center">
+                            <div class="flex-none h-[calc(50%-24px)] w-full"></div> <!-- Top Padding -->
+                            <div id="diceModItems" class="flex flex-col items-center w-full"></div>
+                            <div class="flex-none h-[calc(50%-24px)] w-full"></div> <!-- Bottom Padding -->
                         </div>
-                        <button onclick="updateDiceMod(1)"
-                            class="w-16 h-full swiss-grid-item flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 transition-colors">
-                            <span class="material-symbols-outlined text-2xl font-bold">add</span>
-                        </button>
                     </div>
                 </section>
 
@@ -546,6 +540,15 @@
                 // trigger reflow
                 void target.offsetWidth;
                 target.classList.add('active-view');
+
+                if (viewId === 'dice') {
+                    if (!diceCountPickerItems.length) initDiceCountPicker();
+                    if (!diceModPickerItems.length) initDiceModPicker();
+                    setTimeout(() => {
+                        setDiceCountPickerValue(currentDiceState.count);
+                        setDiceModPickerValue(currentDiceState.mod);
+                    }, 50);
+                }
             }
 
             // Update Nav Active State
@@ -1145,10 +1148,157 @@
         let currentDiceState = { count: 1, type: 6, mod: 0 };
         const diceHistoryArr = [];
 
-        function updateDiceCount(delta) {
-            currentDiceState.count = Math.max(1, Math.min(99, currentDiceState.count + delta));
-            document.getElementById('uiDiceCount').innerText = currentDiceState.count;
-            updateBtnSumm();
+        let diceCountPickerItems = [];
+        let lastDiceCountClosest = null;
+        let diceModPickerItems = [];
+        let lastDiceModClosest = null;
+
+        function initDiceCountPicker() {
+            const container = document.getElementById('diceCountItems');
+            if (!container) return;
+
+            let html = '';
+            // Generate values 1 to 99
+            for (let i = 1; i <= 99; i++) {
+                html += `<div class="dice-count-picker-item flex-none h-12 flex items-center justify-center w-full snap-center text-3xl font-black text-slate-300 dark:text-slate-600 transition-all duration-150 cursor-pointer" data-val="${i}" onclick="setDiceCountPickerValue(${i})">${i}</div>`;
+            }
+            container.innerHTML = html;
+            diceCountPickerItems = Array.from(container.querySelectorAll('.dice-count-picker-item'));
+
+            const scrollEl = document.getElementById('diceCountScroll');
+            scrollEl.addEventListener('scroll', () => {
+                requestAnimationFrame(updateDiceCountPickerHighlight);
+            }, { passive: true });
+        }
+
+        function updateDiceCountPickerHighlight() {
+            const scrollEl = document.getElementById('diceCountScroll');
+            if (!scrollEl || !diceCountPickerItems.length) return;
+
+            const center = scrollEl.scrollTop + (scrollEl.clientHeight / 2);
+            let closest = null;
+            let minDist = Infinity;
+
+            for (let i = 0; i < diceCountPickerItems.length; i++) {
+                const item = diceCountPickerItems[i];
+                const itemCenter = item.offsetTop + (item.offsetHeight / 2);
+                const dist = Math.abs(center - itemCenter);
+
+                if (dist < 24) {
+                    closest = item;
+                    break;
+                } else if (dist < minDist) {
+                    minDist = dist;
+                    closest = item;
+                }
+            }
+
+            if (closest && closest !== lastDiceCountClosest) {
+                if (lastDiceCountClosest) {
+                    lastDiceCountClosest.classList.remove('text-primary', 'dark:text-primary', 'scale-125', 'opacity-100');
+                    lastDiceCountClosest.classList.add('text-slate-300', 'dark:text-slate-600');
+                }
+                closest.classList.remove('text-slate-300', 'dark:text-slate-600');
+                closest.classList.add('text-primary', 'dark:text-primary', 'scale-125', 'opacity-100');
+
+                currentDiceState.count = parseInt(closest.getAttribute('data-val'), 10);
+                updateBtnSumm();
+                lastDiceCountClosest = closest;
+
+                if (navigator.vibrate) navigator.vibrate(5);
+            }
+        }
+
+        function setDiceCountPickerValue(val) {
+            const scrollEl = document.getElementById('diceCountScroll');
+            if (!diceCountPickerItems.length || !scrollEl) return;
+
+            const targetItem = diceCountPickerItems[val - 1]; // items start at 1
+            if (targetItem) {
+                scrollEl.style.scrollBehavior = 'auto';
+                const targetScroll = targetItem.offsetTop - (scrollEl.clientHeight / 2) + (targetItem.offsetHeight / 2);
+                scrollEl.scrollTo({ top: targetScroll });
+
+                setTimeout(() => {
+                    scrollEl.style.scrollBehavior = 'smooth';
+                    updateDiceCountPickerHighlight();
+                }, 50);
+            }
+        }
+
+        function initDiceModPicker() {
+            const container = document.getElementById('diceModItems');
+            if (!container) return;
+
+            let html = '';
+            // Generate values -50 to 50
+            for (let i = -50; i <= 50; i++) {
+                const label = i >= 0 ? `+${i}` : `${i}`;
+                html += `<div class="dice-mod-picker-item flex-none h-12 flex items-center justify-center w-full snap-center text-3xl font-black text-slate-300 dark:text-slate-600 transition-all duration-150 cursor-pointer" data-val="${i}" onclick="setDiceModPickerValue(${i})">${label}</div>`;
+            }
+            container.innerHTML = html;
+            diceModPickerItems = Array.from(container.querySelectorAll('.dice-mod-picker-item'));
+
+            const scrollEl = document.getElementById('diceModScroll');
+            scrollEl.addEventListener('scroll', () => {
+                requestAnimationFrame(updateDiceModPickerHighlight);
+            }, { passive: true });
+        }
+
+        function updateDiceModPickerHighlight() {
+            const scrollEl = document.getElementById('diceModScroll');
+            if (!scrollEl || !diceModPickerItems.length) return;
+
+            const center = scrollEl.scrollTop + (scrollEl.clientHeight / 2);
+            let closest = null;
+            let minDist = Infinity;
+
+            for (let i = 0; i < diceModPickerItems.length; i++) {
+                const item = diceModPickerItems[i];
+                const itemCenter = item.offsetTop + (item.offsetHeight / 2);
+                const dist = Math.abs(center - itemCenter);
+
+                if (dist < 24) {
+                    closest = item;
+                    break;
+                } else if (dist < minDist) {
+                    minDist = dist;
+                    closest = item;
+                }
+            }
+
+            if (closest && closest !== lastDiceModClosest) {
+                if (lastDiceModClosest) {
+                    lastDiceModClosest.classList.remove('text-primary', 'dark:text-primary', 'scale-125', 'opacity-100');
+                    lastDiceModClosest.classList.add('text-slate-300', 'dark:text-slate-600');
+                }
+                closest.classList.remove('text-slate-300', 'dark:text-slate-600');
+                closest.classList.add('text-primary', 'dark:text-primary', 'scale-125', 'opacity-100');
+
+                currentDiceState.mod = parseInt(closest.getAttribute('data-val'), 10);
+                updateBtnSumm();
+                lastDiceModClosest = closest;
+
+                if (navigator.vibrate) navigator.vibrate(5);
+            }
+        }
+
+        function setDiceModPickerValue(val) {
+            const scrollEl = document.getElementById('diceModScroll');
+            if (!diceModPickerItems.length || !scrollEl) return;
+
+            const idx = val + 50; // -50 mapping to index 0
+            const targetItem = diceModPickerItems[idx];
+            if (targetItem) {
+                scrollEl.style.scrollBehavior = 'auto';
+                const targetScroll = targetItem.offsetTop - (scrollEl.clientHeight / 2) + (targetItem.offsetHeight / 2);
+                scrollEl.scrollTo({ top: targetScroll });
+
+                setTimeout(() => {
+                    scrollEl.style.scrollBehavior = 'smooth';
+                    updateDiceModPickerHighlight();
+                }, 50);
+            }
         }
 
         function updateDiceType(faces) {
@@ -1168,18 +1318,13 @@
             }
         }
 
-        function updateDiceMod(delta) {
-            currentDiceState.mod += delta;
-            const uiMod = document.getElementById('uiDiceMod');
-            uiMod.innerText = currentDiceState.mod >= 0 ? `+${currentDiceState.mod}` : currentDiceState.mod;
-            updateBtnSumm();
-        }
-
         function resetDiceUI() {
             currentDiceState = { count: 1, type: 6, mod: 0 };
-            document.getElementById('uiDiceCount').innerText = 1;
-            document.getElementById('uiDiceMod').innerText = '+0';
-            document.querySelector(`input[name="dice_type"][value="6"]`).checked = true;
+            setDiceCountPickerValue(1);
+            setDiceModPickerValue(0);
+            const d6Input = document.querySelector(`input[name="dice_type"][value="6"]`);
+            if (d6Input) d6Input.checked = true;
+            updateDiceType(6);
             updateBtnSumm();
         }
 
