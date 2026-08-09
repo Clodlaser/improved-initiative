@@ -1968,31 +1968,49 @@
             return (name || '')
                 .toLowerCase()
                 .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .trim();
-        }
-
-        function getCharacterData(name) {
+              function getCharacterData(name) {
             const key = getCharacterKey(name);
-            const base = CHARACTER_STATS[key] || {
+            const base = Object.assign({
                 attacks: [],
-                saves: { 'Force': '+0', 'Dextérité': '+0', 'Constitution': '+0', 'Intelligence': '+0', 'Sagesse': '+0', 'Charisme': '+0' }
-            };
+                saves: { 'Force': '+0', 'Dextérité': '+0', 'Constitution': '+0', 'Intelligence': '+0', 'Sagesse': '+0', 'Charisme': '+0' },
+                hitDie: 8,
+                hdMax: 1
+            }, CHARACTER_STATS[key] || {});
 
-            // Try to enrich hitDie + hdMax from live tracker data (HP.Notes = "20d8+40")
             const liveCombatant = currentCombatants.find(c => getCharacterKey(c.name) === key);
-            if (liveCombatant && liveCombatant.hp_notes) {
-                // e.g. "(20d8+40)" or "20d8+40"
-                const m = (liveCombatant.hp_notes || '').match(/(\d+)d(\d+)/i);
-                if (m) {
-                    base.hdMax = parseInt(m[1], 10);  // number of dice = level
-                    base.hitDie = parseInt(m[2], 10); // die face
+            if (liveCombatant) {
+                // 1. Try hp_notes (e.g. "20d8+40" or "(20d8+40)")
+                if (liveCombatant.hp_notes) {
+                    const m = (liveCombatant.hp_notes || '').match(/(\d+)\s*d\s*(\d+)/i);
+                    if (m) {
+                        base.hdMax = parseInt(m[1], 10);
+                        base.hitDie = parseInt(m[2], 10);
+                    }
+                }
+
+                // 2. Try traits if hdMax is still 1
+                if (base.hdMax <= 1 && Array.isArray(liveCombatant.traits)) {
+                    for (const t of liveCombatant.traits) {
+                        const txt = (t.Name || '') + ' ' + (t.Content || '');
+                        const m = txt.match(/(\d+)\s*d\s*(\d+)/i);
+                        if (m) {
+                            base.hdMax = parseInt(m[1], 10);
+                            base.hitDie = parseInt(m[2], 10);
+                            break;
+                        }
+                    }
+                }
+
+                // 3. Try estimating from max HP if hdMax is still 1
+                if (base.hdMax <= 1 && liveCombatant.max && liveCombatant.max > 12) {
+                    // Estimate level based on typical HP per level (~7.5 HP per level)
+                    const estLevel = Math.max(1, Math.min(20, Math.round(liveCombatant.max / 7.5)));
+                    base.hdMax = estLevel;
                 }
             }
 
             return base;
         }
-
 
         let currentDetailsName = '';
         let currentDetailsData = null;
@@ -2138,7 +2156,6 @@
                 // Keep only real attacks: must have at least a damage die
                 }).filter(a => a.damage !== null);
 
-
                 data = {
                     attacks: attacks,
                     saves: saves
@@ -2151,10 +2168,12 @@
                     data.slots = spellcastingData.slots;
                 }
             }
-
-            // Fallback to our hardcoded stats or default if live data is not available
-            if (!data) {
-                data = getCharacterData(name);
+            // Always merge baseData (which contains detected hitDie and hdMax) with live data
+            const baseData = getCharacterData(name);
+            if (data) {
+                data = Object.assign({}, baseData, data);
+            } else {
+                data = baseData;
             }
 
             if (!data.spells) data.spells = {};
