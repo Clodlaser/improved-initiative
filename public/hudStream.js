@@ -173,6 +173,8 @@
           const msg = JSON.parse(txt);
           if (msg && msg.type === 'player_heal' && msg.channel === getChannel()) {
             handlePlayerHeal(msg.target, msg.amount);
+          } else if (msg && msg.type === 'update_notes' && msg.channel === getChannel()) {
+            handleUpdateNotes(msg.target, msg.notes);
           }
         } catch (e) { }
       };
@@ -206,6 +208,27 @@
       }
     }
   }
+
+  function handleUpdateNotes(targetName, newNotes) {
+    if (!window.II_DEBUG || typeof window.II_DEBUG.getTracker !== 'function') return;
+    const vm = window.II_DEBUG.getTracker();
+    if (!vm) return;
+
+    const normalize = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+    const listKO = typeof vm.CombatantViewModels === 'function' ? vm.CombatantViewModels() : (vm.CombatantViewModels || []);
+    const list = Array.isArray(listKO) ? listKO : (listKO && typeof listKO === 'object' ? Object.values(listKO) : []);
+
+    for (const c of list) {
+      const cName = typeof c.Name === 'function' ? c.Name() : c.Name;
+      if (normalize(cName) === normalize(targetName) && c.Combatant && typeof c.Combatant.CurrentNotes === 'function') {
+        c.Combatant.CurrentNotes(newNotes);
+        // Trigger snapshot so the change bounces back as confirmation
+        setTimeout(() => sendSnapshot(true), 80);
+        return;
+      }
+    }
+  }
+
   function sendSnapshot(force = false) {
     try {
       const payload = { type: 'ii_state', channel: getChannel(), at: Date.now(), data: collectState() };

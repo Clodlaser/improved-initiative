@@ -2071,6 +2071,26 @@
             }
             characterSpellSlotsState[charKey][lvl] = newVal;
             renderSpellsView();
+
+            // Push update back to tracker
+            if (ws && ws.readyState === WebSocket.OPEN && currentDetailsData) {
+                // Rebuild the notes string from all current slot states
+                const slotLines = Object.entries(currentDetailsData.slots).map(([l, info]) => {
+                    const cur = characterSpellSlotsState[charKey][l] ?? info.max;
+                    const suffix = l === '1' ? 'st' : l === '2' ? 'nd' : l === '3' ? 'rd' : 'th';
+                    return `${l}${suffix} Level [${cur}/${info.max}]`;
+                });
+                const newNotes = slotLines.length > 0
+                    ? 'Spellcasting Slots\n\n' + slotLines.join('\n\n')
+                    : '';
+
+                ws.send(JSON.stringify({
+                    type: 'update_notes',
+                    channel: CHANNEL,
+                    target: name,
+                    notes: newNotes
+                }));
+            }
         }
 
         function executeCustomRoll(formula, title) {
