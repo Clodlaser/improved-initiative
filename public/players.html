@@ -957,7 +957,9 @@
                 }
                 previousHpValues[charId] = cur;
 
-                const hpDisplay = isPC ? `<span class="font-mono text-sm font-bold text-slate-500 dark:text-slate-400 ${hpAnimClass}">${cur}/${max}</span>` : '';
+                const temp = Number(c.temp) || 0;
+                const tempDisplay = (isPC && temp > 0) ? `<span class="text-xs font-black text-amber-500 ml-1.5">(+${temp})</span>` : '';
+                const hpDisplay = isPC ? `<span class="font-mono text-sm font-bold text-slate-500 dark:text-slate-400 ${hpAnimClass}">${cur}/${max}${tempDisplay}</span>` : '';
 
                 const isMyChar = myCharacterName && myCharacterName.toLowerCase() === name.toLowerCase();
                 htmlRender += `

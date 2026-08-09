@@ -107,8 +107,18 @@
         const initEl = qFirst(['td.combatant__initiative', 'td:nth-child(2)'], tr);
         const name = (nameEl?.textContent || '?').trim();
         const hpTxt = (hpEl?.textContent || '').trim().replace(/\s+/g, '');
-        const nums = hpTxt.match(/\d+/g) || [];
-        const cur = Number(nums[0] ?? NaN), max = Number(nums[1] ?? NaN), temp = Number(nums[2] ?? 0);
+        let cur = 0, max = 0, temp = 0;
+        const tempMatch = hpTxt.match(/^(\d+)\+(\d+)\/(\d+)$/);
+        if (tempMatch) {
+          cur = Number(tempMatch[1]);
+          temp = Number(tempMatch[2]);
+          max = Number(tempMatch[3]);
+        } else {
+          const nums = hpTxt.match(/\d+/g) || [];
+          cur = Number(nums[0] ?? NaN);
+          max = Number(nums[1] ?? NaN);
+          temp = Number(nums[2] ?? 0);
+        }
         const initVal = Number((initEl?.textContent || '').trim()) || 0;
         const img = resolvePortraitSrc(tr) || null;
         const isPlayer = tr?.classList?.contains('combatant--player') || PJS.has(name.toLowerCase());
@@ -131,14 +141,19 @@
                 const cleanB = (name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
                 return cleanA === cleanB;
               });
-              if (matchKO && matchKO.Combatant && typeof matchKO.Combatant.StatBlock === 'function') {
-                const sb = matchKO.Combatant.StatBlock();
-                if (sb) {
-                  c.saves = sb.Saves || [];
-                  c.abilities = sb.Abilities || null;
-                  c.actions = sb.Actions || [];
-                  c.traits = sb.Traits || [];
-                  c.hp_notes = sb.HP?.Notes || null;
+              if (matchKO && matchKO.Combatant) {
+                if (typeof matchKO.Combatant.TemporaryHP === 'function') {
+                  c.temp = matchKO.Combatant.TemporaryHP() || 0;
+                }
+                if (typeof matchKO.Combatant.StatBlock === 'function') {
+                  const sb = matchKO.Combatant.StatBlock();
+                  if (sb) {
+                    c.saves = sb.Saves || [];
+                    c.abilities = sb.Abilities || null;
+                    c.actions = sb.Actions || [];
+                    c.traits = sb.Traits || [];
+                    c.hp_notes = sb.HP?.Notes || null;
+                  }
                 }
                 // Also grab CurrentNotes for spell slot tracking
                 if (matchKO.Combatant.CurrentNotes) {
@@ -224,12 +239,10 @@
     for (const c of list) {
       const cName = typeof c.Name === 'function' ? c.Name() : c.Name;
       if (normalize(cName) === normalize(targetName)) {
-        if (typeof c.ApplyTemporaryHP === 'function') {
-          c.ApplyTemporaryHP(amount);
-        } else if (c.Combatant && typeof c.Combatant.ApplyTemporaryHP === 'function') {
-          c.Combatant.ApplyTemporaryHP(amount);
-        } else if (c.Combatant && typeof c.Combatant.TemporaryHP === 'function') {
+        if (c.Combatant && typeof c.Combatant.TemporaryHP === 'function') {
           c.Combatant.TemporaryHP(amount);
+        } else if (typeof c.ApplyTemporaryHP === 'function') {
+          c.ApplyTemporaryHP(amount);
         }
 
         if (vm.EventLog && typeof vm.EventLog.AddEvent === 'function') {
