@@ -961,8 +961,12 @@
       function applyToTarget(item, delta, n) {
         if (!item?.vm) return;
         try {
-          if (item.mod === "temp" && typeof item.vm.ApplyTemporaryHP === "function") {
-            item.vm.ApplyTemporaryHP(n);
+          if (item.mod === "temp") {
+            if (item.vm.Combatant && typeof item.vm.Combatant.TemporaryHP === "function") {
+              item.vm.Combatant.TemporaryHP(n);
+            } else if (typeof item.vm.ApplyTemporaryHP === "function") {
+              item.vm.ApplyTemporaryHP(n);
+            }
           } else if (typeof item.vm.ApplyDamage === "function") {
             item.vm.ApplyDamage(String(delta));
           }
