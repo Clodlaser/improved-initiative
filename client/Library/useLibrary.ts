@@ -93,15 +93,40 @@ export function useLibrary<T extends Listable>(
 
   const DeleteListing = React.useCallback(
     async (id: string) => {
+      const targetListing = listings.find(l => l.Meta().Id === id);
+      let ddbId: string | null = null;
+      
+      if (targetListing) {
+        try {
+          const value = await targetListing.GetWithTemplate(callbacks.createEmptyListing()) as any;
+          if (value && typeof value.Description === "string") {
+            const match = value.Description.match(/characters\/(\d+)/);
+            if (match) {
+              ddbId = match[1];
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to check description for duplicate DDB ID:", e);
+        }
+      }
+
+      const idsToDelete = [id];
+      if (ddbId && ddbId !== id) {
+        idsToDelete.push(ddbId);
+      }
+
       setListings(currentListings =>
-        currentListings.filter(s => s.Meta().Id !== id)
+        currentListings.filter(s => !idsToDelete.includes(s.Meta().Id))
       );
-      await Store.Delete(storeName, id);
-      try {
-        await callbacks.accountDelete(id);
-      } catch {}
+
+      for (const deleteId of idsToDelete) {
+        await Store.Delete(storeName, deleteId);
+        try {
+          await callbacks.accountDelete(deleteId);
+        } catch {}
+      }
     },
-    [listings, setListings, storeName, callbacks.accountDelete]
+    [listings, setListings, storeName, callbacks.accountDelete, callbacks.createEmptyListing]
   );
 
   const SaveNewListing = React.useCallback(
