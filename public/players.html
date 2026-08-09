@@ -1054,10 +1054,10 @@
         }
 
         // --- HIT DICE ---
-        const hdState = {}; // { [charKey]: { remaining: N, toUse: N, lastResult: N|null } }
+        const hdState = {}; // { [charKey]: { remaining: N, toUse: N, lastResult: N|null, lastDetails: null } }
 
         function getHdState(charKey, hdMax) {
-            if (!hdState[charKey]) hdState[charKey] = { remaining: hdMax, toUse: 1, lastResult: null };
+            if (!hdState[charKey]) hdState[charKey] = { remaining: hdMax, toUse: 1, lastResult: null, lastDetails: null };
             return hdState[charKey];
         }
 
@@ -1081,13 +1081,21 @@
             }
 
             // --- Result row ---
+            let detailText = '';
+            if (state.lastDetails) {
+                const { rolls, diceSum, conTotal } = state.lastDetails;
+                const conStr = conTotal !== 0 ? ` + Con (${conTotal >= 0 ? '+' : ''}${conTotal})` : '';
+                detailText = `Dés [${rolls.join(', ')}] = ${diceSum}${conStr}`;
+            }
+
             const resultHtml = state.lastResult !== null ? `
-                <div class="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border-2 border-emerald-500/30">
-                    <div class="flex flex-col">
+                <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-emerald-500/10 border-2 border-emerald-500/30">
+                    <div class="flex flex-col min-w-0 flex-1">
                         <span class="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Résultat</span>
-                        <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400">+${state.lastResult} PV</span>
+                        <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400 leading-none mb-1">+${state.lastResult} PV</span>
+                        <span class="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300 break-words leading-snug">${detailText}</span>
                     </div>
-                    <button onclick="applyHdHealing()" class="px-4 py-3 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all">
+                    <button onclick="applyHdHealing()" class="flex-shrink-0 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all">
                         Appliquer
                     </button>
                 </div>` : '';
@@ -1123,6 +1131,7 @@
             const state = getHdState(charKey, hdMax);
             state.toUse = Math.max(1, Math.min(state.remaining, state.toUse + delta));
             state.lastResult = null;
+            state.lastDetails = null;
             renderHdView();
         }
 
@@ -1136,19 +1145,23 @@
             if (state.remaining <= 0) return;
 
             const qty = state.toUse;
-            let total = 0;
+            const rolls = [];
+            let diceSum = 0;
             for (let i = 0; i < qty; i++) {
-                total += Math.floor(Math.random() * hitDie) + 1;
+                const r = Math.floor(Math.random() * hitDie) + 1;
+                rolls.push(r);
+                diceSum += r;
             }
-            total += qty * conModNum; // add Con modifier per die spent
-            total = Math.max(1, total);
+            const conTotal = qty * conModNum;
+            const total = Math.max(1, diceSum + conTotal);
 
             state.lastResult = total;
+            state.lastDetails = { rolls, diceSum, conTotal, qty, hitDie, conModNum };
             state.remaining = Math.max(0, state.remaining - qty);
             state.toUse = Math.min(state.remaining, Math.max(1, state.remaining));
 
             if (navigator.vibrate) navigator.vibrate(30);
-            addLog(`DÉS DE VIE: ${currentDetailsName} lance ${qty}d${hitDie}+${qty * conModNum} → +${total} PV potentiels`, 'info');
+            addLog(`DÉS DE VIE: ${currentDetailsName} lance ${qty}d${hitDie}+${conTotal} → +${total} PV`, 'info');
             renderHdView();
         }
 
@@ -1164,15 +1177,17 @@
             showToast(`+${amount} PV > ${target}`);
             addLog(`SOIN (DV): ${target} +${amount} PV`, 'success');
             state.lastResult = null;
+            state.lastDetails = null;
             renderHdView();
         }
 
         function resetHitDice() {
             const charKey = getCharacterKey(currentDetailsName);
             const hdMax = currentDetailsData?.hdMax || 1;
-            hdState[charKey] = { remaining: hdMax, toUse: 1, lastResult: null };
+            hdState[charKey] = { remaining: hdMax, toUse: 1, lastResult: null, lastDetails: null };
             renderHdView();
         }
+
 
         function checkMyTurn(orderedList) {
 
