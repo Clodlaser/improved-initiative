@@ -199,6 +199,16 @@
     } catch { }
   }
 
+  function matchCombatantName(cName, targetName) {
+    if (!cName || !targetName) return false;
+    if (cName === targetName) return true;
+    const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+    const strip = s => norm(s).replace(/\s+\d+$/, '');
+    const a = norm(cName), b = norm(targetName);
+    const sa = strip(cName), sb = strip(targetName);
+    return a === b || sa === sb || a.includes(b) || b.includes(a);
+  }
+
   function handlePlayerHeal(targetName, amount) {
     if (!window.II_DEBUG || typeof window.II_DEBUG.getTracker !== 'function') return;
     const vm = window.II_DEBUG.getTracker();
@@ -209,7 +219,7 @@
 
     for (const c of list) {
       const cName = typeof c.Name === 'function' ? c.Name() : c.Name;
-      if (cName === targetName && typeof c.ApplyDamage === 'function') {
+      if (matchCombatantName(cName, targetName) && typeof c.ApplyDamage === 'function') {
         // amount > 0 est un soin (ex: 10). On dit au tracker d'appliquer "-10" dégâts (soin).
         // amount < 0 est une annulation (ex: -10). On dit au tracker d'appliquer "--10" = "+10" dégâts.
         const dmgString = amount > 0 ? `-${amount}` : `${Math.abs(amount)}`;
@@ -232,21 +242,21 @@
     const vm = window.II_DEBUG.getTracker();
     if (!vm) return;
 
-    const normalize = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
     const listKO = typeof vm.CombatantViewModels === 'function' ? vm.CombatantViewModels() : (vm.CombatantViewModels || []);
     const list = Array.isArray(listKO) ? listKO : (listKO && typeof listKO === 'object' ? Object.values(listKO) : []);
+    const numAmount = Number(amount) || 0;
 
     for (const c of list) {
       const cName = typeof c.Name === 'function' ? c.Name() : c.Name;
-      if (normalize(cName) === normalize(targetName)) {
+      if (matchCombatantName(cName, targetName)) {
         if (c.Combatant && typeof c.Combatant.TemporaryHP === 'function') {
-          c.Combatant.TemporaryHP(amount);
+          c.Combatant.TemporaryHP(numAmount);
         } else if (typeof c.ApplyTemporaryHP === 'function') {
-          c.ApplyTemporaryHP(amount);
+          c.ApplyTemporaryHP(numAmount);
         }
 
         if (vm.EventLog && typeof vm.EventLog.AddEvent === 'function') {
-          vm.EventLog.AddEvent(`Player Temp HP: ${targetName} (+${amount} Temp HP)`);
+          vm.EventLog.AddEvent(`Player Temp HP: ${targetName} (${numAmount} Temp HP)`);
         }
 
         setTimeout(() => sendSnapshot(true), 50);
