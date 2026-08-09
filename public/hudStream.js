@@ -138,6 +138,7 @@
                   c.abilities = sb.Abilities || null;
                   c.actions = sb.Actions || [];
                   c.traits = sb.Traits || [];
+                  c.hp_notes = sb.HP?.Notes || null;
                 }
                 // Also grab CurrentNotes for spell slot tracking
                 if (matchKO.Combatant.CurrentNotes) {
