@@ -671,6 +671,7 @@
         let ws = null;
         let reconnectTimer = null;
         let currentPlayers = [];
+        let currentCombatants = [];
         let lastAction = null;
         let toastTimeout = null;
         let previousHpValues = {}; // Track previous HP for animations
@@ -779,6 +780,7 @@
             }
 
             const list = Array.isArray(state?.list) ? state.list : [];
+            currentCombatants = list;
             const turn = Number(state?.turn || 0);
 
             if (list.length === 0) {
@@ -1635,7 +1637,86 @@
 
         function openCharacterDetails(name) {
             currentDetailsName = name;
-            const data = getCharacterData(name);
+            
+            // Find in currentCombatants first (the real live stats from the websocket/DM)
+            const liveMatch = currentCombatants.find(c => c.name === name);
+            let data = null;
+            
+            if (liveMatch && (liveMatch.actions || liveMatch.saves || liveMatch.abilities)) {
+                // We have live stats from the tracker! Let's format it to fit our rendering.
+                const sbSaves = liveMatch.saves || [];
+                const sbAbilities = liveMatch.abilities || { Str: 10, Dex: 10, Con: 10, Int: 10, Wis: 10, Cha: 10 };
+                const sbActions = liveMatch.actions || [];
+                
+                // Construct standard D&D 5e saves list
+                const abilityNamesMap = {
+                    'Str': 'Force',
+                    'Dex': 'Dextérité',
+                    'Con': 'Constitution',
+                    'Int': 'Intelligence',
+                    'Wis': 'Sagesse',
+                    'Cha': 'Charisme'
+                };
+                
+                const saves = {};
+                Object.entries(abilityNamesMap).forEach(([abbr, fullName]) => {
+                    const score = sbAbilities[abbr] ?? 10;
+                    const mod = Math.floor((score - 10) / 2);
+                    saves[fullName] = mod >= 0 ? `+${mod}` : `${mod}`;
+                });
+                
+                sbSaves.forEach(s => {
+                    const fullName = abilityNamesMap[s.Name];
+                    if (fullName) {
+                        saves[fullName] = s.Modifier >= 0 ? `+${s.Modifier}` : `${s.Modifier}`;
+                    }
+                });
+                
+                // Parse attacks from actions
+                const attacks = sbActions.map(action => {
+                    const content = action.Content || '';
+                    const aName = action.Name || '';
+                    
+                    // Parse to-hit
+                    let toHit = null;
+                    const toHitMatch = content.match(/([+-]?\s*\d+)\s*(?:to\s+hit|au\s+toucher|à\s+l'attaque)/i);
+                    if (toHitMatch) {
+                        const val = parseInt(toHitMatch[1].replace(/\s+/g, ''), 10);
+                        toHit = `1d20${val >= 0 ? '+' : ''}${val}`;
+                    } else {
+                        // Check if we can find any modifier
+                        const genericMatch = content.match(/([+-]\s*\d+)/);
+                        if (genericMatch) {
+                            const val = parseInt(genericMatch[1].replace(/\s+/g, ''), 10);
+                            toHit = `1d20${val >= 0 ? '+' : ''}${val}`;
+                        }
+                    }
+
+                    // Parse damage
+                    let damage = null;
+                    const dmgMatch = content.match(/(\d+d\d+(?:\s*[+-]\s*\d+)?)/i);
+                    if (dmgMatch) {
+                        damage = dmgMatch[1].replace(/\s+/g, '');
+                    }
+
+                    return {
+                        name: aName,
+                        toHit: toHit,
+                        damage: damage,
+                        desc: content.length > 80 ? content.substring(0, 77) + '...' : content
+                    };
+                });
+
+                data = {
+                    attacks: attacks,
+                    saves: saves
+                };
+            }
+
+            // Fallback to our hardcoded stats or default if live data is not available
+            if (!data) {
+                data = getCharacterData(name);
+            }
 
             document.getElementById('detailsName').innerText = name;
 

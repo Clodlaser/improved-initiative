@@ -118,6 +118,31 @@
         const c = { name, cur, max, temp, isPlayer, active, img, init: initVal };
         if (tags.length) c.tags = tags;
         if (isHidden) c.isHidden = true;
+
+        // Try to enrich with real StatBlock data from II_DEBUG
+        try {
+          if (window.II_DEBUG && typeof window.II_DEBUG.getTracker === 'function') {
+            const vm = window.II_DEBUG.getTracker();
+            if (vm) {
+              const listKO = typeof vm.CombatantViewModels === 'function' ? vm.CombatantViewModels() : (vm.CombatantViewModels || []);
+              const matchKO = listKO.find(x => {
+                const xName = typeof x.Name === 'function' ? x.Name() : x.Name;
+                return (xName || '').trim() === name;
+              });
+              if (matchKO && matchKO.Combatant && typeof matchKO.Combatant.StatBlock === 'function') {
+                const sb = matchKO.Combatant.StatBlock();
+                if (sb) {
+                  c.saves = sb.Saves || [];
+                  c.abilities = sb.Abilities || null;
+                  c.actions = sb.Actions || [];
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.log('[HUD] statblock enrichment error:', e);
+        }
+
         return c;
       });
       const turn = Math.max(0, list.findIndex(x => x.active));
