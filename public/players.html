@@ -506,11 +506,24 @@
                     </div>
                 </div>
 
+                <!-- Temp HP Toggle Row -->
+                <div class="px-6 py-2.5 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between flex-none">
+                    <label class="flex items-center gap-2.5 cursor-pointer select-none text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                        <input type="checkbox" id="tempHpCheckbox" onchange="toggleTempHpMode(this.checked)"
+                            class="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 text-amber-500 focus:ring-amber-500 bg-transparent cursor-pointer accent-amber-500" />
+                        <span class="flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-lg text-amber-500">shield</span>
+                            PV Temporaires
+                        </span>
+                    </label>
+                    <span id="tempHpBadge" class="hidden text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">TEMP</span>
+                </div>
+
                 <!-- Footer -->
                 <div class="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800/80">
-                    <button onclick="confirmHealPicker()"
+                    <button id="healPickerConfirmBtn" onclick="confirmHealPicker()"
                         class="w-full bg-primary text-white py-4 rounded-xl text-2xl font-black uppercase tracking-tighter hover:bg-primary-hover active:bg-primary-hover transition-all duration-200 shadow-[0_8px_16px_rgba(236,62,19,0.25)] active:shadow-none active:translate-y-1 flex items-center justify-center gap-2">
-                        <span class="material-symbols-outlined pb-1">health_and_safety</span>
+                        <span id="healPickerConfirmIcon" class="material-symbols-outlined pb-1">health_and_safety</span>
                         Valider <span id="healPickerConfirmVal" class="opacity-90">+10 PV</span>
                     </button>
                 </div>
@@ -1361,7 +1374,10 @@
                 closest.classList.add('text-primary', 'dark:text-primary', 'scale-125', 'opacity-100');
 
                 healPickerValue = parseInt(closest.getAttribute('data-val'), 10);
-                document.getElementById('healPickerConfirmVal').innerText = `+${healPickerValue} PV`;
+                const confirmValEl = document.getElementById('healPickerConfirmVal');
+                if (confirmValEl) {
+                    confirmValEl.innerText = isTempHpMode ? `+${healPickerValue} PV TEMP` : `+${healPickerValue} PV`;
+                }
                 lastClosest = closest;
 
                 // Subtle haptic feedback for each tick
@@ -1387,9 +1403,28 @@
             }
         }
 
+        let isTempHpMode = false;
+
+        function toggleTempHpMode(enabled) {
+            isTempHpMode = !!enabled;
+            const badge = document.getElementById('tempHpBadge');
+            const icon = document.getElementById('healPickerConfirmIcon');
+            const confirmVal = document.getElementById('healPickerConfirmVal');
+            if (badge) badge.classList.toggle('hidden', !isTempHpMode);
+            if (icon) icon.textContent = isTempHpMode ? 'shield' : 'health_and_safety';
+            if (confirmVal) {
+                confirmVal.textContent = isTempHpMode ? `+${healPickerValue} PV TEMP` : `+${healPickerValue} PV`;
+            }
+        }
+
         function openHealPicker(targetName) {
             healPickerTarget = targetName;
             document.getElementById('healPickerTitle').innerText = targetName === 'Group' ? 'Soigner le groupe' : `Soigner ${targetName}`;
+
+            // Reset temp HP option
+            const tempChk = document.getElementById('tempHpCheckbox');
+            if (tempChk) tempChk.checked = false;
+            toggleTempHpMode(false);
 
             const modal = document.getElementById('healPickerModal');
             const backdrop = document.getElementById('healPickerBackdrop');
@@ -1429,18 +1464,32 @@
             if (!healPickerTarget) return;
             const amount = healPickerValue;
 
-            if (healPickerTarget === 'Group') {
-                lastAction = { type: 'group', amount: amount, targets: [...currentPlayers] };
-                currentPlayers.forEach(p => sendHeal(p, amount, false));
-                showToast(`Groupe soigné: ${amount} PV`, true);
-                addLog(`SOIN GROUPE: ${amount} PV`, 'success');
-                broadcastHealNotification(amount, 'le groupe');
+            if (isTempHpMode) {
+                if (healPickerTarget === 'Group') {
+                    lastAction = { type: 'group_temp', amount: amount, targets: [...currentPlayers] };
+                    currentPlayers.forEach(p => sendTempHp(p, amount, false));
+                    showToast(`Groupe PV Temp: +${amount}`, true);
+                    addLog(`PV TEMP GROUPE: +${amount}`, 'info');
+                } else {
+                    lastAction = { type: 'single_temp', amount: amount, target: healPickerTarget };
+                    sendTempHp(healPickerTarget, amount, false);
+                    showToast(`+${amount} PV Temp > ${healPickerTarget}`, true);
+                    addLog(`PV TEMP: ${healPickerTarget} +${amount}`, 'info');
+                }
             } else {
-                lastAction = { type: 'single', amount: amount, target: healPickerTarget };
-                sendHeal(healPickerTarget, amount, false);
-                showToast(`${amount > 0 ? '+' : ''}${amount} PV > ${healPickerTarget}`, true);
-                addLog(`SOIN: ${healPickerTarget} ${amount > 0 ? '+' : ''}${amount} PV`, 'success');
-                broadcastHealNotification(amount, healPickerTarget);
+                if (healPickerTarget === 'Group') {
+                    lastAction = { type: 'group', amount: amount, targets: [...currentPlayers] };
+                    currentPlayers.forEach(p => sendHeal(p, amount, false));
+                    showToast(`Groupe soigné: ${amount} PV`, true);
+                    addLog(`SOIN GROUPE: ${amount} PV`, 'success');
+                    broadcastHealNotification(amount, 'le groupe');
+                } else {
+                    lastAction = { type: 'single', amount: amount, target: healPickerTarget };
+                    sendHeal(healPickerTarget, amount, false);
+                    showToast(`${amount > 0 ? '+' : ''}${amount} PV > ${healPickerTarget}`, true);
+                    addLog(`SOIN: ${healPickerTarget} ${amount > 0 ? '+' : ''}${amount} PV`, 'success');
+                    broadcastHealNotification(amount, healPickerTarget);
+                }
             }
 
             closeHealPicker();
@@ -1485,6 +1534,23 @@
                 };
                 ws.send(JSON.stringify(payload));
                 if (toast) showToast(`${amount > 0 ? '+' : ''}${amount} PV > ${targetName}`);
+            } else {
+                showToast("ERREUR: NO UPLINK", false);
+            }
+        }
+
+        function sendTempHp(targetName, amount, toast = true) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                if (navigator.vibrate) navigator.vibrate(40);
+
+                const payload = {
+                    type: 'player_temp_hp',
+                    channel: CHANNEL,
+                    target: targetName,
+                    amount: amount
+                };
+                ws.send(JSON.stringify(payload));
+                if (toast) showToast(`+${amount} PV Temp > ${targetName}`);
             } else {
                 showToast("ERREUR: NO UPLINK", false);
             }

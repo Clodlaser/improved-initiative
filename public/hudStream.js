@@ -174,6 +174,8 @@
           const msg = JSON.parse(txt);
           if (msg && msg.type === 'player_heal' && msg.channel === getChannel()) {
             handlePlayerHeal(msg.target, msg.amount);
+          } else if (msg && msg.type === 'player_temp_hp' && msg.channel === getChannel()) {
+            handlePlayerTempHP(msg.target, msg.amount);
           } else if (msg && msg.type === 'update_notes' && msg.channel === getChannel()) {
             handleUpdateNotes(msg.target, msg.notes);
           }
@@ -209,6 +211,37 @@
       }
     }
   }
+
+  function handlePlayerTempHP(targetName, amount) {
+    if (!window.II_DEBUG || typeof window.II_DEBUG.getTracker !== 'function') return;
+    const vm = window.II_DEBUG.getTracker();
+    if (!vm) return;
+
+    const normalize = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+    const listKO = typeof vm.CombatantViewModels === 'function' ? vm.CombatantViewModels() : (vm.CombatantViewModels || []);
+    const list = Array.isArray(listKO) ? listKO : (listKO && typeof listKO === 'object' ? Object.values(listKO) : []);
+
+    for (const c of list) {
+      const cName = typeof c.Name === 'function' ? c.Name() : c.Name;
+      if (normalize(cName) === normalize(targetName)) {
+        if (typeof c.ApplyTemporaryHP === 'function') {
+          c.ApplyTemporaryHP(amount);
+        } else if (c.Combatant && typeof c.Combatant.ApplyTemporaryHP === 'function') {
+          c.Combatant.ApplyTemporaryHP(amount);
+        } else if (c.Combatant && typeof c.Combatant.TemporaryHP === 'function') {
+          c.Combatant.TemporaryHP(amount);
+        }
+
+        if (vm.EventLog && typeof vm.EventLog.AddEvent === 'function') {
+          vm.EventLog.AddEvent(`Player Temp HP: ${targetName} (+${amount} Temp HP)`);
+        }
+
+        setTimeout(() => sendSnapshot(true), 50);
+        return;
+      }
+    }
+  }
+
 
   function handleUpdateNotes(targetName, newNotes) {
     if (!window.II_DEBUG || typeof window.II_DEBUG.getTracker !== 'function') return;
