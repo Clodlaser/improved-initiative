@@ -1812,35 +1812,25 @@
                     const content = action.Content || '';
                     const aName = action.Name || '';
                     
-                    // Parse to-hit
+                    // Parse to-hit: must explicitly say "to hit" or similar
                     let toHit = null;
                     const toHitMatch = content.match(/([+-]?\s*\d+)\s*(?:to\s+hit|au\s+toucher|à\s+l'attaque)/i);
                     if (toHitMatch) {
                         const val = parseInt(toHitMatch[1].replace(/\s+/g, ''), 10);
                         toHit = `1d20${val >= 0 ? '+' : ''}${val}`;
-                    } else {
-                        // Check if we can find any modifier
-                        const genericMatch = content.match(/([+-]\s*\d+)/);
-                        if (genericMatch) {
-                            const val = parseInt(genericMatch[1].replace(/\s+/g, ''), 10);
-                            toHit = `1d20${val >= 0 ? '+' : ''}${val}`;
-                        }
                     }
 
-                    // Parse damage
+                    // Parse damage: must have an explicit dice expression (XdY)
                     let damage = null;
                     const dmgMatch = content.match(/(\d+d\d+(?:\s*[+-]\s*\d+)?)/i);
                     if (dmgMatch) {
                         damage = dmgMatch[1].replace(/\s+/g, '');
                     }
 
-                    return {
-                        name: aName,
-                        toHit: toHit,
-                        damage: damage,
-                        desc: content.length > 80 ? content.substring(0, 77) + '...' : content
-                    };
-                });
+                    return { name: aName, toHit, damage, desc: content.length > 80 ? content.substring(0, 77) + '...' : content };
+                // Keep only real attacks: must have at least a damage die
+                }).filter(a => a.damage !== null);
+
 
                 data = {
                     attacks: attacks,
