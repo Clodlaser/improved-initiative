@@ -108,11 +108,16 @@
         const name = (nameEl?.textContent || '?').trim();
         const hpTxt = (hpEl?.textContent || '').trim().replace(/\s+/g, '');
         let cur = 0, max = 0, temp = 0;
-        const tempMatch = hpTxt.match(/^(\d+)\+(\d+)\/(\d+)$/);
-        if (tempMatch) {
-          cur = Number(tempMatch[1]);
-          temp = Number(tempMatch[2]);
-          max = Number(tempMatch[3]);
+        const mParen = hpTxt.match(/^(\d+)\/(\d+)\(\+(\d+)\)$/);
+        const mPlus = hpTxt.match(/^(\d+)\+(\d+)\/(\d+)$/);
+        if (mParen) {
+          cur = Number(mParen[1]);
+          max = Number(mParen[2]);
+          temp = Number(mParen[3]);
+        } else if (mPlus) {
+          cur = Number(mPlus[1]);
+          temp = Number(mPlus[2]);
+          max = Number(mPlus[3]);
         } else {
           const nums = hpTxt.match(/\d+/g) || [];
           cur = Number(nums[0] ?? NaN);
@@ -187,11 +192,11 @@
           let txt = ev.data;
           if (txt instanceof Blob) txt = await txt.text();
           const msg = JSON.parse(txt);
-          if (msg && msg.type === 'player_heal' && msg.channel === getChannel()) {
+          if (msg && msg.type === 'player_heal') {
             handlePlayerHeal(msg.target, msg.amount);
-          } else if (msg && msg.type === 'player_temp_hp' && msg.channel === getChannel()) {
+          } else if (msg && msg.type === 'player_temp_hp') {
             handlePlayerTempHP(msg.target, msg.amount);
-          } else if (msg && msg.type === 'update_notes' && msg.channel === getChannel()) {
+          } else if (msg && msg.type === 'update_notes') {
             handleUpdateNotes(msg.target, msg.notes);
           }
         } catch (e) { }
