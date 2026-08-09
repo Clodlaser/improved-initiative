@@ -476,7 +476,7 @@
       }
     }
   </style>
-  <script defer src="/hudStream.js?v=6"></script>
+  <script defer src="/hudStream.js?v=7"></script>
 </head>
 
 <body id="tracker">
@@ -1005,6 +1005,7 @@
         } else {
           hpDelta(delta);
         }
+        setTimeout(() => { if (typeof sendSnapshot === "function") sendSnapshot(true); }, 50);
       }
 
       pad.addEventListener("click", (e) => {

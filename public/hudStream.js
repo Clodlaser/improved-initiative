@@ -251,8 +251,12 @@
       if (matchCombatantName(cName, targetName)) {
         if (c.Combatant && typeof c.Combatant.TemporaryHP === 'function') {
           c.Combatant.TemporaryHP(numAmount);
-        } else if (typeof c.ApplyTemporaryHP === 'function') {
+        }
+        if (typeof c.ApplyTemporaryHP === 'function') {
           c.ApplyTemporaryHP(numAmount);
+        }
+        if (c.Combatant && typeof c.Combatant.ApplyTemporaryHP === 'function') {
+          c.Combatant.ApplyTemporaryHP(numAmount);
         }
 
         if (vm.EventLog && typeof vm.EventLog.AddEvent === 'function') {
