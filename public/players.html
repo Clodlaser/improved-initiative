@@ -160,6 +160,41 @@
                         En attente du combat...
                     </div>
                 </div>
+
+                <!-- Combatant Details View (hidden by default) -->
+                <div id="combatantDetails" class="hidden flex-col w-full h-full bg-white dark:bg-slate-900 p-6">
+                    <!-- Header of Details -->
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 id="detailsName" class="text-3xl font-black uppercase tracking-tighter text-black dark:text-white leading-none">Loic</h2>
+                        <button onclick="closeCharacterDetails()"
+                            class="flex items-center gap-1 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors py-2 active:scale-95 font-bold uppercase tracking-widest text-xs">
+                            <span class="material-symbols-outlined text-sm">arrow_back</span>
+                            Fermer
+                        </button>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="flex border-b-2 border-slate-200 dark:border-slate-800 mb-6">
+                        <button id="tab-attacks" onclick="switchDetailsTab('attacks')"
+                            class="flex-1 py-3 text-center border-b-4 border-primary text-primary font-black uppercase tracking-wider text-sm transition-all focus:outline-none">
+                            Attaques
+                        </button>
+                        <button id="tab-saves" onclick="switchDetailsTab('saves')"
+                            class="flex-1 py-3 text-center border-b-4 border-transparent text-slate-400 font-black uppercase tracking-wider text-sm transition-all focus:outline-none">
+                            Sauvegardes
+                        </button>
+                    </div>
+
+                    <!-- Tab content: Attacks -->
+                    <div id="details-attacks" class="flex flex-col gap-4">
+                        <!-- Dynamic list of attacks -->
+                    </div>
+
+                    <!-- Tab content: Saves -->
+                    <div id="details-saves" class="hidden grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <!-- Dynamic grid of 6 saves -->
+                    </div>
+                </div>
             </main>
         </div>
 
@@ -831,7 +866,7 @@
                 const hpDisplay = isPC ? `<span class="font-mono text-sm font-bold text-slate-500 dark:text-slate-400 ${hpAnimClass}">${cur}/${max}</span>` : '';
 
                 htmlRender += `
-                <div class="flex flex-col px-6 py-4 border-b-4 ${borderActiveColor} ${bgActiveColor} md:border-b-0 md:bg-white dark:md:bg-slate-900 md:border-b transition-colors border-l-4 ${isActive ? 'border-l-[6px]' : ''} ${frameColor} relative overflow-hidden">
+                <div onclick="openCharacterDetails('${name.replace(/'/g, "\\'")}')" class="cursor-pointer flex flex-col px-6 py-4 border-b-4 ${borderActiveColor} ${bgActiveColor} md:border-b-0 md:bg-white dark:md:bg-slate-900 md:border-b transition-colors border-l-4 ${isActive ? 'border-l-[6px]' : ''} ${frameColor} relative overflow-hidden hover:opacity-90 active:scale-[0.99]">
                     <!-- Subtle Background HP Bar -->
                     <div class="absolute inset-y-0 left-0 opacity-10 dark:opacity-20 transition-all duration-500 pointer-events-none" style="width: ${barWidth}; background-color: ${hpColor};"></div>
                     
@@ -1532,6 +1567,237 @@
                 broadcastHealNotification(amount, targetName);
             }
             closeDiceResult();
+        }
+
+        // --- CHARACTER DETAILS VIEW (ATTACKS & SAVES) ---
+        const CHARACTER_STATS = {
+            'loic': {
+                attacks: [
+                    { name: 'Épée longue', type: 'Toucher: +6 | Dégâts: 1d8+4', toHit: '1d20+6', damage: '1d8+4', desc: 'Corps à corps' },
+                    { name: 'Arc long', type: 'Toucher: +4 | Dégâts: 1d8+2', toHit: '1d20+4', damage: '1d8+2', desc: 'Distance (150/600)' }
+                ],
+                saves: { 'Force': '+5', 'Dextérité': '+1', 'Constitution': '+4', 'Intelligence': '+0', 'Sagesse': '+1', 'Charisme': '+2' }
+            },
+            'pierre': {
+                attacks: [
+                    { name: 'Espadon', type: 'Toucher: +7 | Dégâts: 2d6+4', toHit: '1d20+7', damage: '2d6+4', desc: 'Corps à corps' },
+                    { name: 'Lance de combat', type: 'Toucher: +7 | Dégâts: 1d6+4', toHit: '1d20+7', damage: '1d6+4', desc: 'Distance (30/120)' }
+                ],
+                saves: { 'Force': '+6', 'Dextérité': '+0', 'Constitution': '+3', 'Intelligence': '+0', 'Sagesse': '+4', 'Charisme': '+5' }
+            },
+            'tristan': {
+                attacks: [
+                    { name: 'Arc long', type: 'Toucher: +7 | Dégâts: 1d8+5', toHit: '1d20+7', damage: '1d8+5', desc: 'Distance (150/600)' },
+                    { name: 'Rapière', type: 'Toucher: +7 | Dégâts: 1d8+5', toHit: '1d20+7', damage: '1d8+5', desc: 'Corps à corps' }
+                ],
+                saves: { 'Force': '+2', 'Dextérité': '+5', 'Constitution': '+2', 'Intelligence': '+1', 'Sagesse': '+3', 'Charisme': '-1' }
+            },
+            'joel': {
+                attacks: [
+                    { name: 'Dague', type: 'Toucher: +7 | Dégâts: 1d4+5', toHit: '1d20+7', damage: '1d4+5', desc: 'Corps à corps / Jeté (20/60)' },
+                    { name: 'Arc court', type: 'Toucher: +7 | Dégâts: 1d6+5', toHit: '1d20+7', damage: '1d6+5', desc: 'Distance (80/320)' }
+                ],
+                saves: { 'Force': '-1', 'Dextérité': '+5', 'Constitution': '+1', 'Intelligence': '+3', 'Sagesse': '+1', 'Charisme': '+2' }
+            },
+            'regin sagerath': {
+                attacks: [
+                    { name: 'Masse d\'armes', type: 'Toucher: +4 | Dégâts: 1d6+1', toHit: '1d20+4', damage: '1d6+1', desc: 'Corps à corps' },
+                    { name: 'Flamme sacrée', type: 'Sauvegarde Dex: DD 14 | Dégâts: 2d8', toHit: null, damage: '2d8', desc: 'Sort (DD 14 Dex)' }
+                ],
+                saves: { 'Force': '+1', 'Dextérité': '+0', 'Constitution': '+2', 'Intelligence': '+1', 'Sagesse': '+6', 'Charisme': '+3' }
+            }
+        };
+
+        function getCharacterKey(name) {
+            return (name || '')
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .trim();
+        }
+
+        function getCharacterData(name) {
+            const key = getCharacterKey(name);
+            if (CHARACTER_STATS[key]) {
+                return CHARACTER_STATS[key];
+            }
+            // Fallback for monsters or other PCs
+            return {
+                attacks: [
+                    { name: 'Attaque de base', type: 'Toucher: +4 | Dégâts: 1d6+2', toHit: '1d20+4', damage: '1d6+2', desc: 'Corps à corps' },
+                    { name: 'Attaque puissante', type: 'Toucher: +4 | Dégâts: 1d10+2', toHit: '1d20+4', damage: '1d10+2', desc: 'Corps à corps' }
+                ],
+                saves: { 'Force': '+1', 'Dextérité': '+1', 'Constitution': '+1', 'Intelligence': '+1', 'Sagesse': '+1', 'Charisme': '+1' }
+            };
+        }
+
+        let currentDetailsName = '';
+
+        function openCharacterDetails(name) {
+            currentDetailsName = name;
+            const data = getCharacterData(name);
+
+            document.getElementById('detailsName').innerText = name;
+
+            // Generate Attacks List HTML
+            const attacksContainer = document.getElementById('details-attacks');
+            if (attacksContainer) {
+                let html = '';
+                data.attacks.forEach(att => {
+                    const toHitBtn = att.toHit ? `
+                        <button onclick="executeCustomRoll('${att.toHit}', '${att.name.replace(/'/g, "\\'")} (Toucher)')"
+                            class="bg-primary/10 border-2 border-primary/20 hover:bg-primary/20 text-primary px-4 py-2 text-xs font-black uppercase tracking-wider transition-all active:scale-95">
+                            ${att.toHit.startsWith('1d20') ? (att.toHit.substring(4).startsWith('+') ? att.toHit.substring(4) : att.toHit.substring(4)) : att.toHit}
+                        </button>
+                    ` : '';
+
+                    const dmgBtn = att.damage ? `
+                        <button onclick="executeCustomRoll('${att.damage}', '${att.name.replace(/'/g, "\\'")} (Dégâts)')"
+                            class="bg-slate-700/50 border-2 border-slate-600/50 hover:bg-slate-700 text-white px-4 py-2 text-xs font-black uppercase tracking-wider transition-all active:scale-95">
+                            ${att.damage}
+                        </button>
+                    ` : '';
+
+                    html += `
+                        <div class="flex items-center justify-between p-4 border-2 border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/20">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-black uppercase tracking-tight text-slate-800 dark:text-slate-200">${att.name}</span>
+                                <span class="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">${att.desc || ''}</span>
+                            </div>
+                            <div class="flex gap-2">
+                                ${toHitBtn}
+                                ${dmgBtn}
+                            </div>
+                        </div>
+                    `;
+                });
+                attacksContainer.innerHTML = html;
+            }
+
+            // Generate Saves Grid HTML
+            const savesContainer = document.getElementById('details-saves');
+            if (savesContainer) {
+                let html = '';
+                Object.entries(data.saves).forEach(([ability, mod]) => {
+                    html += `
+                        <div class="flex flex-col items-center justify-center p-4 border-2 border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/20 cursor-pointer hover:border-primary/30 transition-all hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95"
+                            onclick="executeCustomRoll('1d20${mod}', '${ability} (Sauvegarde) - ${name.replace(/'/g, "\\'")}')">
+                            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${ability}</span>
+                            <span class="text-2xl font-black text-black dark:text-white mt-1">${mod}</span>
+                        </div>
+                    `;
+                });
+                savesContainer.innerHTML = html;
+            }
+
+            // Show Details Sheet & Hide List
+            document.getElementById('combatList').classList.add('hidden');
+            document.getElementById('combatantDetails').classList.remove('hidden');
+
+            // Reset tab selection to attacks
+            switchDetailsTab('attacks');
+
+            // Scroll main view to top
+            const mainView = document.querySelector('#view-combat main');
+            if (mainView) mainView.scrollTop = 0;
+        }
+
+        function closeCharacterDetails() {
+            document.getElementById('combatantDetails').classList.add('hidden');
+            document.getElementById('combatList').classList.remove('hidden');
+        }
+
+        function switchDetailsTab(tabId) {
+            const tabAtt = document.getElementById('tab-attacks');
+            const tabSav = document.getElementById('tab-saves');
+            const viewAtt = document.getElementById('details-attacks');
+            const viewSav = document.getElementById('details-saves');
+
+            if (tabId === 'attacks') {
+                tabAtt.classList.remove('border-transparent', 'text-slate-400');
+                tabAtt.classList.add('border-primary', 'text-primary');
+                tabSav.classList.remove('border-primary', 'text-primary');
+                tabSav.classList.add('border-transparent', 'text-slate-400');
+
+                viewAtt.classList.remove('hidden');
+                viewSav.classList.add('hidden');
+            } else {
+                tabSav.classList.remove('border-transparent', 'text-slate-400');
+                tabSav.classList.add('border-primary', 'text-primary');
+                tabAtt.classList.remove('border-primary', 'text-primary');
+                tabAtt.classList.add('border-transparent', 'text-slate-400');
+
+                viewSav.classList.remove('hidden');
+                viewAtt.classList.add('hidden');
+            }
+        }
+
+        function executeCustomRoll(formula, title) {
+            // formula is like "1d20+6" or "1d8+4"
+            const match = formula.replace(/\s+/g, '').match(/^(\d+)d(\d+)([+-]\d+)?$/i);
+            let count = 1;
+            let faces = 20;
+            let mod = 0;
+            if (match) {
+                count = parseInt(match[1], 10);
+                faces = parseInt(match[2], 10);
+                if (match[3]) {
+                    mod = parseInt(match[3], 10);
+                }
+            } else {
+                // Try simpler format without count, e.g. "d20+5"
+                const simpleMatch = formula.replace(/\s+/g, '').match(/^d(\d+)([+-]\d+)?$/i);
+                if (simpleMatch) {
+                    count = 1;
+                    faces = parseInt(simpleMatch[1], 10);
+                    if (simpleMatch[2]) {
+                        mod = parseInt(simpleMatch[2], 10);
+                    }
+                }
+            }
+
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addLog('Cannot roll, not connected', 'error');
+                return;
+            }
+
+            if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+
+            let rolls = [];
+            let sum = 0;
+            for (let i = 0; i < count; i++) {
+                const r = Math.floor(Math.random() * faces) + 1;
+                rolls.push(r);
+                sum += r;
+            }
+            const total = sum + mod;
+
+            const payload = {
+                type: 'roll',
+                room: CHANNEL,
+                payload: {
+                    n: count,
+                    faces: faces,
+                    rolls: rolls,
+                    total: total,
+                    mod: mod,
+                    formula: formula
+                }
+            };
+            
+            // Send to WebSocket
+            ws.send(JSON.stringify(payload));
+
+            // Show result locally immediate for the roller
+            showDiceResult(payload.payload);
+
+            const rollStr = `${formula} -> ${total}`;
+            showToast(`<span class="font-normal opacity-70 border-r border-white/30 pr-2 mr-2">${title || formula}</span> <span class="text-xl">${total}</span>`);
+
+            const item = { type: 'roll', desc: `${title || formula}: ${rollStr}` };
+            diceHistoryArr.unshift(item);
+            if (diceHistoryArr.length > 10) diceHistoryArr.pop();
+            renderDiceHistory();
         }
 
         function closeDiceResult() {
