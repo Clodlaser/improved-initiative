@@ -139,6 +139,12 @@
                   c.actions = sb.Actions || [];
                   c.traits = sb.Traits || [];
                 }
+                // Also grab CurrentNotes for spell slot tracking
+                if (matchKO.Combatant.CurrentNotes) {
+                  c.notes = typeof matchKO.Combatant.CurrentNotes === 'function'
+                    ? matchKO.Combatant.CurrentNotes()
+                    : matchKO.Combatant.CurrentNotes;
+                }
               }
             }
           }

@@ -806,6 +806,9 @@
             currentCombatants = list;
             const turn = Number(state?.turn || 0);
 
+            // Sync spell slots state from tracker CurrentNotes
+            syncSpellSlotsFromNotes(list);
+
             if (list.length === 0) {
                 resetRound();
                 document.getElementById('uiRoundCounter').innerText = `ROUND 1`;
@@ -1688,6 +1691,40 @@
         let currentDetailsData = null;
         let characterSpellSlotsState = {};
 
+        // Parse tracker CurrentNotes and sync spell slots state
+        // Notes look like: "Spellcasting Slots\n\n1st Level [3/4]\n\n2nd Level [2/3]"
+        function syncSpellSlotsFromNotes(list) {
+            (list || []).forEach(c => {
+                if (!c.notes) return;
+                const charKey = getCharacterKey(c.name);
+                if (!characterSpellSlotsState[charKey]) characterSpellSlotsState[charKey] = {};
+
+                // Match patterns like "1st Level [3/4]", "Niveau 2 [2/3]", "2nd Level [cur/max]"
+                const pattern = /(\d+)(?:st|nd|rd|th|er|e|ème)?\s*(?:level|niveau|Level|Niveau)\s*\[(\d+)\/(\d+)\]/gi;
+                let m;
+                while ((m = pattern.exec(c.notes)) !== null) {
+                    const lvl = m[1];
+                    const cur = parseInt(m[2], 10);
+                    // Only update if the tracker's state differs to avoid overwriting local edits
+                    // Tracker is authoritative — always sync
+                    characterSpellSlotsState[charKey][lvl] = cur;
+                    // Also update the max in currentDetailsData if this combatant is currently open
+                    if (currentDetailsData && getCharacterKey(currentDetailsName) === charKey) {
+                        if (!currentDetailsData.slots[lvl]) currentDetailsData.slots[lvl] = { cur, max: parseInt(m[3], 10) };
+                        else currentDetailsData.slots[lvl].max = parseInt(m[3], 10);
+                    }
+                }
+
+                // Re-render if this is the currently open character
+                if (getCharacterKey(currentDetailsName) === charKey) {
+                    const spellTab = document.getElementById('details-spells');
+                    if (spellTab && !spellTab.classList.contains('hidden')) {
+                        renderSpellsView();
+                    }
+                }
+            });
+        }
+
         function parseSpellcasting(traits) {
             const spellcastingTrait = (traits || []).find(t => {
                 const cleanName = (t.Name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -1972,22 +2009,21 @@
                     let circles = '';
                     for (let i = 1; i <= slotInfo.max; i++) {
                         const isFilled = i <= currentVal;
-                        circles += `
-                            <span onclick="toggleSpellSlot(${lvl}, ${i}, ${currentVal})"
-                                class="w-5 h-5 rounded-full border-2 border-primary cursor-pointer transition-all hover:scale-110 ${isFilled ? 'bg-primary shadow-[0_0_8px_rgba(236,62,19,0.4)]' : 'bg-transparent'}">
-                            </span>
-                        `;
+                        circles += `<span onclick="toggleSpellSlot(${lvl}, ${i}, ${currentVal})"
+                                class="inline-block w-5 h-5 rounded-full border-2 border-primary cursor-pointer transition-all hover:scale-110 ${isFilled ? 'bg-primary shadow-[0_0_8px_rgba(236,62,19,0.4)]' : 'bg-transparent'}"></span>`;
                     }
 
+                    const isEmpty = currentVal <= 0;
                     slotsHtml += `
-                        <div class="flex items-center justify-between p-3 border-2 border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/20">
-                            <span class="text-sm font-black uppercase text-slate-800 dark:text-slate-200">Niveau ${lvl}</span>
-                            <div class="flex items-center gap-3">
-                                <div class="flex gap-1.5">
-                                    ${circles}
-                                </div>
-                                <span class="font-mono text-sm font-bold text-slate-500 w-10 text-right">${currentVal} / ${slotInfo.max}</span>
+                        <div class="flex items-center justify-between gap-3 p-3 border-2 border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/20 ${isEmpty ? 'opacity-50' : ''}">
+                            <div class="flex flex-col min-w-[4.5rem]">
+                                <span class="text-xs font-black uppercase text-slate-400 leading-none">Niv.</span>
+                                <span class="text-xl font-black text-slate-800 dark:text-slate-100 leading-none">${lvl}</span>
                             </div>
+                            <div class="flex flex-wrap gap-1.5 flex-1">
+                                ${circles}
+                            </div>
+                            <span class="font-mono text-xs font-bold tabular-nums text-slate-400 text-right whitespace-nowrap">${currentVal}&nbsp;/&nbsp;${slotInfo.max}</span>
                         </div>
                     `;
                 });
