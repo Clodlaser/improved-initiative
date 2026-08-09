@@ -318,6 +318,9 @@ function getClassNames(props: CombatantRowProps) {
   if (props.isSelected) {
     classNames.push("selected");
   }
+  if (props.combatantState.StatBlock.Player?.length > 0) {
+    classNames.push("combatant--player");
+  }
   return classNames;
 }
 

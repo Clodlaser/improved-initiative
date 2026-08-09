@@ -285,7 +285,7 @@
       const PC_SET = new Set(playersParam.length ? playersParam : ['Pierre', 'Loic', 'Gabriele', 'Joel', 'Ana\u00ebl', 'AnaÃ«l', 'Tristan', 'Maureen', 'Vincent']);
       const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }; const esc = s => String(s).replace(/[&<>"']/g, m => ESC_MAP[m]);
       const pctColor = p => !isFinite(p) ? '#42d07c' : p <= 5 ? '#4a155a' : p <= 20 ? '#a3082a' : p <= 40 ? '#ff5d5d' : p <= 60 ? '#ff9f43' : p <= 80 ? '#ffd257' : '#42d07c';
-      const isPlayer = c => !!(c?.isPlayer || c?.player || ['pc', 'ally'].includes(c?.role) || PC_SET.has(c?.name));
+      const isPlayer = c => !!(c?.isPlayer || c?.player || c?.IsPlayerCharacter || ['pc', 'ally'].includes(c?.role) || PC_SET.has(c?.name));
       const tagClass = t => /(poison|empoison)/i.test(t) ? 'tag poison' : /(stun|Ã©tourdi|assommÃ©)/i.test(t) ? 'tag stun' : 'tag';
       const sanitizeTags = tags => tags.map(t => typeof t === 'string' ? t : (t?.text || '')).filter(t => t && !/^(add|remove|ajouter|retirer)\b/i.test(t));
 

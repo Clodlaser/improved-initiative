@@ -916,7 +916,7 @@
         // --- HEALING LOGIC ---
         function isPlayer(c) {
             if (!c) return false;
-            return c.isPlayer || c.player || ['pc', 'ally'].includes(c.role) || PC_SET.has(c.name);
+            return c.isPlayer || c.player || c.IsPlayerCharacter || ['pc', 'ally'].includes(c.role) || PC_SET.has(c.name);
         }
 
         function getHpColorClass(pct) {
