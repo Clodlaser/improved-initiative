@@ -1638,8 +1638,11 @@
         function openCharacterDetails(name) {
             currentDetailsName = name;
             
-            // Find in currentCombatants first (the real live stats from the websocket/DM)
-            const liveMatch = currentCombatants.find(c => c.name === name);
+            const cleanName = (name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+            const liveMatch = currentCombatants.find(c => {
+                const cClean = (c.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+                return cClean === cleanName;
+            });
             let data = null;
             
             if (liveMatch && (liveMatch.actions || liveMatch.saves || liveMatch.abilities)) {

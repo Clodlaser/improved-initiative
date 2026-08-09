@@ -127,7 +127,9 @@
               const listKO = typeof vm.CombatantViewModels === 'function' ? vm.CombatantViewModels() : (vm.CombatantViewModels || []);
               const matchKO = listKO.find(x => {
                 const xName = typeof x.Name === 'function' ? x.Name() : x.Name;
-                return (xName || '').trim() === name;
+                const cleanA = (xName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+                const cleanB = (name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+                return cleanA === cleanB;
               });
               if (matchKO && matchKO.Combatant && typeof matchKO.Combatant.StatBlock === 'function') {
                 const sb = matchKO.Combatant.StatBlock();
