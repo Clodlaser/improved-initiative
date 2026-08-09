@@ -137,6 +137,7 @@
                   c.saves = sb.Saves || [];
                   c.abilities = sb.Abilities || null;
                   c.actions = sb.Actions || [];
+                  c.traits = sb.Traits || [];
                 }
               }
             }
