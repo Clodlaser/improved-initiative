@@ -1968,8 +1968,13 @@
             return (name || '')
                 .toLowerCase()
                 .normalize("NFD")
-              function getCharacterData(name) {
+                .replace(/[\u0300-\u036f]/g, "")
+                .trim();
+        }
+
+        function getCharacterData(name) {
             const key = getCharacterKey(name);
+
             const base = Object.assign({
                 attacks: [],
                 saves: { 'Force': '+0', 'Dextérité': '+0', 'Constitution': '+0', 'Intelligence': '+0', 'Sagesse': '+0', 'Charisme': '+0' },
