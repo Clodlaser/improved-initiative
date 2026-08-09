@@ -1,4 +1,5 @@
 import * as React from "react";
+import * as ko from "knockout";
 
 import axios from "axios";
 import * as _ from "lodash";
@@ -70,7 +71,8 @@ function dummyLibrary<T extends Listable>(): Library<T> {
     GetAllListings: () => [],
     GetOrCreateListingById: () => Promise.resolve(null),
     SaveEditedListing: () => Promise.resolve(null),
-    SaveNewListing: () => Promise.resolve(null)
+    SaveNewListing: () => Promise.resolve(null),
+    ListingsObservable: ko.observable([])
   };
 }
 

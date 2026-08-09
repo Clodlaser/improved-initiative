@@ -1,4 +1,5 @@
 import * as moment from "moment";
+import * as ko from "knockout";
 
 import * as React from "react";
 
@@ -24,6 +25,7 @@ export interface Library<T extends Listable> {
     template?: T
   ) => Promise<Listing<T>>;
   GetAllListings: () => Listing<T>[];
+  ListingsObservable: KnockoutObservable<Listing<T>[]>;
 }
 
 export function useLibrary<T extends Listable>(
@@ -40,6 +42,12 @@ export function useLibrary<T extends Listable>(
 ): Library<T> {
   // locals
   const [listings, setListings] = React.useState<Listing<T>[]>([]);
+
+  const listingsObservable = React.useRef(ko.observable<Listing<T>[]>([])).current;
+
+  React.useEffect(() => {
+    listingsObservable(listings);
+  }, [listings]);
 
   const addListing = React.useCallback(
     newListing =>
@@ -236,7 +244,8 @@ export function useLibrary<T extends Listable>(
     SaveNewListing,
     SaveEditedListing,
     GetOrCreateListingById,
-    GetAllListings
+    GetAllListings,
+    ListingsObservable: listingsObservable
   } as const;
 }
 

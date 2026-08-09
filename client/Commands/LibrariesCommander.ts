@@ -258,9 +258,9 @@ export class LibrariesCommander {
 
   public GetSpellsByNameRegex = ko.pureComputed(
     (): RegExp => {
-      this.spellsUpdated();
+      const spells = this.libraries.Spells.ListingsObservable();
       return concatenatedStringRegex(
-        this.libraries.Spells.GetAllListings() //TODO: Ensure that computed is updated with this
+        spells
           .map(s => s.Meta().Name)
           .filter(n => n.length > 2)
       );
