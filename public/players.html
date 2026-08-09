@@ -235,104 +235,49 @@
             <main class="flex-1 overflow-y-auto flex flex-col pt-2 md:items-center">
                 <section
                     class="p-6 pb-2 w-full md:max-w-md md:bg-slate-50 dark:md:bg-slate-800/50 md:mt-8 md:rounded-xl md:border md:border-black/10 dark:md:border-white/10 md:shadow-sm">
-                    <!-- Count -->
-                    <div class="flex justify-between items-baseline mb-2">
-                        <h2 class="text-xs font-black uppercase tracking-widest text-black dark:text-white">Nombre de
-                            dés
-                        </h2>
-                    </div>
-                    <div class="relative flex items-center justify-center swiss-grid h-36 w-full max-w-[200px] mb-6 bg-slate-50 dark:bg-slate-800/30 overflow-hidden">
-                        <!-- Selection Highlighter -->
-                        <div class="absolute inset-x-2 top-1/2 -translate-y-1/2 h-12 bg-primary/10 dark:bg-primary/20 border-2 border-primary/20 pointer-events-none"></div>
-                        <!-- Scroll Container -->
-                        <div id="diceCountScroll" class="w-full h-full overflow-y-auto overflow-x-hidden snap-y snap-mandatory no-scrollbar relative flex flex-col items-center">
-                            <div class="flex-none h-[calc(50%-24px)] w-full"></div> <!-- Top Padding -->
-                            <div id="diceCountItems" class="flex flex-col items-center w-full"></div>
-                            <div class="flex-none h-[calc(50%-24px)] w-full"></div> <!-- Bottom Padding -->
-                        </div>
-                    </div>
-
                     <!-- Dice Grid -->
                     <h2 class="text-xs font-black uppercase tracking-widest mb-2 text-black dark:text-white">Type de dés
                     </h2>
                     <div class="grid grid-cols-4 swiss-grid mb-6" id="diceTypeGrid">
                         <!-- D4 -->
-                        <label class="aspect-square relative cursor-pointer swiss-grid-item group">
-                            <input type="radio" name="dice_type" value="4" class="peer absolute opacity-0"
-                                onchange="updateDiceType(4)" />
-                            <div
-                                class="dice-type-btn w-full h-full flex flex-col items-center justify-center text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
-                                <span class="text-xl font-black italic">D4</span>
-                            </div>
-                        </label>
-                        <!-- D6 -->
-                        <label class="aspect-square relative cursor-pointer swiss-grid-item group">
-                            <input type="radio" name="dice_type" value="6" class="peer absolute opacity-0"
-                                onchange="updateDiceType(6)" checked />
-                            <div
-                                class="dice-type-btn w-full h-full flex flex-col items-center justify-center bg-primary text-white transition-colors">
-                                <span class="text-xl font-black italic">D6</span>
-                            </div>
-                        </label>
-                        <label class="aspect-square relative cursor-pointer swiss-grid-item group">
-                            <input type="radio" name="dice_type" value="8" class="peer absolute opacity-0"
-                                onchange="updateDiceType(8)" />
-                            <div
-                                class="dice-type-btn w-full h-full flex flex-col items-center justify-center text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
-                                <span class="text-xl font-black italic">D8</span>
-                            </div>
-                        </label>
-                        <label class="aspect-square relative cursor-pointer swiss-grid-item group">
-                            <input type="radio" name="dice_type" value="10" class="peer absolute opacity-0"
-                                onchange="updateDiceType(10)" />
-                            <div
-                                class="dice-type-btn w-full h-full flex flex-col items-center justify-center text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
-                                <span class="text-xl font-black italic">D10</span>
-                            </div>
-                        </label>
-                        <label class="aspect-square relative cursor-pointer swiss-grid-item group">
-                            <input type="radio" name="dice_type" value="12" class="peer absolute opacity-0"
-                                onchange="updateDiceType(12)" />
-                            <div
-                                class="dice-type-btn w-full h-full flex flex-col items-center justify-center text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
-                                <span class="text-xl font-black italic">D12</span>
-                            </div>
-                        </label>
-                        <label class="aspect-square relative cursor-pointer swiss-grid-item group">
-                            <input type="radio" name="dice_type" value="20" class="peer absolute opacity-0"
-                                onchange="updateDiceType(20)" />
-                            <div
-                                class="dice-type-btn w-full h-full flex flex-col items-center justify-center text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
-                                <span class="text-xl font-black italic">D20</span>
-                            </div>
-                        </label>
-                        <label class="aspect-square relative cursor-pointer swiss-grid-item group">
-                            <input type="radio" name="dice_type" value="100" class="peer absolute opacity-0"
-                                onchange="updateDiceType(100)" />
-                            <div
-                                class="dice-type-btn w-full h-full flex flex-col items-center justify-center text-black dark:text-white group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
-                                <span class="text-xl font-black italic text-sm">D100</span>
-                            </div>
-                        </label>
-                        <div class="aspect-square swiss-grid-item bg-slate-50 dark:bg-slate-800 flex items-center justify-center cursor-pointer active:bg-slate-200"
-                            onclick="resetDiceUI()">
-                            <span class="material-symbols-outlined text-slate-400">refresh</span>
+                        <div onclick="promptRoll(4)"
+                            class="aspect-square swiss-grid-item flex items-center justify-center text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 transition-colors cursor-pointer">
+                            <span class="text-xl font-black italic">D4</span>
                         </div>
-                    </div>
-
-                    <!-- Modifier -->
-                    <div class="flex justify-between items-baseline mb-2">
-                        <h2 class="text-xs font-black uppercase tracking-widest text-black dark:text-white">Modificateur
-                            (+/-)</h2>
-                    </div>
-                    <div class="relative flex items-center justify-center swiss-grid h-36 w-full max-w-[200px] bg-slate-50 dark:bg-slate-800/30 overflow-hidden">
-                        <!-- Selection Highlighter -->
-                        <div class="absolute inset-x-2 top-1/2 -translate-y-1/2 h-12 bg-primary/10 dark:bg-primary/20 border-2 border-primary/20 pointer-events-none"></div>
-                        <!-- Scroll Container -->
-                        <div id="diceModScroll" class="w-full h-full overflow-y-auto overflow-x-hidden snap-y snap-mandatory no-scrollbar relative flex flex-col items-center">
-                            <div class="flex-none h-[calc(50%-24px)] w-full"></div> <!-- Top Padding -->
-                            <div id="diceModItems" class="flex flex-col items-center w-full"></div>
-                            <div class="flex-none h-[calc(50%-24px)] w-full"></div> <!-- Bottom Padding -->
+                        <!-- D6 -->
+                        <div onclick="promptRoll(6)"
+                            class="aspect-square swiss-grid-item flex items-center justify-center text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 transition-colors cursor-pointer">
+                            <span class="text-xl font-black italic">D6</span>
+                        </div>
+                        <!-- D8 -->
+                        <div onclick="promptRoll(8)"
+                            class="aspect-square swiss-grid-item flex items-center justify-center text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 transition-colors cursor-pointer">
+                            <span class="text-xl font-black italic">D8</span>
+                        </div>
+                        <!-- D10 -->
+                        <div onclick="promptRoll(10)"
+                            class="aspect-square swiss-grid-item flex items-center justify-center text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 transition-colors cursor-pointer">
+                            <span class="text-xl font-black italic">D10</span>
+                        </div>
+                        <!-- D12 -->
+                        <div onclick="promptRoll(12)"
+                            class="aspect-square swiss-grid-item flex items-center justify-center text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 transition-colors cursor-pointer">
+                            <span class="text-xl font-black italic">D12</span>
+                        </div>
+                        <!-- D20 -->
+                        <div onclick="promptRoll(20)"
+                            class="aspect-square swiss-grid-item flex items-center justify-center text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 transition-colors cursor-pointer">
+                            <span class="text-xl font-black italic text-primary">D20</span>
+                        </div>
+                        <!-- D100 -->
+                        <div onclick="promptRoll(100)"
+                            class="aspect-square swiss-grid-item flex items-center justify-center text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 transition-colors cursor-pointer">
+                            <span class="text-xl font-black italic text-sm">D100</span>
+                        </div>
+                        <!-- Clear History -->
+                        <div class="aspect-square swiss-grid-item bg-slate-50 dark:bg-slate-800 flex items-center justify-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 active:bg-slate-200 transition-colors"
+                            onclick="clearDiceHistory()">
+                            <span class="material-symbols-outlined text-slate-400">delete</span>
                         </div>
                     </div>
                 </section>
@@ -348,14 +293,6 @@
                     </div>
                 </div>
             </main>
-
-            <footer
-                class="p-0 border-t-8 border-black dark:border-white flex-none bg-white dark:bg-slate-900 z-10 w-full md:flex md:justify-center">
-                <button onclick="executeRoll()"
-                    class="w-full md:max-w-md md:rounded-t-lg bg-primary hover:bg-primary-hover active:bg-red-800 text-white py-6 text-4xl font-black uppercase tracking-tighter transition-colors md:py-8 md:text-5xl">
-                    Lancer <span id="btnSumm">1D6</span>
-                </button>
-            </footer>
         </div>
 
 
@@ -472,6 +409,69 @@
             </div>
         </div>
 
+        <!-- DICE ROLL MODAL -->
+        <div id="diceRollModal"
+            class="absolute inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none overflow-hidden">
+            <!-- Backdrop -->
+            <div id="diceRollBackdrop"
+                class="absolute inset-0 bg-ink/80 dark:bg-black/90 opacity-0 transition-opacity duration-300 pointer-events-none backdrop-blur-md"
+                onclick="closeDiceRollModal()"></div>
+
+            <!-- Panel -->
+            <div id="diceRollPanel"
+                class="relative flex flex-col bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl transform scale-90 opacity-0 transition-all duration-300 pointer-events-none w-[90%] max-w-sm h-[380px]">
+
+                <!-- Header -->
+                <div
+                    class="px-6 py-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-800/80">
+                    <button onclick="closeDiceRollModal()"
+                        class="text-slate-400 font-bold uppercase tracking-widest text-sm hover:text-slate-900 dark:hover:text-white transition-colors py-2 active:scale-95">Annuler</button>
+                    <h3 id="diceRollTitle"
+                        class="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white mt-1">Lancer
+                    </h3>
+                    <div class="w-16"></div> <!-- spacer -->
+                </div>
+
+                <!-- Picker Area -->
+                <div class="flex-1 flex bg-slate-50 dark:bg-slate-800/30 overflow-hidden relative">
+                    <!-- Selection Highlighter (Spans across both columns) -->
+                    <div class="absolute inset-x-4 top-1/2 -translate-y-1/2 h-12 bg-primary/10 dark:bg-primary/20 rounded-xl border-2 border-primary/20 pointer-events-none"></div>
+
+                    <!-- Column 1: Count -->
+                    <div class="flex-1 flex flex-col items-center h-full relative">
+                        <div class="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-2 z-10">Dés</div>
+                        <div id="diceRollCountScroll" class="w-full flex-1 overflow-y-auto overflow-x-hidden snap-y snap-mandatory no-scrollbar relative flex flex-col items-center">
+                            <div class="flex-none h-[calc(50%-24px)] w-full"></div> <!-- Top Padding -->
+                            <div id="diceRollCountItems" class="flex flex-col items-center w-full"></div>
+                            <div class="flex-none h-[calc(50%-24px)] w-full"></div> <!-- Bottom Padding -->
+                        </div>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="w-px h-full bg-slate-100 dark:bg-slate-800/80"></div>
+
+                    <!-- Column 2: Modifier -->
+                    <div class="flex-1 flex flex-col items-center h-full relative">
+                        <div class="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-2 z-10">Modificateur</div>
+                        <div id="diceRollModScroll" class="w-full flex-1 overflow-y-auto overflow-x-hidden snap-y snap-mandatory no-scrollbar relative flex flex-col items-center">
+                            <div class="flex-none h-[calc(50%-24px)] w-full"></div> <!-- Top Padding -->
+                            <div id="diceRollModItems" class="flex flex-col items-center w-full"></div>
+                            <div class="flex-none h-[calc(50%-24px)] w-full"></div> <!-- Bottom Padding -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800/80">
+                    <button onclick="executeRollFromModal()"
+                        class="w-full bg-primary text-white py-4 rounded-xl text-xl font-black uppercase tracking-tighter hover:bg-primary-hover active:bg-primary-hover transition-all duration-200 shadow-[0_8px_16px_rgba(236,62,19,0.25)] active:shadow-none active:translate-y-1 flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined pb-1">casino</span>
+                        Lancer <span id="diceRollConfirmVal" class="opacity-90">1D6</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- DICE RESULT MODAL -->
         <div id="diceResultModal"
             class="absolute inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none overflow-hidden">
@@ -540,15 +540,6 @@
                 // trigger reflow
                 void target.offsetWidth;
                 target.classList.add('active-view');
-
-                if (viewId === 'dice') {
-                    if (!diceCountPickerItems.length) initDiceCountPicker();
-                    if (!diceModPickerItems.length) initDiceModPicker();
-                    setTimeout(() => {
-                        setDiceCountPickerValue(currentDiceState.count);
-                        setDiceModPickerValue(currentDiceState.mod);
-                    }, 50);
-                }
             }
 
             // Update Nav Active State
@@ -1148,39 +1139,56 @@
         let currentDiceState = { count: 1, type: 6, mod: 0 };
         const diceHistoryArr = [];
 
-        let diceCountPickerItems = [];
-        let lastDiceCountClosest = null;
-        let diceModPickerItems = [];
-        let lastDiceModClosest = null;
+        let diceRollCountPickerItems = [];
+        let lastDiceRollCountClosest = null;
+        let diceRollModPickerItems = [];
+        let lastDiceRollModClosest = null;
 
-        function initDiceCountPicker() {
-            const container = document.getElementById('diceCountItems');
-            if (!container) return;
+        function initDiceRollPickers() {
+            // Count picker
+            const countContainer = document.getElementById('diceRollCountItems');
+            if (countContainer) {
+                let html = '';
+                for (let i = 1; i <= 99; i++) {
+                    html += `<div class="dice-roll-count-picker-item flex-none h-12 flex items-center justify-center w-full snap-center text-3xl font-black text-slate-300 dark:text-slate-600 transition-all duration-150 cursor-pointer" data-val="${i}" onclick="setDiceRollCountValue(${i})">${i}</div>`;
+                }
+                countContainer.innerHTML = html;
+                diceRollCountPickerItems = Array.from(countContainer.querySelectorAll('.dice-roll-count-picker-item'));
 
-            let html = '';
-            // Generate values 1 to 99
-            for (let i = 1; i <= 99; i++) {
-                html += `<div class="dice-count-picker-item flex-none h-12 flex items-center justify-center w-full snap-center text-3xl font-black text-slate-300 dark:text-slate-600 transition-all duration-150 cursor-pointer" data-val="${i}" onclick="setDiceCountPickerValue(${i})">${i}</div>`;
+                const countScrollEl = document.getElementById('diceRollCountScroll');
+                countScrollEl.addEventListener('scroll', () => {
+                    requestAnimationFrame(updateDiceRollCountHighlight);
+                }, { passive: true });
             }
-            container.innerHTML = html;
-            diceCountPickerItems = Array.from(container.querySelectorAll('.dice-count-picker-item'));
 
-            const scrollEl = document.getElementById('diceCountScroll');
-            scrollEl.addEventListener('scroll', () => {
-                requestAnimationFrame(updateDiceCountPickerHighlight);
-            }, { passive: true });
+            // Mod picker
+            const modContainer = document.getElementById('diceRollModItems');
+            if (modContainer) {
+                let html = '';
+                for (let i = -50; i <= 50; i++) {
+                    const label = i >= 0 ? `+${i}` : `${i}`;
+                    html += `<div class="dice-roll-mod-picker-item flex-none h-12 flex items-center justify-center w-full snap-center text-3xl font-black text-slate-300 dark:text-slate-600 transition-all duration-150 cursor-pointer" data-val="${i}" onclick="setDiceRollModValue(${i})">${label}</div>`;
+                }
+                modContainer.innerHTML = html;
+                diceRollModPickerItems = Array.from(modContainer.querySelectorAll('.dice-roll-mod-picker-item'));
+
+                const modScrollEl = document.getElementById('diceRollModScroll');
+                modScrollEl.addEventListener('scroll', () => {
+                    requestAnimationFrame(updateDiceRollModHighlight);
+                }, { passive: true });
+            }
         }
 
-        function updateDiceCountPickerHighlight() {
-            const scrollEl = document.getElementById('diceCountScroll');
-            if (!scrollEl || !diceCountPickerItems.length) return;
+        function updateDiceRollCountHighlight() {
+            const scrollEl = document.getElementById('diceRollCountScroll');
+            if (!scrollEl || !diceRollCountPickerItems.length) return;
 
             const center = scrollEl.scrollTop + (scrollEl.clientHeight / 2);
             let closest = null;
             let minDist = Infinity;
 
-            for (let i = 0; i < diceCountPickerItems.length; i++) {
-                const item = diceCountPickerItems[i];
+            for (let i = 0; i < diceRollCountPickerItems.length; i++) {
+                const item = diceRollCountPickerItems[i];
                 const itemCenter = item.offsetTop + (item.offsetHeight / 2);
                 const dist = Math.abs(center - itemCenter);
 
@@ -1193,68 +1201,32 @@
                 }
             }
 
-            if (closest && closest !== lastDiceCountClosest) {
-                if (lastDiceCountClosest) {
-                    lastDiceCountClosest.classList.remove('text-primary', 'dark:text-primary', 'scale-125', 'opacity-100');
-                    lastDiceCountClosest.classList.add('text-slate-300', 'dark:text-slate-600');
+            if (closest && closest !== lastDiceRollCountClosest) {
+                if (lastDiceRollCountClosest) {
+                    lastDiceRollCountClosest.classList.remove('text-primary', 'dark:text-primary', 'scale-125', 'opacity-100');
+                    lastDiceRollCountClosest.classList.add('text-slate-300', 'dark:text-slate-600');
                 }
                 closest.classList.remove('text-slate-300', 'dark:text-slate-600');
                 closest.classList.add('text-primary', 'dark:text-primary', 'scale-125', 'opacity-100');
 
                 currentDiceState.count = parseInt(closest.getAttribute('data-val'), 10);
-                updateBtnSumm();
-                lastDiceCountClosest = closest;
+                updateDiceRollConfirmVal();
+                lastDiceRollCountClosest = closest;
 
                 if (navigator.vibrate) navigator.vibrate(5);
             }
         }
 
-        function setDiceCountPickerValue(val) {
-            const scrollEl = document.getElementById('diceCountScroll');
-            if (!diceCountPickerItems.length || !scrollEl) return;
-
-            const targetItem = diceCountPickerItems[val - 1]; // items start at 1
-            if (targetItem) {
-                scrollEl.style.scrollBehavior = 'auto';
-                const targetScroll = targetItem.offsetTop - (scrollEl.clientHeight / 2) + (targetItem.offsetHeight / 2);
-                scrollEl.scrollTo({ top: targetScroll });
-
-                setTimeout(() => {
-                    scrollEl.style.scrollBehavior = 'smooth';
-                    updateDiceCountPickerHighlight();
-                }, 50);
-            }
-        }
-
-        function initDiceModPicker() {
-            const container = document.getElementById('diceModItems');
-            if (!container) return;
-
-            let html = '';
-            // Generate values -50 to 50
-            for (let i = -50; i <= 50; i++) {
-                const label = i >= 0 ? `+${i}` : `${i}`;
-                html += `<div class="dice-mod-picker-item flex-none h-12 flex items-center justify-center w-full snap-center text-3xl font-black text-slate-300 dark:text-slate-600 transition-all duration-150 cursor-pointer" data-val="${i}" onclick="setDiceModPickerValue(${i})">${label}</div>`;
-            }
-            container.innerHTML = html;
-            diceModPickerItems = Array.from(container.querySelectorAll('.dice-mod-picker-item'));
-
-            const scrollEl = document.getElementById('diceModScroll');
-            scrollEl.addEventListener('scroll', () => {
-                requestAnimationFrame(updateDiceModPickerHighlight);
-            }, { passive: true });
-        }
-
-        function updateDiceModPickerHighlight() {
-            const scrollEl = document.getElementById('diceModScroll');
-            if (!scrollEl || !diceModPickerItems.length) return;
+        function updateDiceRollModHighlight() {
+            const scrollEl = document.getElementById('diceRollModScroll');
+            if (!scrollEl || !diceRollModPickerItems.length) return;
 
             const center = scrollEl.scrollTop + (scrollEl.clientHeight / 2);
             let closest = null;
             let minDist = Infinity;
 
-            for (let i = 0; i < diceModPickerItems.length; i++) {
-                const item = diceModPickerItems[i];
+            for (let i = 0; i < diceRollModPickerItems.length; i++) {
+                const item = diceRollModPickerItems[i];
                 const itemCenter = item.offsetTop + (item.offsetHeight / 2);
                 const dist = Math.abs(center - itemCenter);
 
@@ -1267,28 +1239,27 @@
                 }
             }
 
-            if (closest && closest !== lastDiceModClosest) {
-                if (lastDiceModClosest) {
-                    lastDiceModClosest.classList.remove('text-primary', 'dark:text-primary', 'scale-125', 'opacity-100');
-                    lastDiceModClosest.classList.add('text-slate-300', 'dark:text-slate-600');
+            if (closest && closest !== lastDiceRollModClosest) {
+                if (lastDiceRollModClosest) {
+                    lastDiceRollModClosest.classList.remove('text-primary', 'dark:text-primary', 'scale-125', 'opacity-100');
+                    lastDiceRollModClosest.classList.add('text-slate-300', 'dark:text-slate-600');
                 }
                 closest.classList.remove('text-slate-300', 'dark:text-slate-600');
                 closest.classList.add('text-primary', 'dark:text-primary', 'scale-125', 'opacity-100');
 
                 currentDiceState.mod = parseInt(closest.getAttribute('data-val'), 10);
-                updateBtnSumm();
-                lastDiceModClosest = closest;
+                updateDiceRollConfirmVal();
+                lastDiceRollModClosest = closest;
 
                 if (navigator.vibrate) navigator.vibrate(5);
             }
         }
 
-        function setDiceModPickerValue(val) {
-            const scrollEl = document.getElementById('diceModScroll');
-            if (!diceModPickerItems.length || !scrollEl) return;
+        function setDiceRollCountValue(val) {
+            const scrollEl = document.getElementById('diceRollCountScroll');
+            if (!diceRollCountPickerItems.length || !scrollEl) return;
 
-            const idx = val + 50; // -50 mapping to index 0
-            const targetItem = diceModPickerItems[idx];
+            const targetItem = diceRollCountPickerItems[val - 1]; // items start at 1
             if (targetItem) {
                 scrollEl.style.scrollBehavior = 'auto';
                 const targetScroll = targetItem.offsetTop - (scrollEl.clientHeight / 2) + (targetItem.offsetHeight / 2);
@@ -1296,44 +1267,93 @@
 
                 setTimeout(() => {
                     scrollEl.style.scrollBehavior = 'smooth';
-                    updateDiceModPickerHighlight();
+                    updateDiceRollCountHighlight();
                 }, 50);
             }
         }
 
-        function updateDiceType(faces) {
-            currentDiceState.type = parseInt(faces, 10);
-            updateBtnSumm();
+        function setDiceRollModValue(val) {
+            const scrollEl = document.getElementById('diceRollModScroll');
+            if (!diceRollModPickerItems.length || !scrollEl) return;
 
-            // Visual update
-            document.querySelectorAll('.dice-type-btn').forEach(el => {
-                el.classList.remove('bg-primary', 'text-white');
-                el.classList.add('text-black', 'dark:text-white');
-            });
-            const activeInput = document.querySelector(`input[name="dice_type"][value="${faces}"]`);
-            if (activeInput) {
-                const activeDiv = activeInput.nextElementSibling;
-                activeDiv.classList.remove('text-black', 'dark:text-white');
-                activeDiv.classList.add('bg-primary', 'text-white');
+            const idx = val + 50; // -50 is index 0
+            const targetItem = diceRollModPickerItems[idx];
+            if (targetItem) {
+                scrollEl.style.scrollBehavior = 'auto';
+                const targetScroll = targetItem.offsetTop - (scrollEl.clientHeight / 2) + (targetItem.offsetHeight / 2);
+                scrollEl.scrollTo({ top: targetScroll });
+
+                setTimeout(() => {
+                    scrollEl.style.scrollBehavior = 'smooth';
+                    updateDiceRollModHighlight();
+                }, 50);
             }
         }
 
-        function resetDiceUI() {
-            currentDiceState = { count: 1, type: 6, mod: 0 };
-            setDiceCountPickerValue(1);
-            setDiceModPickerValue(0);
-            const d6Input = document.querySelector(`input[name="dice_type"][value="6"]`);
-            if (d6Input) d6Input.checked = true;
-            updateDiceType(6);
-            updateBtnSumm();
-        }
-
-        function updateBtnSumm() {
+        function updateDiceRollConfirmVal() {
             const modStr = currentDiceState.mod === 0 ? '' : (currentDiceState.mod > 0 ? `+${currentDiceState.mod}` : currentDiceState.mod);
-            document.getElementById('btnSumm').innerText = `${currentDiceState.count}D${currentDiceState.type}${modStr}`;
+            const btnConfirm = document.getElementById('diceRollConfirmVal');
+            if (btnConfirm) {
+                btnConfirm.innerText = `${currentDiceState.count}D${currentDiceState.type}${modStr}`;
+            }
         }
 
-        function executeRoll() {
+        function promptRoll(faces) {
+            currentDiceState.type = faces;
+            currentDiceState.count = 1;
+            currentDiceState.mod = 0;
+
+            document.getElementById('diceRollTitle').innerText = `Lancer D${faces}`;
+            document.getElementById('diceRollConfirmVal').innerText = `1D${faces}`;
+
+            const modal = document.getElementById('diceRollModal');
+            const backdrop = document.getElementById('diceRollBackdrop');
+            const panel = document.getElementById('diceRollPanel');
+
+            if (!diceRollCountPickerItems.length || !diceRollModPickerItems.length) {
+                initDiceRollPickers();
+            }
+
+            modal.classList.remove('pointer-events-none');
+            
+            backdrop.classList.remove('opacity-0', 'pointer-events-none');
+            backdrop.classList.add('opacity-100', 'pointer-events-auto');
+
+            panel.classList.remove('opacity-0', 'scale-90', 'pointer-events-none');
+            panel.classList.add('opacity-100', 'scale-100', 'pointer-events-auto');
+
+            // Scroll wheels to default values: Count to 1, Mod to 0
+            setTimeout(() => {
+                setDiceRollCountValue(1);
+                setDiceRollModValue(0);
+            }, 100);
+        }
+
+        function closeDiceRollModal() {
+            const modal = document.getElementById('diceRollModal');
+            const backdrop = document.getElementById('diceRollBackdrop');
+            const panel = document.getElementById('diceRollPanel');
+
+            backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            backdrop.classList.add('opacity-0', 'pointer-events-none');
+
+            panel.classList.remove('opacity-100', 'scale-100', 'pointer-events-auto');
+            panel.classList.add('opacity-0', 'scale-90', 'pointer-events-none');
+
+            setTimeout(() => {
+                modal.classList.add('pointer-events-none');
+            }, 300);
+        }
+
+        function clearDiceHistory() {
+            diceHistoryArr.length = 0;
+            const histContainer = document.getElementById('diceHistory');
+            if (histContainer) {
+                histContainer.innerHTML = `<span class="text-[10px] font-black border-2 border-black dark:border-white px-2 py-0.5 text-black dark:text-white opacity-50">HISTORIQUE VIDE</span>`;
+            }
+        }
+
+        function executeRollFromModal() {
             if (!ws || ws.readyState !== WebSocket.OPEN) {
                 addLog('Cannot roll, not connected', 'error');
                 return;
@@ -1376,7 +1396,11 @@
             diceHistoryArr.unshift(item);
             if (diceHistoryArr.length > 10) diceHistoryArr.pop();
             renderDiceHistory();
+
+            closeDiceRollModal();
         }
+
+
 
         let diceResultTimer = null;
 
@@ -1453,7 +1477,7 @@
         }
 
         // --- INITIALIZATION ---
-        updateBtnSumm();
+        // Old updateBtnSumm removed
         addLog(`App initialized. Connecting to ${WS_URL} on channel ${CHANNEL}...`, 'success');
         connectWS();
 
