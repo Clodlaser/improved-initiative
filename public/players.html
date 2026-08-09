@@ -1724,34 +1724,38 @@
             const attacksContainer = document.getElementById('details-attacks');
             if (attacksContainer) {
                 let html = '';
-                data.attacks.forEach(att => {
-                    const toHitBtn = att.toHit ? `
-                        <button onclick="executeCustomRoll('${att.toHit}', '${att.name.replace(/'/g, "\\'")} (Toucher)')"
-                            class="bg-primary/10 border-2 border-primary/20 hover:bg-primary/20 text-primary px-4 py-2 text-xs font-black uppercase tracking-wider transition-all active:scale-95">
-                            ${att.toHit.startsWith('1d20') ? (att.toHit.substring(4).startsWith('+') ? att.toHit.substring(4) : att.toHit.substring(4)) : att.toHit}
-                        </button>
-                    ` : '';
+                if (data.attacks.length === 0) {
+                    html = '<div class="p-8 text-center text-slate-500 font-bold uppercase tracking-widest text-xs bg-slate-50 dark:bg-slate-800/10 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">Aucune attaque renseignée.</div>';
+                } else {
+                    data.attacks.forEach(att => {
+                        const toHitBtn = att.toHit ? `
+                            <button onclick="executeCustomRoll('${att.toHit}', '${att.name.replace(/'/g, "\\'")} (Toucher)')"
+                                class="bg-primary/10 border-2 border-primary/20 hover:bg-primary/20 text-primary px-4 py-2 text-xs font-black uppercase tracking-wider transition-all active:scale-95">
+                                ${att.toHit.startsWith('1d20') ? (att.toHit.substring(4).startsWith('+') ? att.toHit.substring(4) : att.toHit.substring(4)) : att.toHit}
+                            </button>
+                        ` : '';
 
-                    const dmgBtn = att.damage ? `
-                        <button onclick="executeCustomRoll('${att.damage}', '${att.name.replace(/'/g, "\\'")} (Dégâts)')"
-                            class="bg-slate-700/50 border-2 border-slate-600/50 hover:bg-slate-700 text-white px-4 py-2 text-xs font-black uppercase tracking-wider transition-all active:scale-95">
-                            ${att.damage}
-                        </button>
-                    ` : '';
+                        const dmgBtn = att.damage ? `
+                            <button onclick="executeCustomRoll('${att.damage}', '${att.name.replace(/'/g, "\\'")} (Dégâts)')"
+                                class="bg-slate-700/50 border-2 border-slate-600/50 hover:bg-slate-700 text-white px-4 py-2 text-xs font-black uppercase tracking-wider transition-all active:scale-95">
+                                ${att.damage}
+                            </button>
+                        ` : '';
 
-                    html += `
-                        <div class="flex items-center justify-between p-4 border-2 border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/20">
-                            <div class="flex flex-col">
-                                <span class="text-sm font-black uppercase tracking-tight text-slate-800 dark:text-slate-200">${att.name}</span>
-                                <span class="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">${att.desc || ''}</span>
+                        html += `
+                            <div class="flex items-center justify-between p-4 border-2 border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/20">
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-black uppercase tracking-tight text-slate-800 dark:text-slate-200">${att.name}</span>
+                                    <span class="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">${att.desc || ''}</span>
+                                </div>
+                                <div class="flex gap-2">
+                                    ${toHitBtn}
+                                    ${dmgBtn}
+                                </div>
                             </div>
-                            <div class="flex gap-2">
-                                ${toHitBtn}
-                                ${dmgBtn}
-                            </div>
-                        </div>
-                    `;
-                });
+                        `;
+                    });
+                }
                 attacksContainer.innerHTML = html;
             }
 
