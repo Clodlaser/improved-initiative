@@ -336,7 +336,7 @@ export function installSyncDdbRoute(app: Router) {
 
       try {
         const ch: any = await scrapeCharacter(page, url);
-        ch.Player = String(req.query.player || "");
+        ch.Player = String(req.query.player || "player");
         const result = await upsertIntoII(req, ch);
         // dump pour debug
         try {
@@ -399,7 +399,7 @@ export function installSyncDdbRoute(app: Router) {
         page.setDefaultTimeout(NAV_TIMEOUT);
         try {
           const ch: any = await scrapeCharacter(page, row.url, row.displayName);
-          ch.Player = row.player || "";
+          ch.Player = row.player || "player";
           const r = await upsertIntoII(req, ch);
           created += r.created;
           updated += r.updated;

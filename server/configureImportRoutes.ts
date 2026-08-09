@@ -780,6 +780,7 @@ function mapDndBeyondCharacter(charData: any, originalUrl: string) {
     Challenge: classList,
     ImageURL: avatarUrl,
     Description: `Imported from D&D Beyond: ${originalUrl}`,
+    Player: "player",
     Speed: speed,
     Saves: saves,
     Skills: skills,
