@@ -135,7 +135,7 @@
 
         <!-- COMBAT VIEW -->
         <div id="view-combat"
-            class="view-section flex flex-col flex-1 w-full h-full bg-white dark:bg-slate-900 font-inter pb-20 md:pb-0">
+            class="view-section flex flex-col flex-1 w-full h-full min-h-0 max-h-full overflow-hidden bg-white dark:bg-slate-900 font-inter pb-20 md:pb-0">
             <header class="pt-8 px-6 pb-4 border-b-4 border-black dark:border-white flex-none">
                 <div class="flex justify-between items-start">
                     <div class="flex flex-col">
@@ -159,7 +159,7 @@
                 </div>
             </header>
 
-            <main class="flex-1 overflow-y-auto"
+            <main class="flex-1 min-h-0 overflow-y-auto"
                 style="background-image: linear-gradient(to bottom, transparent 23px, rgba(0,0,0,0.02) 24px); background-size: 100% 1.5rem;">
                 <div id="combatList"
                     class="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-px md:bg-slate-200 dark:md:bg-slate-800 w-full">
@@ -274,7 +274,7 @@
 
         <!-- HEALS VIEW (DEFAULT) -->
         <div id="view-heals"
-            class="view-section hidden flex flex-col flex-1 w-full h-full pb-20 md:pb-0 bg-background-light dark:bg-background-dark font-inter">
+            class="view-section hidden flex flex-col flex-1 w-full h-full min-h-0 max-h-full overflow-hidden pb-20 md:pb-0 bg-background-light dark:bg-background-dark font-inter">
             <header
                 class="pt-8 px-6 pb-6 border-b-4 border-slate-900 dark:border-slate-100 flex-none bg-white dark:bg-background-dark z-10">
                 <div class="flex justify-between items-start">
@@ -294,7 +294,7 @@
                 </div>
             </header>
 
-            <main class="flex-1 overflow-y-auto"
+            <main class="flex-1 min-h-0 overflow-y-auto"
                 style="background-image: linear-gradient(to bottom, transparent 23px, rgba(0,0,0,0.02) 24px); background-size: 100% 1.5rem;">
                 <div id="playersList"
                     class="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-px md:bg-slate-900 dark:md:bg-slate-100 w-full">
@@ -320,7 +320,7 @@
 
         <!-- DICE VIEW -->
         <div id="view-dice"
-            class="view-section hidden flex-col flex-1 w-full h-full bg-white dark:bg-slate-900 font-inter pb-20 md:pb-0">
+            class="view-section hidden flex-col flex-1 w-full h-full min-h-0 max-h-full overflow-hidden bg-white dark:bg-slate-900 font-inter pb-20 md:pb-0">
             <header class="pt-8 px-6 pb-4 border-b-4 border-black dark:border-white flex-none">
                 <div class="flex justify-between items-start md:justify-center md:gap-4 w-full">
                     <div class="flex items-center gap-2">
@@ -340,7 +340,7 @@
                 </div>
             </header>
 
-            <main class="flex-1 overflow-y-auto flex flex-col pt-2 md:items-center">
+            <main class="flex-1 min-h-0 overflow-y-auto flex flex-col pt-2 md:items-center">
                 <section
                     class="p-6 pb-2 w-full md:max-w-md md:bg-slate-50 dark:md:bg-slate-800/50 md:mt-8 md:rounded-xl md:border md:border-black/10 dark:md:border-white/10 md:shadow-sm">
                     <!-- Dice Grid -->
@@ -406,7 +406,7 @@
 
         <!-- LOGS VIEW -->
         <div id="view-logs"
-            class="view-section hidden flex-col flex-1 w-full h-full bg-background-light dark:bg-background-dark font-mono text-xs pb-20 md:pb-0">
+            class="view-section hidden flex-col flex-1 w-full h-full min-h-0 max-h-full overflow-hidden bg-background-light dark:bg-background-dark font-mono text-xs pb-20 md:pb-0">
             <header class="pt-8 px-6 pb-4 border-b-2 border-ink/20 dark:border-white/20">
                 <div class="flex justify-between items-start">
                     <h1 class="text-xl font-bold uppercase tracking-widest flex items-center gap-2">
@@ -416,7 +416,7 @@
                         class="text-primary hover:text-primary-hover transition-colors font-bold text-xs uppercase tracking-widest active:scale-95 border-b-2 border-primary">Fermer</button>
                 </div>
             </header>
-            <main class="flex-1 overflow-y-auto p-4 flex flex-col" id="logContainer">
+            <main class="flex-1 min-h-0 overflow-y-auto p-4 flex flex-col" id="logContainer">
                 <!-- Logs will be appended here -->
                 <div class="opacity-50 italic mb-2">System initialized...</div>
             </main>
