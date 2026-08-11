@@ -1199,8 +1199,45 @@
         function resetHitDice() {
             const charKey = getCharacterKey(currentDetailsName);
             const hdMax = currentDetailsData?.hdMax || 1;
+            const target = currentDetailsName;
+
+            // 1. Reset Hit Dice
             hdState[charKey] = { remaining: hdMax, toUse: 1, lastResult: null, lastDetails: null };
+
+            // 2. Heal character to MAX HP on the tracker
+            if (target) {
+                sendHeal(target, 9999, false);
+            }
+
+            // 3. Restore all spell slots to MAX (both locally and sync to tracker notes)
+            if (currentDetailsData && currentDetailsData.slots) {
+                if (!characterSpellSlotsState[charKey]) characterSpellSlotsState[charKey] = {};
+                Object.entries(currentDetailsData.slots).forEach(([lvl, info]) => {
+                    characterSpellSlotsState[charKey][lvl] = info.max;
+                });
+
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    const slotLines = Object.entries(currentDetailsData.slots).map(([l, info]) => {
+                        const suffix = l === '1' ? 'st' : l === '2' ? 'nd' : l === '3' ? 'rd' : 'th';
+                        return `${l}${suffix} Level [${info.max}/${info.max}]`;
+                    });
+                    const newNotes = slotLines.length > 0 ? 'Spellcasting Slots\n\n' + slotLines.join('\n\n') : '';
+                    ws.send(JSON.stringify({
+                        type: 'update_notes',
+                        channel: CHANNEL,
+                        target: target,
+                        notes: newNotes
+                    }));
+                }
+            }
+
+            // 4. UI feedback & re-render
+            showToast(`Repos long: PV, sorts & DV restaurés pour ${target}`);
+            addLog(`REPOS LONG: ${target} (PV max, sorts et DV restaurés)`, 'success');
+            if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+
             renderHdView();
+            renderSpellsView();
         }
 
 
