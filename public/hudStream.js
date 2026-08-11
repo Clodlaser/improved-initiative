@@ -142,11 +142,15 @@
               const listKO = typeof vm.CombatantViewModels === 'function' ? vm.CombatantViewModels() : (vm.CombatantViewModels || []);
               const matchKO = listKO.find(x => {
                 const xName = typeof x.Name === 'function' ? x.Name() : x.Name;
-                const cleanA = (xName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
-                const cleanB = (name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
-                return cleanA === cleanB;
+                return matchCombatantName(xName, name);
               });
               if (matchKO && matchKO.Combatant) {
+                if (typeof matchKO.Combatant.CurrentHP === 'function') {
+                  c.cur = matchKO.Combatant.CurrentHP();
+                }
+                if (typeof matchKO.Combatant.MaxHP === 'function') {
+                  c.max = matchKO.Combatant.MaxHP();
+                }
                 if (typeof matchKO.Combatant.TemporaryHP === 'function') {
                   c.temp = matchKO.Combatant.TemporaryHP() || 0;
                 }
@@ -169,14 +173,15 @@
               }
             }
           }
-        } catch (e) {
-          console.log('[HUD] statblock enrichment error:', e);
-        }
+        } catch (e) { }
 
         return c;
       });
-      const turn = Math.max(0, list.findIndex(x => x.active));
-      return { turn, list };
+
+      const activeIdx = list.findIndex(c => c.active);
+      const activeName = activeIdx >= 0 ? list[activeIdx].name : '';
+      const turnNumber = (activeIdx >= 0) ? (activeIdx + 1) : 0;
+      return { turn: turnNumber, activeName, list };
     } catch (e) { console.log('[HUD] collectState error:', e); return { turn: 0, list: [] }; }
   }
 
@@ -221,25 +226,42 @@
 
     const listKO = typeof vm.CombatantViewModels === 'function' ? vm.CombatantViewModels() : (vm.CombatantViewModels || []);
     const list = Array.isArray(listKO) ? listKO : (listKO && typeof listKO === 'object' ? Object.values(listKO) : []);
+    const dmgString = amount > 0 ? `-${amount}` : `${Math.abs(amount)}`;
 
+    let handled = false;
     for (const c of list) {
       const cName = typeof c.Name === 'function' ? c.Name() : c.Name;
-      if (matchCombatantName(cName, targetName) && typeof c.ApplyDamage === 'function') {
-        // amount > 0 est un soin (ex: 10). On dit au tracker d'appliquer "-10" dégâts (soin).
-        // amount < 0 est une annulation (ex: -10). On dit au tracker d'appliquer "--10" = "+10" dégâts.
-        const dmgString = amount > 0 ? `-${amount}` : `${Math.abs(amount)}`;
-        c.ApplyDamage(dmgString);
-
-        if (vm.EventLog && typeof vm.EventLog.AddEvent === 'function') {
-          const prettyDmg = amount > 0 ? `+${amount} HP` : `${amount} HP (Undo)`;
-          vm.EventLog.AddEvent(`Player Heal: ${targetName} (${prettyDmg})`);
+      if (matchCombatantName(cName, targetName)) {
+        if (typeof c.ApplyDamage === 'function') {
+          c.ApplyDamage(dmgString);
+          handled = true;
+          break;
         }
-
-        // Trigger UI overlay update immediately
-        setTimeout(() => sendSnapshot(true), 50);
-        return;
       }
     }
+
+    if (!handled && vm.Encounter && typeof vm.Encounter.Combatants === 'function') {
+      const combatants = vm.Encounter.Combatants() || [];
+      for (const combatant of combatants) {
+        const cName = typeof combatant.DisplayName === 'function' ? combatant.DisplayName() : '';
+        if (matchCombatantName(cName, targetName)) {
+          if (amount > 0 && typeof combatant.ApplyHealing === 'function') {
+            combatant.ApplyHealing(amount);
+          } else if (typeof combatant.ApplyDamage === 'function') {
+            combatant.ApplyDamage(amount, true);
+          }
+          handled = true;
+          break;
+        }
+      }
+    }
+
+    if (handled && vm.EventLog && typeof vm.EventLog.AddEvent === 'function') {
+      const prettyDmg = amount > 0 ? `+${amount} HP` : `${amount} HP (Undo)`;
+      vm.EventLog.AddEvent(`Player Heal: ${targetName} (${prettyDmg})`);
+    }
+
+    setTimeout(() => sendSnapshot(true), 50);
   }
 
   function handlePlayerTempHP(targetName, amount) {
@@ -247,9 +269,11 @@
     const vm = window.II_DEBUG.getTracker();
     if (!vm) return;
 
+    const numAmount = Number(amount) || 0;
+    let handled = false;
+
     const listKO = typeof vm.CombatantViewModels === 'function' ? vm.CombatantViewModels() : (vm.CombatantViewModels || []);
     const list = Array.isArray(listKO) ? listKO : (listKO && typeof listKO === 'object' ? Object.values(listKO) : []);
-    const numAmount = Number(amount) || 0;
 
     for (const c of list) {
       const cName = typeof c.Name === 'function' ? c.Name() : c.Name;
@@ -260,18 +284,30 @@
         if (typeof c.ApplyTemporaryHP === 'function') {
           c.ApplyTemporaryHP(numAmount);
         }
-        if (c.Combatant && typeof c.Combatant.ApplyTemporaryHP === 'function') {
-          c.Combatant.ApplyTemporaryHP(numAmount);
-        }
-
-        if (vm.EventLog && typeof vm.EventLog.AddEvent === 'function') {
-          vm.EventLog.AddEvent(`Player Temp HP: ${targetName} (${numAmount} Temp HP)`);
-        }
-
-        setTimeout(() => sendSnapshot(true), 50);
-        return;
+        handled = true;
+        break;
       }
     }
+
+    if (!handled && vm.Encounter && typeof vm.Encounter.Combatants === 'function') {
+      const combatants = vm.Encounter.Combatants() || [];
+      for (const combatant of combatants) {
+        const cName = typeof combatant.DisplayName === 'function' ? combatant.DisplayName() : (combatant.StatBlock?.Name || '');
+        if (matchCombatantName(cName, targetName)) {
+          if (typeof combatant.TemporaryHP === 'function') {
+            combatant.TemporaryHP(numAmount);
+          }
+          handled = true;
+          break;
+        }
+      }
+    }
+
+    if (handled && vm.EventLog && typeof vm.EventLog.AddEvent === 'function') {
+      vm.EventLog.AddEvent(`Player Temp HP: ${targetName} (${numAmount} Temp HP)`);
+    }
+
+    setTimeout(() => sendSnapshot(true), 50);
   }
 
 
