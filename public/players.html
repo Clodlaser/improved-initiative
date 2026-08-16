@@ -1150,6 +1150,32 @@
             renderHdView();
         }
 
+        function broadcast3DDiceRoll(rollPayload) {
+            const msg = {
+                type: 'roll',
+                room: CHANNEL,
+                channel: CHANNEL,
+                payload: rollPayload
+            };
+
+            // 1. Send via WebSocket if open
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                try {
+                    ws.send(JSON.stringify(msg));
+                } catch (e) {
+                    console.warn('[HUD] WS roll send error:', e);
+                }
+            }
+
+            // 2. Broadcast via BroadcastChannel for local/same-origin tabs
+            try {
+                if (!window.__diceBC) {
+                    window.__diceBC = new BroadcastChannel("dice_room_" + CHANNEL);
+                }
+                window.__diceBC.postMessage(msg);
+            } catch (e) { }
+        }
+
         function rollHitDice() {
             const charKey = getCharacterKey(currentDetailsName);
             const hitDie = currentDetailsData?.hitDie || 8;
@@ -1175,7 +1201,24 @@
             state.remaining = Math.max(0, state.remaining - qty);
             state.toUse = Math.min(state.remaining, Math.max(1, state.remaining));
 
-            if (navigator.vibrate) navigator.vibrate(30);
+            const formulaStr = `${qty}d${hitDie}${conTotal !== 0 ? (conTotal > 0 ? '+' + conTotal : conTotal) : ''}`;
+            const rollPayload = {
+                n: qty,
+                faces: hitDie,
+                rolls: rolls,
+                total: total,
+                mod: conTotal,
+                formula: formulaStr,
+                title: `Dés de Vie (${currentDetailsName})`
+            };
+
+            // Trigger 3D Dice overlay & WS broadcast
+            broadcast3DDiceRoll(rollPayload);
+
+            // Show local result modal for roller
+            showDiceResult(rollPayload);
+
+            if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
             addLog(`DÉS DE VIE: ${currentDetailsName} lance ${qty}d${hitDie}+${conTotal} → +${total} PV`, 'info');
             renderHdView();
         }
@@ -1793,11 +1836,6 @@
         }
 
         function executeRollFromModal() {
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                addLog('Cannot roll, not connected', 'error');
-                return;
-            }
-
             // Haptic feedback on roll
             if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
 
@@ -1811,22 +1849,22 @@
             }
             const total = sum + mod;
 
-            const payload = {
-                type: 'roll',
-                room: CHANNEL,
-                payload: {
-                    n: count,
-                    faces: type,
-                    rolls: rolls,
-                    total: total,
-                    mod: mod
-                }
+            const formulaStr = `${count}d${type}${mod !== 0 ? (mod > 0 ? '+' + mod : mod) : ''}`;
+            const rollPayload = {
+                n: count,
+                faces: type,
+                rolls: rolls,
+                total: total,
+                mod: mod,
+                formula: formulaStr,
+                title: `${count}D${type}`
             };
 
-            ws.send(JSON.stringify(payload));
+            // Trigger 3D Dice overlay & WS broadcast
+            broadcast3DDiceRoll(rollPayload);
 
             // Show result locally immediate for the roller
-            showDiceResult(payload.payload);
+            showDiceResult(rollPayload);
 
             const rollStr = `${count}D${type}${mod !== 0 ? (mod > 0 ? "+" + mod : mod) : ''} -> ${total}`;
             showToast(`<span class="font-normal opacity-70 border-r border-white/30 pr-2 mr-2">${count}D${type}</span> <span class="text-xl">${total}</span>`);
@@ -2476,20 +2514,20 @@
         }
 
         function executeCustomRoll(formula, title) {
-            // formula is like "1d20+6" or "1d8+4"
-            const match = formula.replace(/\s+/g, '').match(/^(\d+)d(\d+)([+-]\d+)?$/i);
+            // formula is like "1d20+6" or "1d8+4" or "2d6+3" or "d20+5"
+            const cleanFormula = (formula || '1d20').replace(/\s+/g, '');
+            const match = cleanFormula.match(/^(\d*)d(\d+)([+-]\d+)?$/i);
             let count = 1;
             let faces = 20;
             let mod = 0;
             if (match) {
-                count = parseInt(match[1], 10);
+                count = parseInt(match[1] || '1', 10);
                 faces = parseInt(match[2], 10);
                 if (match[3]) {
                     mod = parseInt(match[3], 10);
                 }
             } else {
-                // Try simpler format without count, e.g. "d20+5"
-                const simpleMatch = formula.replace(/\s+/g, '').match(/^d(\d+)([+-]\d+)?$/i);
+                const simpleMatch = cleanFormula.match(/^d(\d+)([+-]\d+)?$/i);
                 if (simpleMatch) {
                     count = 1;
                     faces = parseInt(simpleMatch[1], 10);
@@ -2497,11 +2535,6 @@
                         mod = parseInt(simpleMatch[2], 10);
                     }
                 }
-            }
-
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                addLog('Cannot roll, not connected', 'error');
-                return;
             }
 
             if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
@@ -2515,24 +2548,21 @@
             }
             const total = sum + mod;
 
-            const payload = {
-                type: 'roll',
-                room: CHANNEL,
-                payload: {
-                    n: count,
-                    faces: faces,
-                    rolls: rolls,
-                    total: total,
-                    mod: mod,
-                    formula: formula
-                }
+            const rollPayload = {
+                n: count,
+                faces: faces,
+                rolls: rolls,
+                total: total,
+                mod: mod,
+                formula: formula,
+                title: title || formula
             };
-            
-            // Send to WebSocket
-            ws.send(JSON.stringify(payload));
+
+            // Broadcast roll animation to 3D Overlay & WebSocket
+            broadcast3DDiceRoll(rollPayload);
 
             // Show result locally immediate for the roller
-            showDiceResult(payload.payload);
+            showDiceResult(rollPayload);
 
             const rollStr = `${formula} -> ${total}`;
             showToast(`<span class="font-normal opacity-70 border-r border-white/30 pr-2 mr-2">${title || formula}</span> <span class="text-xl">${total}</span>`);

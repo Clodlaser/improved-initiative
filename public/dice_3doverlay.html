@@ -294,12 +294,14 @@
         function handleMessage(msg) {
             if (!msg) return;
             if (msg.type === 'heal_notification') {
-                if (msg.room && msg.room !== ROOM) return;
+                const r = msg.room || msg.channel;
+                if (r && r !== ROOM) return;
                 showHealBanner(msg.amount, msg.target);
                 return;
             }
             if (msg.type !== 'roll') return;
-            if (msg.room && msg.room !== ROOM) return;
+            const targetRoom = msg.room || msg.channel;
+            if (targetRoom && targetRoom !== ROOM) return;
 
             let p = msg.payload || {};
             if (p.formula && (p.faces == null || p.n == null)) {
