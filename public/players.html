@@ -1049,15 +1049,26 @@
                 const tempDisplay = (isPC && temp > 0) ? `<span class="text-xs font-black text-amber-500 ml-1.5">(+${temp})</span>` : '';
                 const hpDisplay = isPC ? `<span class="font-mono text-sm font-bold text-slate-500 dark:text-slate-400 ${hpAnimClass}">${cur}/${max}${tempDisplay}</span>` : '';
 
+                const imgUrl = c.img || c.image || c.ImageURL || '';
+                const initial = (name.charAt(0) || '?').toUpperCase();
                 const isMyChar = myCharacterName && myCharacterName.toLowerCase() === name.toLowerCase();
+
                 htmlRender += `
                 <div class="flex items-stretch border-b-4 ${borderActiveColor} ${bgActiveColor} md:border-b-0 md:bg-white dark:md:bg-slate-900 md:border-b transition-colors border-l-4 ${isActive ? 'border-l-[6px]' : ''} ${frameColor} relative overflow-hidden">
                     <!-- Subtle Background HP Bar -->
                     <div class="absolute inset-y-0 left-0 opacity-10 dark:opacity-20 transition-all duration-500 pointer-events-none" style="width: ${barWidth}; background-color: ${hpColor};"></div>
 
-                    <!-- Checkbox: tap to mark as my character -->
-                    <button onclick="toggleMyCharacter('${name.replace(/'/g, "\\'")}')" class="relative z-10 flex items-center justify-center w-12 flex-shrink-0 border-r border-slate-100 dark:border-slate-800 transition-colors ${isMyChar ? 'bg-primary/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}" title="Mon personnage">
-                        <span class="material-symbols-outlined text-lg ${isMyChar ? 'text-primary' : 'text-slate-300 dark:text-slate-600'}">${isMyChar ? 'person' : 'person_outline'}</span>
+                    <!-- Token Vignette / Checkbox -->
+                    <button onclick="toggleMyCharacter('${name.replace(/'/g, "\\'")}')" class="relative z-10 flex items-center justify-center w-14 flex-shrink-0 border-r border-slate-100 dark:border-slate-800 transition-colors ${isMyChar ? 'bg-primary/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}" title="${isPC ? 'Définir comme mon personnage' : name}">
+                        <div class="relative w-9 h-9 flex items-center justify-center">
+                            ${imgUrl ? `
+                            <img class="w-9 h-9 rounded-full object-cover border-2 ${isActive ? 'border-amber-400 ring-2 ring-amber-400/50' : isMyChar ? 'border-primary ring-2 ring-primary/40' : 'border-slate-200 dark:border-slate-700'} shadow-sm" src="${imgUrl}" alt="" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='flex';" />
+                            <div class="w-9 h-9 rounded-full ${isPC ? 'bg-primary/15 text-primary border-primary/40' : 'bg-red-500/15 text-red-400 border-red-500/40'} border flex items-center justify-center font-black text-xs uppercase shadow-sm" style="display:none">${initial}</div>
+                            ` : `
+                            <div class="w-9 h-9 rounded-full ${isPC ? 'bg-primary/15 text-primary border-primary/40' : 'bg-red-500/15 text-red-400 border-red-500/40'} border ${isActive ? 'ring-2 ring-amber-400/50 border-amber-400' : ''} flex items-center justify-center font-black text-xs uppercase shadow-sm">${initial}</div>
+                            `}
+                            ${isMyChar ? `<span class="absolute -bottom-1 -right-1 w-4 h-4 bg-primary text-white rounded-full flex items-center justify-center text-[10px] shadow"><span class="material-symbols-outlined text-[10px]">check</span></span>` : ''}
+                        </div>
                     </button>
 
                     <!-- Card content -->
