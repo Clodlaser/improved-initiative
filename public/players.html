@@ -1009,7 +1009,6 @@
 
             ord.forEach((c, i) => {
                 if (c.hidden || c.isHidden) return;
-                if (!isPlayer(c)) return;
 
                 // Inject separator for round wrap
                 if (wrapIdx !== null && i === wrapIdx) {
