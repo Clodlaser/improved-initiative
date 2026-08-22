@@ -94,16 +94,21 @@ export class TextEnricher {
 
   private applyReplacer(
     replacer: any,
-    children: React.ReactNode & React.ReactNode[]
-  ) {
-    if(!children) {
-      return null
+    children: React.ReactNode
+  ): React.ReactNode {
+    if (!children) {
+      return null;
     }
     if (isString(children)) {
       return replacer(children);
     }
-    if (children.length == 1 && isString(children[0])) {
-      return replacer(children[0]);
+    if (Array.isArray(children)) {
+      return children.map((child, idx) => {
+        if (isString(child)) {
+          return <React.Fragment key={idx}>{replacer(child)}</React.Fragment>;
+        }
+        return child;
+      });
     }
     return children;
   }
@@ -198,17 +203,18 @@ export class TextEnricher {
               }
               const [currentStart, currentEnd] = currentRange;
 
-              const updatedText =
-                originalText.slice(0, matchStart + currentStart) +
-                newValue +
-                originalText.slice(matchStart + currentEnd);
-              updateTextSource(updatedText);
+              const matchLength = currentEnd - currentStart;
+              const newText =
+                originalText.substring(0, matchStart + currentStart) +
+                newValue.toString() +
+                originalText.substring(matchStart + currentStart + matchLength);
+              updateTextSource(newText);
             }
           };
 
-          if (maximum <= 9) {
+          if (maximum <= 5) {
             return (
-              <span key={key}>
+              <span key={key} className="counter">
                 {label}
                 <BeanCounter {...counterProps} />
               </span>
@@ -216,7 +222,7 @@ export class TextEnricher {
           }
 
           return (
-            <span key={key}>
+            <span key={key} className="counter">
               {label}
               <Counter {...counterProps} />
             </span>
@@ -229,13 +235,13 @@ export class TextEnricher {
   }
 }
 
-export const TextEnricherContext = React.createContext(
+export const TextEnricherContext = React.createContext<TextEnricher>(
   new TextEnricher(
-    (_expr: string, _sourceName?: string) => {},
+    () => {},
     () => {},
     () => {},
     () => [],
-    () => new RegExp("$^"),
+    () => new RegExp("a^"),
     new DefaultRules()
   )
 );
