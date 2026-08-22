@@ -1,4 +1,5 @@
-// server/server.ts
+import * as fs from "fs";
+import * as path from "path";
 import * as express from "express";
 import * as http from "http";
 import * as SocketIO from "socket.io";
@@ -17,6 +18,25 @@ async function improvedInitiativeServer() {
 
   // Sert /public (overlay/sniffer/sender/hudStream si présents)
   app.use(express.static("public"));
+
+  // Sert les tokens 5etools sous /tokens
+  const candidateTokenDirs = [
+    process.env.FIVE_TOOLS_TOKENS_DIR,
+    process.env.FIVE_TOOLS_DIR
+      ? path.join(process.env.FIVE_TOOLS_DIR, "img", "bestiary", "tokens")
+      : null,
+    "/opt/visualisation/5etools-local/img/bestiary/tokens",
+    "d:/Dev/5etools-local-fr/img/bestiary/tokens",
+    path.join(__dirname, "..", "public", "tokens")
+  ].filter(Boolean) as string[];
+
+  const tokensDir = candidateTokenDirs.find(d => fs.existsSync(d));
+  if (tokensDir) {
+    console.log(`[Tokens] Serving tokens from: ${tokensDir} at /tokens`);
+    app.use("/tokens", express.static(tokensDir));
+  } else {
+    console.warn("[Tokens] No tokens directory found!");
+  }
 
   const server = http.createServer(app);
 

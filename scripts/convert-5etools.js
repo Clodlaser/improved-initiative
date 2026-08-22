@@ -548,6 +548,7 @@ function convertMonster(m) {
   const damageResistances = formatStringArray(m.resist, DAMAGE_TYPE_MAP);
   const damageImmunities = formatStringArray(m.immune, DAMAGE_TYPE_MAP);
   const conditionImmunities = formatStringArray(m.conditionImmune, CONDITION_MAP);
+  const imageUrl = resolveMonsterImageUrl(m);
 
   return {
     Name: name,
@@ -575,8 +576,35 @@ function convertMonster(m) {
     MythicActions: mythicActions,
     Description: "",
     Player: "",
-    ImageURL: ""
+    ImageURL: imageUrl
   };
+}
+
+function resolveMonsterImageUrl(m) {
+  const source = m.source || "5eTools";
+  const name = m.name;
+  if (!name) return "";
+
+  const tokensBaseDir = path.join(SOURCE_5ETOOLS_DIR, "img", "bestiary", "tokens");
+
+  const candidates = [
+    name,
+    name.replace(/["']/g, "").replace(/\s+/g, " ").trim(),
+    name.replace(/"([^"]+)"/g, "$1").replace(/\s+/g, " ").trim(),
+    name.normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
+    name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/["']/g, "")
+  ];
+
+  for (const cand of candidates) {
+    if (fs.existsSync(path.join(tokensBaseDir, source, `${cand}.webp`))) {
+      return `/tokens/${source}/${encodeURIComponent(cand)}.webp`;
+    }
+    if (fs.existsSync(path.join(tokensBaseDir, source, `${cand}.png`))) {
+      return `/tokens/${source}/${encodeURIComponent(cand)}.png`;
+    }
+  }
+
+  return `/tokens/${source}/${encodeURIComponent(name)}.webp`;
 }
 
 // -------------------------------------------------------------
