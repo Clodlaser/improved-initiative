@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>II Overlay HUD â€“ Compact (Ã©cart horizontal rÃ©duit)</title>
+  <title>II Overlay HUD – Compact & Tokens</title>
   <style>
     html,
     body {
@@ -18,15 +18,15 @@
       bottom: 10px;
       left: 10px;
       z-index: 1;
-      max-width: min(92vw, 640px);
+      max-width: min(94vw, 680px);
       min-width: 500px;
       color: #fff;
       border: 1px solid rgba(255, 255, 255, .18);
       border-radius: 10px;
       box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
-      font: 600 12.5px/1.15 ui-sans-serif, system-ui, Segoe UI, Roboto, Arial;
+      font: 600 12.5px/1.15 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Arial;
       background: rgba(0, 0, 0, .56);
-      backdrop-filter: blur(2.5px)
+      backdrop-filter: blur(3px)
     }
 
     .content {
@@ -63,7 +63,7 @@
     /* Pastilles joueurs */
     .playersTrack {
       display: flex;
-      gap: 3px;
+      gap: 4px;
       flex-wrap: wrap;
       align-items: center;
       margin: 0 0 6px;
@@ -76,7 +76,7 @@
       gap: 5px;
       border: 1px solid rgba(255, 255, 255, .15);
       background: rgba(255, 255, 255, .08);
-      padding: 2px 5px;
+      padding: 2px 6px;
       border-radius: 999px;
       font-weight: 800;
       font-size: 10px;
@@ -85,12 +85,22 @@
       white-space: nowrap
     }
 
+    .pAvatar {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid rgba(255, 255, 255, .3);
+      flex-shrink: 0
+    }
+
     .pDot {
       width: 6px;
       height: 6px;
       border-radius: 999px;
       background: #9ad7b0;
-      box-shadow: 0 0 0 1px rgba(0, 0, 0, .18) inset
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, .18) inset;
+      flex-shrink: 0
     }
 
     .pPill.crit {
@@ -120,13 +130,38 @@
     .row {
       position: relative;
       display: grid;
-      grid-template-columns: minmax(130px, 1fr) minmax(150px, 250px) max-content;
+      grid-template-columns: auto minmax(110px, 1fr) minmax(140px, 240px) max-content;
       align-items: center;
-      column-gap: 1px;
+      column-gap: 6px;
       margin: 3px 0;
-      padding: 3px 5px;
+      padding: 2px 5px;
       border-radius: 7px;
       transition: transform .12s ease, box-shadow .12s ease, background .12s ease
+    }
+
+    /* Avatar / Token */
+    .avatarWrap {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0
+    }
+
+    .avatar {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid rgba(255, 255, 255, .25);
+      background: rgba(0, 0, 0, .35);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease
+    }
+
+    .deadAvatar {
+      filter: grayscale(1) opacity(.45)
     }
 
     .roundDivider {
@@ -164,15 +199,21 @@
     }
 
     .row.pc.current {
-      background: rgba(0, 255, 180, .07);
+      background: rgba(0, 255, 180, .09);
     }
 
     .row.npc.current {
-      background: rgba(255, 80, 80, .07);
+      background: rgba(255, 80, 80, .09);
     }
 
     .row.current {
       transform: scale(1.008);
+    }
+
+    .row.current .avatar {
+      border-color: #ffd257;
+      box-shadow: 0 0 6px rgba(255, 210, 87, .75);
+      transform: scale(1.12);
     }
 
     .name {
@@ -259,8 +300,6 @@
       background: rgba(255, 90, 90, .2);
       border-color: rgba(255, 90, 90, .35)
     }
-
-    /* .npcFull reserved for future styling if needed */
   </style>
 </head>
 
@@ -280,13 +319,15 @@
       const roundText = document.getElementById('roundText');
       const qs = new URLSearchParams(location.search);
       const WS_URL = qs.get('ws') || `ws://${location.hostname}:8091/hud`;
-      const SHOW_GM = qs.get('gm') === '1'; const SHOW_HIDDEN = qs.get('showHidden') === '1';
+      const SHOW_GM = qs.get('gm') === '1';
+      const SHOW_HIDDEN = qs.get('showHidden') === '1';
       const playersParam = (qs.get('players') || '').split(',').map(s => s.trim()).filter(Boolean);
-      const PC_SET = new Set(playersParam.length ? playersParam : ['Pierre', 'Loic', 'Gabriele', 'Joel', 'Ana\u00ebl', 'AnaÃ«l', 'Tristan', 'Maureen', 'Vincent']);
-      const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }; const esc = s => String(s).replace(/[&<>"']/g, m => ESC_MAP[m]);
+      const PC_SET = new Set(playersParam.length ? playersParam : ['Pierre', 'Loic', 'Gabriele', 'Joel', 'Anaël', 'Tristan', 'Maureen', 'Vincent']);
+      const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+      const esc = s => String(s).replace(/[&<>"']/g, m => ESC_MAP[m]);
       const pctColor = p => !isFinite(p) ? '#42d07c' : p <= 5 ? '#4a155a' : p <= 20 ? '#a3082a' : p <= 40 ? '#ff5d5d' : p <= 60 ? '#ff9f43' : p <= 80 ? '#ffd257' : '#42d07c';
       const isPlayer = c => !!(c?.isPlayer || c?.player || c?.IsPlayerCharacter || ['pc', 'ally'].includes(c?.role) || PC_SET.has(c?.name));
-      const tagClass = t => /(poison|empoison)/i.test(t) ? 'tag poison' : /(stun|Ã©tourdi|assommÃ©)/i.test(t) ? 'tag stun' : 'tag';
+      const tagClass = t => /(poison|empoison)/i.test(t) ? 'tag poison' : /(stun|étourdi|assommé)/i.test(t) ? 'tag stun' : 'tag';
       const sanitizeTags = tags => tags.map(t => typeof t === 'string' ? t : (t?.text || '')).filter(t => t && !/^(add|remove|ajouter|retirer)\b/i.test(t));
 
       let lastTurn = -1, roundCounter = 1, lastRosterKey = null, lastEncounterId = null;
@@ -329,7 +370,7 @@
 
         if (typeof provided === 'number' && provided >= 1) {
           roundCounter = provided;
-          lastTurn = turn; // trust explicit round, align turn baseline
+          lastTurn = turn;
         } else if (lastTurn >= 0 && turn < lastTurn) {
           roundCounter += 1;
           lastTurn = turn;
@@ -348,11 +389,13 @@
           const temp = Number(c?.temp) || 0;
           const tempTag = temp > 0 ? ` <span style="color:#4da6ff;font-weight:700">(+${temp})</span>` : '';
           const clr = pctColor(pct), crit = pct <= 10, cls = crit ? 'pPill crit' : 'pPill';
+          const imgUrl = c?.img || c?.image || c?.ImageURL || '';
+          const avatarHtml = imgUrl ? `<img class="pAvatar" src="${esc(imgUrl)}" alt="" onerror="this.style.display='none'" />` : `<span class="pDot" style="background:${clr}"></span>`;
           return `<span class="${cls}" title="${n} ${cur}/${max}">
-     <span class="pDot" style="background:${clr}"></span>
-     <span>${n}</span>
-     <span>${cur}/${max}${tempTag}</span>
-   </span>`;
+            ${avatarHtml}
+            <span>${n}</span>
+            <span>${cur}/${max}${tempTag}</span>
+          </span>`;
         }).join('');
       }
 
@@ -380,28 +423,38 @@
           const barWidth = isPC ? `${pct}%` : `100%`;
           const isDead = cur <= 0;
 
+          const imgUrl = c?.img || c?.image || c?.ImageURL || '';
+          const avatarHtml = imgUrl
+            ? `<div class="avatarWrap"><img class="avatar${isDead ? ' deadAvatar' : ''}" src="${esc(imgUrl)}" alt="" onerror="this.parentElement.style.display='none'" /></div>`
+            : `<div class="avatarWrap" style="display:none"></div>`;
+
           let barHtml = '';
           if (!isDead) {
             barHtml = `<div class="hpBar"><span class="hpFill${isPC ? "" : " npcFull"}" style="width:${barWidth};background:${clr}"></span>${temp > 0 ? `<span class="hpTemp" style="width:${tempPct}%"></span>` : ''}</div>`;
           }
 
           rows.push(`<div class="row ${isPC ? 'pc' : 'npc'}${isCur ? ' current' : ''}">
-    <div class="${nameCls}">${name}</div>
-    ${barHtml}<div class="hpTxt" style="grid-column: 2 / 3; justify-self: end"></div>
-    ${cur <= 0 ? '<div class="skull">💀</div>' : '<div class="skull"></div>'}
-    ${tags.length ? `<div class="tags">${tags.map(t => `<span class="${tagClass(t)}">${esc(t)}</span>`).join('')}</div>` : ''}
-   </div>`);
+            ${avatarHtml}
+            <div class="${nameCls}">${name}</div>
+            ${barHtml}<div class="hpTxt" style="grid-column: 3 / 4; justify-self: end"></div>
+            ${cur <= 0 ? '<div class="skull">💀</div>' : '<div class="skull"></div>'}
+            ${tags.length ? `<div class="tags">${tags.map(t => `<span class="${tagClass(t)}">${esc(t)}</span>`).join('')}</div>` : ''}
+          </div>`);
         });
-        rowsEl.innerHTML = rows.join('') || '<div class="name" style="opacity:.8;padding:4px 8px">En attente�</div>';
+        rowsEl.innerHTML = rows.join('') || '<div class="name" style="opacity:.8;padding:4px 8px">En attente...</div>';
       }
+
       const norm = ev => ev.data instanceof Blob ? ev.data.text() : Promise.resolve(typeof ev.data === 'string' ? ev.data : JSON.stringify(ev.data));
       const handle = txt => {
         let m; try { m = JSON.parse(txt); } catch { return; }
-        const s = (m?.type === 'ii_state' && m.data) ? m.data : (m?.list ? m : (m?.data?.list ? m.data : null)); if (s) render(s);
-      }
+        const s = (m?.type === 'ii_state' && m.data) ? m.data : (m?.list ? m : (m?.data?.list ? m.data : null));
+        if (s) render(s);
+      };
+
       function connect() {
         const ws = new WebSocket(WS_URL);
-        ws.onopen = () => console.log('[overlay-compact] open'); ws.onclose = () => setTimeout(connect, 1e3);
+        ws.onopen = () => console.log('[overlay-compact] open');
+        ws.onclose = () => setTimeout(connect, 1e3);
         ws.onmessage = e => norm(e).then(handle);
       }
       connect();

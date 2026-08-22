@@ -162,6 +162,7 @@
                     c.actions = sb.Actions || [];
                     c.traits = sb.Traits || [];
                     c.hp_notes = sb.HP?.Notes || null;
+                    if (sb.ImageURL) c.img = sb.ImageURL;
                   }
                 }
                 // Also grab CurrentNotes for spell slot tracking
