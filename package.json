@@ -129,6 +129,7 @@
     "test": "echo 'Tests are currently disabled due to node, jest, and ES modules interoperability.'",
     "lint": "eslint . --ext .ts,.tsx",
     "lint-and-fix": "eslint . --ext .ts,.tsx --fix",
+    "convert:5etools": "node scripts/convert-5etools.js",
     "copy-fonts": "cp -r ./node_modules/@fortawesome/fontawesome-free/webfonts/ ./public/webfonts/"
   }
 }
