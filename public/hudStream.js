@@ -181,7 +181,7 @@
 
       const activeIdx = list.findIndex(c => c.active);
       const activeName = activeIdx >= 0 ? list[activeIdx].name : '';
-      const turnNumber = (activeIdx >= 0) ? (activeIdx + 1) : 0;
+      const turnNumber = activeIdx >= 0 ? activeIdx : 0;
       return { turn: turnNumber, activeName, list };
     } catch (e) { console.log('[HUD] collectState error:', e); return { turn: 0, list: [] }; }
   }
