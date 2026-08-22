@@ -444,7 +444,13 @@ function mapDndBeyondCharacter(charData: any, originalUrl: string) {
       if (!def) continue;
       
       const level = def.level ?? 0;
-      const isPrepared = s.prepared || s.alwaysPrepared || level === 0;
+      const isPrepared =
+        s.prepared ||
+        s.alwaysPrepared ||
+        s.countsAsKnownSpell ||
+        s.usesSpellSlot ||
+        level === 0 ||
+        !s.hasOwnProperty("prepared");
       
       if (isPrepared && level >= 0 && level <= 9) {
         const spellName = def.name;
@@ -460,6 +466,7 @@ function mapDndBeyondCharacter(charData: any, originalUrl: string) {
     collectSpells(charData.spells.race);
     collectSpells(charData.spells.feat);
     collectSpells(charData.spells.item);
+    collectSpells(charData.spells.background);
   }
   if (charData.classSpells && Array.isArray(charData.classSpells)) {
     for (const classSpellInfo of charData.classSpells) {
@@ -483,7 +490,7 @@ function mapDndBeyondCharacter(charData: any, originalUrl: string) {
       
       if (["cleric", "wizard", "druid", "sorcerer", "bard"].includes(className)) {
         fullCasterLevels += lvl;
-      } else if (["paladin", "ranger"].includes(className)) {
+      } else if (["paladin", "ranger", "artificer"].includes(className)) {
         halfCasterLevels += lvl;
       } else if (className === "warlock") {
         warlockLevels += lvl;
@@ -508,7 +515,7 @@ function mapDndBeyondCharacter(charData: any, originalUrl: string) {
     }
   }
 
-  const totalCasterLevel = Math.max(0, fullCasterLevels + Math.floor(halfCasterLevels / 2) + Math.floor(thirdCasterLevels / 3));
+  const totalCasterLevel = Math.max(0, fullCasterLevels + Math.ceil(halfCasterLevels / 2) + Math.floor(thirdCasterLevels / 3));
 
   // Calculate spell slots
   const getSpellSlots = (casterLevel: number): Record<number, number> => {

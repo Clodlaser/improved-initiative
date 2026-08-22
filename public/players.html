@@ -2080,75 +2080,7 @@
         }
 
         // --- CHARACTER DETAILS VIEW (ATTACKS & SAVES) ---
-        const CHARACTER_STATS = {
-            'loic': {
-                attacks: [
-                    { name: 'Épée longue', type: 'Toucher: +6 | Dégâts: 1d8+4', toHit: '1d20+6', damage: '1d8+4', desc: 'Corps à corps' },
-                    { name: 'Arc long', type: 'Toucher: +4 | Dégâts: 1d8+2', toHit: '1d20+4', damage: '1d8+2', desc: 'Distance (150/600)' }
-                ],
-                saves: { 'Force': '+5', 'Dextérité': '+1', 'Constitution': '+4', 'Intelligence': '+0', 'Sagesse': '+1', 'Charisme': '+2' },
-                slots: { 1: { cur: 3, max: 3 } },
-                spells: {
-                    0: ['Poigne électrique (Shocking Grasp)', 'Lumière (Light)'],
-                    1: ['Projectile magique (Magic Missile)', 'Bouclier (Shield)', 'Mains brûlantes (Burning Hands)']
-                },
-                hitDie: 10, hdMax: 8
-            },
-            'pierre': {
-                attacks: [
-                    { name: 'Espadon', type: 'Toucher: +7 | Dégâts: 2d6+4', toHit: '1d20+7', damage: '2d6+4', desc: 'Corps à corps' },
-                    { name: 'Lance de combat', type: 'Toucher: +7 | Dégâts: 1d6+4', toHit: '1d20+7', damage: '1d6+4', desc: 'Distance (30/120)' }
-                ],
-                saves: { 'Force': '+6', 'Dextérité': '+0', 'Constitution': '+3', 'Intelligence': '+0', 'Sagesse': '+4', 'Charisme': '+5' },
-                slots: { 1: { cur: 4, max: 4 }, 2: { cur: 2, max: 2 } },
-                spells: {
-                    1: ['Châtiment divin (Divine Smite)', 'Bénédiction (Bless)', 'Soin des blessures (Cure Wounds)'],
-                    2: ['Aide (Aid)', 'Localisation d\'objet (Locate Object)']
-                },
-                hitDie: 10, hdMax: 8
-            },
-            'tristan': {
-                attacks: [
-                    { name: 'Arc long', type: 'Toucher: +7 | Dégâts: 1d8+5', toHit: '1d20+7', damage: '1d8+5', desc: 'Distance (150/600)' },
-                    { name: 'Rapière', type: 'Toucher: +7 | Dégâts: 1d8+5', toHit: '1d20+7', damage: '1d8+5', desc: 'Corps à corps' }
-                ],
-                saves: { 'Force': '+2', 'Dextérité': '+5', 'Constitution': '+2', 'Intelligence': '+1', 'Sagesse': '+3', 'Charisme': '-1' },
-                slots: { 1: { cur: 4, max: 4 }, 2: { cur: 2, max: 2 } },
-                spells: {
-                    1: ['Marque du chasseur (Hunter\'s Mark)', 'Soin des blessures (Cure Wounds)'],
-                    2: ['Passage sans trace (Pass without Trace)']
-                },
-                hitDie: 10, hdMax: 8
-            },
-            'joel': {
-                attacks: [
-                    { name: 'Dague', type: 'Toucher: +7 | Dégâts: 1d4+5', toHit: '1d20+7', damage: '1d4+5', desc: 'Corps à corps / Jeté (20/60)' },
-                    { name: 'Arc court', type: 'Toucher: +7 | Dégâts: 1d6+5', toHit: '1d20+7', damage: '1d6+5', desc: 'Distance (80/320)' }
-                ],
-                saves: { 'Force': '-1', 'Dextérité': '+5', 'Constitution': '+1', 'Intelligence': '+3', 'Sagesse': '+1', 'Charisme': '+2' },
-                slots: { 1: { cur: 3, max: 3 } },
-                spells: {
-                    0: ['Main de mage (Mage Hand)', 'Illusion mineure (Minor Illusion)'],
-                    1: ['Charme-personne (Charm Person)', 'Déguisement (Disguise Self)']
-                },
-                hitDie: 8, hdMax: 8
-            },
-            'regin sagerath': {
-                attacks: [
-                    { name: 'Masse d\'armes', type: 'Toucher: +4 | Dégâts: 1d6+1', toHit: '1d20+4', damage: '1d6+1', desc: 'Corps à corps' },
-                    { name: 'Flamme sacrée', type: 'Sauvegarde Dex: DD 14 | Dégâts: 2d8', toHit: null, damage: '2d8', desc: 'Sort (DD 14 Dex)' }
-                ],
-                saves: { 'Force': '+1', 'Dextérité': '+0', 'Constitution': '+2', 'Intelligence': '+1', 'Sagesse': '+6', 'Charisme': '+3' },
-                slots: { 1: { cur: 4, max: 4 }, 2: { cur: 3, max: 3 }, 3: { cur: 2, max: 2 } },
-                spells: {
-                    0: ['Flamme sacrée (Sacred Flame)', 'Thaumaturgie (Thaumaturgy)', 'Lumière (Light)'],
-                    1: ['Bénédiction (Bless)', 'Soin des blessures (Cure Wounds)', 'Sanctuaire (Sanctuary)'],
-                    2: ['Arme spirituelle (Spiritual Weapon)', 'Restauration partielle (Lesser Restoration)'],
-                    3: ['Gardiens spirituels (Spirit Guardians)', 'Dissipation de la magie (Dispel Magic)']
-                },
-                hitDie: 8, hdMax: 8
-            }
-        };
+        const CHARACTER_STATS = {};
 
         function getCharacterKey(name) {
             return (name || '')
@@ -2161,12 +2093,14 @@
         function getCharacterData(name) {
             const key = getCharacterKey(name);
 
-            const base = Object.assign({
+            const base = {
                 attacks: [],
                 saves: { 'Force': '+0', 'Dextérité': '+0', 'Constitution': '+0', 'Intelligence': '+0', 'Sagesse': '+0', 'Charisme': '+0' },
                 hitDie: 8,
-                hdMax: 1
-            }, CHARACTER_STATS[key] || {});
+                hdMax: 1,
+                slots: {},
+                spells: {}
+            };
 
             const liveCombatant = currentCombatants.find(c => getCharacterKey(c.name) === key);
             if (liveCombatant) {
@@ -2208,34 +2142,31 @@
         let characterSpellSlotsState = {};
 
         // Parse tracker CurrentNotes and sync spell slots state
-        // Notes look like: "Spellcasting Slots\n\n1st Level [3/4]\n\n2nd Level [2/3]"
-        function syncSpellSlotsFromNotes(list) {
-            (list || []).forEach(c => {
-                if (!c.notes) return;
+        function syncSpellSlotsFromNotes(combatants) {
+            (combatants || []).forEach(c => {
                 const charKey = getCharacterKey(c.name);
-                if (!characterSpellSlotsState[charKey]) characterSpellSlotsState[charKey] = {};
+                if (!charKey) return;
+                
+                const notes = c.hp_notes || c.CurrentNotes || '';
+                if (!notes) return;
 
-                // Match patterns like "1st Level [3/4]", "Niveau 2 [2/3]", "2nd Level [cur/max]"
-                const pattern = /(\d+)(?:st|nd|rd|th|er|e|ème)?\s*(?:level|niveau|Level|Niveau)\s*\[(\d+)\/(\d+)\]/gi;
-                let m;
-                while ((m = pattern.exec(c.notes)) !== null) {
-                    const lvl = m[1];
-                    const cur = parseInt(m[2], 10);
-                    // Only update if the tracker's state differs to avoid overwriting local edits
-                    // Tracker is authoritative — always sync
-                    characterSpellSlotsState[charKey][lvl] = cur;
-                    // Also update the max in currentDetailsData if this combatant is currently open
-                    if (currentDetailsData && getCharacterKey(currentDetailsName) === charKey) {
-                        if (!currentDetailsData.slots[lvl]) currentDetailsData.slots[lvl] = { cur, max: parseInt(m[3], 10) };
-                        else currentDetailsData.slots[lvl].max = parseInt(m[3], 10);
+                // Match lines like "1st Level [3/4]" or "1er Niveau [3/4]"
+                const slotMatches = notes.matchAll(/(\d)(?:st|nd|rd|th|er|e)?\s*(?:level|niveau)?\s*\[(\d+)\/(\d+)\]/gi);
+                for (const match of slotMatches) {
+                    const lvl = parseInt(match[1], 10);
+                    const cur = parseInt(match[2], 10);
+                    if (!characterSpellSlotsState[charKey]) {
+                        characterSpellSlotsState[charKey] = {};
                     }
-                }
-
-                // Re-render if this is the currently open character
-                if (getCharacterKey(currentDetailsName) === charKey) {
-                    const spellTab = document.getElementById('details-spells');
-                    if (spellTab && !spellTab.classList.contains('hidden')) {
-                        renderSpellsView();
+                    characterSpellSlotsState[charKey][lvl] = cur;
+                    
+                    // If current details view is open for this character, update currentDetailsData
+                    if (currentDetailsName && getCharacterKey(currentDetailsName) === charKey && currentDetailsData && currentDetailsData.slots && currentDetailsData.slots[lvl]) {
+                        currentDetailsData.slots[lvl].cur = cur;
+                        const spellTab = document.getElementById('details-spells');
+                        if (spellTab && !spellTab.classList.contains('hidden')) {
+                            renderSpellsView();
+                        }
                     }
                 }
             });
@@ -2293,7 +2224,7 @@
             });
             let data = null;
             
-            if (liveMatch && (liveMatch.actions || liveMatch.saves || liveMatch.abilities)) {
+            if (liveMatch && (liveMatch.actions || liveMatch.saves || liveMatch.abilities || liveMatch.traits)) {
                 // We have live stats from the tracker! Let's format it to fit our rendering.
                 const sbSaves = liveMatch.saves || [];
                 const sbAbilities = liveMatch.abilities || { Str: 10, Dex: 10, Con: 10, Int: 10, Wis: 10, Cha: 10 };
@@ -2349,26 +2280,25 @@
 
                 data = {
                     attacks: attacks,
-                    saves: saves
+                    saves: saves,
+                    spells: {},
+                    slots: {}
                 };
 
-                // Parse spellcasting
+                // Parse spellcasting from traits
                 const spellcastingData = parseSpellcasting(liveMatch.traits || []);
                 if (spellcastingData) {
-                    data.spells = spellcastingData.spells;
-                    data.slots = spellcastingData.slots;
+                    data.spells = spellcastingData.spells || {};
+                    data.slots = spellcastingData.slots || {};
                 }
             }
-            // Always merge baseData (which contains detected hitDie and hdMax) with live data
+
             const baseData = getCharacterData(name);
             if (data) {
                 data = Object.assign({}, baseData, data);
             } else {
                 data = baseData;
             }
-
-            if (!data.spells) data.spells = {};
-            if (!data.slots) data.slots = {};
 
             currentDetailsData = data;
 
