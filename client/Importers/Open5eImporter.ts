@@ -11,6 +11,9 @@ import { Spell } from "../../common/Spell";
 export function ImportOpen5eStatBlock(
   open5eStatBlock: Record<string, any>
 ): StatBlock {
+  if (open5eStatBlock && open5eStatBlock.Abilities && open5eStatBlock.HP) {
+    return { ...StatBlock.Default(), ...open5eStatBlock };
+  }
   const sb = open5eStatBlock;
   return {
     ...StatBlock.Default(),
@@ -61,6 +64,9 @@ export function ImportOpen5eStatBlock(
 }
 
 export function ImportOpen5eSpell(open5eSpell: Record<string, any>): Spell {
+  if (open5eSpell && typeof open5eSpell.Level === "number" && open5eSpell.School) {
+    return { ...Spell.Default(), ...open5eSpell };
+  }
   const spell = {
     ...Spell.Default(),
     Name: open5eSpell.name,
