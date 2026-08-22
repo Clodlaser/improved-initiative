@@ -100,6 +100,52 @@ const SKILL_MAP = {
   persuasion: "Persuasion"
 };
 
+const SENSE_MAP = {
+  darkvision: "vision dans le noir",
+  blindsight: "vision aveugle",
+  truesight: "vision véritable",
+  tremorsense: "perception des vibrations",
+  "passive perception": "Perception passive"
+};
+
+// -------------------------------------------------------------
+// Fonctions de conversion métrique / cases (5 ft. = 1,5 m = 1 case)
+// -------------------------------------------------------------
+function convertDistance(feetNum) {
+  const n = parseInt(feetNum, 10);
+  if (isNaN(n)) return feetNum;
+  const meters = n * 0.3;
+  const metersStr = Number.isInteger(meters)
+    ? `${meters} m`
+    : `${meters.toFixed(1).replace(".", ",")} m`;
+  const squares = Math.round(n / 5);
+  const squaresStr = squares <= 1 ? "1 case" : `${squares} cases`;
+  return `${metersStr} (${squaresStr})`;
+}
+
+function convertDistanceInText(text) {
+  if (!text || typeof text !== "string") return text;
+  let str = text;
+
+  // 1. Portées avec slash: "20/60 ft." ou "30/120 pieds"
+  str = str.replace(
+    /(\d+)\s*\/\s*(\d+)\s*(?:ft\.?|feet|foot|pieds?)\b/gi,
+    (match, p1, p2) => {
+      return `${convertDistance(p1)} / ${convertDistance(p2)}`;
+    }
+  );
+
+  // 2. Distances uniques: "5 pieds", "30 ft.", "60 feet", etc.
+  str = str.replace(
+    /(\d+)\s*(?:ft\.?|feet|foot|pieds?)(?=[^\w]|$)/gi,
+    (match, p1) => {
+      return convertDistance(p1);
+    }
+  );
+
+  return str;
+}
+
 // -------------------------------------------------------------
 // 1. Nettoyage des balises 5etools
 // -------------------------------------------------------------
@@ -166,6 +212,9 @@ function clean5eTags(text) {
 
   // Nettoyage des parenthèses avec espaces inutiles ex: ( 2d6 + 5 ) -> (2d6 + 5)
   str = str.replace(/\(\s+/g, "(").replace(/\s+\)/g, ")");
+
+  // Conversion des distances en mètres / cases dans le texte
+  str = convertDistanceInText(str);
 
   // Nettoyage des espaces multiples
   str = str.replace(/[ \t]+/g, " ").trim();
@@ -290,26 +339,34 @@ function formatMonsterHP(m) {
 }
 
 function formatMonsterSpeed(m) {
-  if (!m.speed) return ["30 ft."];
+  if (!m.speed) return ["9 m (6 cases)"];
   const list = [];
-  if (typeof m.speed === "number") return [`${m.speed} ft.`];
-  if (typeof m.speed === "string") return [clean5eTags(m.speed)];
+  if (typeof m.speed === "number") return [convertDistance(m.speed)];
+  if (typeof m.speed === "string") return [convertDistanceInText(clean5eTags(m.speed))];
 
   if (m.speed.walk != null) {
-    const w = typeof m.speed.walk === "object" ? `${m.speed.walk.number || 30} ft. ${m.speed.walk.condition || ""}` : `${m.speed.walk} ft.`;
-    list.push(clean5eTags(w));
+    const num = typeof m.speed.walk === "object" ? m.speed.walk.number : m.speed.walk;
+    const cond = typeof m.speed.walk === "object" && m.speed.walk.condition ? ` ${m.speed.walk.condition}` : "";
+    list.push(`${convertDistance(num || 30)}${cond}`);
   }
-  for (const mode of ["fly", "swim", "climb", "burrow"]) {
+  const modeMap = {
+    fly: "vol",
+    swim: "nage",
+    climb: "escalade",
+    burrow: "fouissement"
+  };
+  for (const mode in modeMap) {
     if (m.speed[mode] != null) {
       const val = m.speed[mode];
-      const s = typeof val === "object" ? `${mode} ${val.number} ft. ${val.condition || ""}` : `${mode} ${val} ft.`;
-      list.push(clean5eTags(s));
+      const num = typeof val === "object" ? val.number : val;
+      const cond = typeof val === "object" && val.condition ? ` ${val.condition}` : "";
+      list.push(`${modeMap[mode]} ${convertDistance(num || 30)}${cond}`);
     }
   }
   if (m.speed.canHover) {
     list.push("vol stationnaire");
   }
-  return list.length > 0 ? list : ["30 ft."];
+  return list.length > 0 ? list : ["9 m (6 cases)"];
 }
 
 function formatMonsterSaves(m) {
@@ -334,6 +391,26 @@ function formatMonsterSkills(m) {
     skills.push({ Name: skillName, Modifier: val });
   }
   return skills;
+}
+
+function formatSenses(sensesArray, passive) {
+  const result = [];
+  if (Array.isArray(sensesArray)) {
+    for (const sense of sensesArray) {
+      if (typeof sense === "string") {
+        let str = sense;
+        for (const en in SENSE_MAP) {
+          const regex = new RegExp(`\\b${en}\\b`, "gi");
+          str = str.replace(regex, SENSE_MAP[en]);
+        }
+        result.push(convertDistanceInText(clean5eTags(str)));
+      }
+    }
+  }
+  if (passive) {
+    result.push(`Perception passive ${passive}`);
+  }
+  return result;
 }
 
 function formatStringArray(arr, translationMap = null) {
@@ -448,11 +525,7 @@ function convertMonster(m) {
   const dexMod = Math.floor((abilities.Dex - 10) / 2);
   const saves = formatMonsterSaves(m);
   const skills = formatMonsterSkills(m);
-
-  const senses = formatStringArray(m.senses);
-  if (m.passive) {
-    senses.push(`Perception passive ${m.passive}`);
-  }
+  const senses = formatSenses(m.senses, m.passive);
 
   const languages = formatStringArray(m.languages);
   let cr = "0";
@@ -532,7 +605,7 @@ function formatSpellRange(s) {
   const r = s.range;
   if (r.type === "point") {
     if (r.distance) {
-      if (r.distance.type === "feet") return `${r.distance.amount} pieds`;
+      if (r.distance.type === "feet") return convertDistance(r.distance.amount);
       if (r.distance.type === "touch") return "Contact";
       if (r.distance.type === "self") return "Personnelle";
       if (r.distance.type === "sight") return "À vue";
@@ -546,12 +619,12 @@ function formatSpellRange(s) {
   if (r.type === "sight") return "À vue";
   if (r.type === "unlimited") return "Illimitée";
   if (r.type === "special") return "Spéciale";
-  if (r.type === "radius") return `Rayon de ${r.distance?.amount || ""} ${r.distance?.type || ""}`.trim();
-  if (r.type === "sphere") return `Sphère de ${r.distance?.amount || ""} ${r.distance?.type || ""}`.trim();
-  if (r.type === "cone") return `Cône de ${r.distance?.amount || ""} ${r.distance?.type || ""}`.trim();
-  if (r.type === "line") return `Ligne de ${r.distance?.amount || ""} ${r.distance?.type || ""}`.trim();
-  if (r.type === "cube") return `Cube de ${r.distance?.amount || ""} ${r.distance?.type || ""}`.trim();
-  if (r.type === "hemisphere") return `Hémisphère de ${r.distance?.amount || ""} ${r.distance?.type || ""}`.trim();
+  if (r.type === "radius") return `Rayon de ${r.distance?.type === "feet" ? convertDistance(r.distance.amount) : `${r.distance?.amount || ""} ${r.distance?.type || ""}`}`.trim();
+  if (r.type === "sphere") return `Sphère de ${r.distance?.type === "feet" ? convertDistance(r.distance.amount) : `${r.distance?.amount || ""} ${r.distance?.type || ""}`}`.trim();
+  if (r.type === "cone") return `Cône de ${r.distance?.type === "feet" ? convertDistance(r.distance.amount) : `${r.distance?.amount || ""} ${r.distance?.type || ""}`}`.trim();
+  if (r.type === "line") return `Ligne de ${r.distance?.type === "feet" ? convertDistance(r.distance.amount) : `${r.distance?.amount || ""} ${r.distance?.type || ""}`}`.trim();
+  if (r.type === "cube") return `Cube de ${r.distance?.type === "feet" ? convertDistance(r.distance.amount) : `${r.distance?.amount || ""} ${r.distance?.type || ""}`}`.trim();
+  if (r.type === "hemisphere") return `Hémisphère de ${r.distance?.type === "feet" ? convertDistance(r.distance.amount) : `${r.distance?.amount || ""} ${r.distance?.type || ""}`}`.trim();
   return clean5eTags(JSON.stringify(r));
 }
 
@@ -634,7 +707,7 @@ function convertSpell(s, spellSourcesMap) {
 // 4. Pipeline Principal de Conversion
 // -------------------------------------------------------------
 async function runConversion() {
-  console.log("=== Début de la conversion 5etools -> Improved Initiative ===");
+  console.log("=== Début de la conversion 5etools -> Improved Initiative (avec conversion en m / cases) ===");
 
   // 1. Map des classes de sorts
   let spellSourcesMap = {};
@@ -709,29 +782,18 @@ async function runConversion() {
   const frCreaturesPath = path.join(TARGET_II_DIR, "fr_creatures.json");
   const frSpellsPath = path.join(TARGET_II_DIR, "fr_spells.json");
 
-  // Écrit les fichiers FR dédiés
   fs.writeFileSync(frCreaturesPath, JSON.stringify(allMonsters, null, 2), "utf8");
   fs.writeFileSync(frSpellsPath, JSON.stringify(allSpells, null, 2), "utf8");
 
-  // Remplace également ogl_creatures.json et ogl_spells.json (avec sauvegarde .bak si non existante)
   const oglCreaturesPath = path.join(TARGET_II_DIR, "ogl_creatures.json");
   const oglSpellsPath = path.join(TARGET_II_DIR, "ogl_spells.json");
-
-  if (fs.existsSync(oglCreaturesPath) && !fs.existsSync(`${oglCreaturesPath}.bak`)) {
-    fs.copyFileSync(oglCreaturesPath, `${oglCreaturesPath}.bak`);
-    console.log(`✓ Sauvegarde créée : ${oglCreaturesPath}.bak`);
-  }
-  if (fs.existsSync(oglSpellsPath) && !fs.existsSync(`${oglSpellsPath}.bak`)) {
-    fs.copyFileSync(oglSpellsPath, `${oglSpellsPath}.bak`);
-    console.log(`✓ Sauvegarde créée : ${oglSpellsPath}.bak`);
-  }
 
   fs.writeFileSync(oglCreaturesPath, JSON.stringify(allMonsters, null, 2), "utf8");
   fs.writeFileSync(oglSpellsPath, JSON.stringify(allSpells, null, 2), "utf8");
 
   console.log(`✓ Fichier créé : ${frCreaturesPath} (${(fs.statSync(frCreaturesPath).size / 1024 / 1024).toFixed(2)} MB)`);
   console.log(`✓ Fichier créé : ${frSpellsPath} (${(fs.statSync(frSpellsPath).size / 1024 / 1024).toFixed(2)} MB)`);
-  console.log(`✓ Fichiers de base ogl_creatures.json & ogl_spells.json mis à jour avec les données FR !`);
+  console.log(`✓ Fichiers ogl_creatures.json & ogl_spells.json mis à jour !`);
   console.log("=== Conversion terminée avec succès ! ===");
 }
 
