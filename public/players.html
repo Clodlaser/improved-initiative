@@ -649,6 +649,95 @@
             </div>
         </div>
 
+        <!-- SPELL DETAIL MODAL -->
+        <div id="spellDetailModal"
+            class="absolute inset-0 z-[70] flex flex-col justify-end md:justify-center md:items-center pointer-events-none overflow-hidden">
+            <!-- Backdrop -->
+            <div id="spellDetailBackdrop"
+                class="absolute inset-0 bg-ink/70 dark:bg-black/80 opacity-0 transition-opacity duration-300 pointer-events-none backdrop-blur-sm"
+                onclick="closeSpellModal()"></div>
+
+            <!-- Panel -->
+            <div id="spellDetailPanel"
+                class="relative bg-white dark:bg-slate-900 shadow-2xl transform translate-y-full md:translate-y-0 md:scale-95 md:opacity-0 transition-all duration-300 pointer-events-none flex flex-col max-h-[85dvh] md:max-h-[80vh] w-full md:max-w-lg rounded-t-3xl md:rounded-2xl border border-slate-200 dark:border-slate-800">
+                
+                <!-- Header -->
+                <div class="p-5 pb-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start">
+                    <div class="flex flex-col gap-1 pr-4">
+                        <h3 id="spellDetailName" class="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-tight">
+                            Nom du sort
+                        </h3>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span id="spellDetailLevelSchool" class="text-xs font-black uppercase tracking-wider text-primary">
+                                Niveau 1 • École
+                            </span>
+                            <span id="spellDetailRitualBadge" class="hidden text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                Rituel
+                            </span>
+                            <span id="spellDetailConcBadge" class="hidden text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                                Concentration
+                            </span>
+                        </div>
+                    </div>
+                    <button onclick="closeSpellModal()"
+                        class="text-slate-400 hover:text-slate-700 dark:hover:text-white p-2 -mr-2 -mt-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+
+                <!-- Scrollable Content -->
+                <div class="flex-1 overflow-y-auto p-5 space-y-5 no-scrollbar">
+                    
+                    <!-- Quick Stats Grid -->
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div class="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Incantation</div>
+                            <div id="spellDetailCastingTime" class="font-bold text-slate-800 dark:text-slate-200">-</div>
+                        </div>
+                        <div class="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Portée</div>
+                            <div id="spellDetailRange" class="font-bold text-slate-800 dark:text-slate-200">-</div>
+                        </div>
+                        <div class="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Durée</div>
+                            <div id="spellDetailDuration" class="font-bold text-slate-800 dark:text-slate-200">-</div>
+                        </div>
+                        <div class="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                            <div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Composantes</div>
+                            <div id="spellDetailComponents" class="font-bold text-slate-800 dark:text-slate-200 truncate" title="">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="flex flex-col gap-2">
+                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Description</span>
+                        <div id="spellDetailDescription" class="text-sm leading-relaxed text-slate-700 dark:text-slate-300 space-y-3 font-medium">
+                            <!-- Dynamic spell content -->
+                        </div>
+                    </div>
+
+                    <!-- Classes (optional tags) -->
+                    <div id="spellDetailClassesContainer" class="hidden flex-col gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Classes</span>
+                        <div id="spellDetailClasses" class="flex flex-wrap gap-1 text-xs"></div>
+                    </div>
+                </div>
+
+                <!-- Footer / Action Buttons -->
+                <div class="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex gap-3">
+                    <button id="spellDetailConcBtn" onclick="activateSpellConcentration()"
+                        class="hidden flex-1 py-3 px-4 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 font-black uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-2 active:scale-95">
+                        <span class="material-symbols-outlined text-base">psychology</span>
+                        Maintenir Concentration
+                    </button>
+                    <button onclick="closeSpellModal()"
+                        class="flex-1 py-3 px-4 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-black uppercase tracking-wider text-xs transition-all active:scale-95 text-center">
+                        Fermer
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- APPLICATION LOGIC -->
@@ -2460,10 +2549,16 @@
                     const levelLabel = lvl === '0' ? 'Tours de magie (Cantrips)' : `Sorts de Niveau ${lvl}`;
                     let itemsHtml = '';
                     spellList.forEach(spell => {
+                        const safeSpell = encodeURIComponent(spell).replace(/'/g, "%27");
                         itemsHtml += `
-                            <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-b-0">
-                                <span class="text-sm font-black uppercase tracking-tight text-slate-700 dark:text-slate-300 italic">${spell}</span>
-                            </div>
+                            <button type="button" onclick="openSpellDetails(decodeURIComponent('${safeSpell}'))"
+                                class="w-full flex items-center justify-between py-2.5 px-3 -mx-3 rounded-xl border-b border-slate-100 dark:border-slate-800/80 last:border-b-0 hover:bg-slate-100 dark:hover:bg-slate-800/60 active:scale-[0.99] transition-all text-left group">
+                                <span class="text-sm font-black uppercase tracking-tight text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors">${spell}</span>
+                                <div class="flex items-center gap-1 text-slate-400 group-hover:text-primary transition-colors">
+                                    <span class="text-[10px] font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity hidden sm:inline">Détails</span>
+                                    <span class="material-symbols-outlined text-lg">info</span>
+                                </div>
+                            </button>
                         `;
                     });
 
@@ -2478,6 +2573,270 @@
                 });
             }
             listContainer.innerHTML = spellsHtml;
+        }
+
+        // --- SPELL DETAILS & DATABASE LOOKUP ---
+        let spellsIndex = null;
+        let spellsDetailsCache = {};
+        let lastOpenedSpell = null;
+        let lastOpenedSpellRawName = '';
+
+        function normalizeSpellKey(str) {
+            return (str || '')
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-z0-9]/g, "")
+                .trim();
+        }
+
+        async function loadSpellsIndex() {
+            if (spellsIndex !== null) return spellsIndex;
+            try {
+                const res = await fetch('/spells/');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) {
+                        spellsIndex = data;
+                        return spellsIndex;
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not load spells index:', e);
+            }
+            spellsIndex = [];
+            return spellsIndex;
+        }
+
+        // Preload index in background
+        loadSpellsIndex();
+
+        async function findSpellInDb(rawName) {
+            const index = await loadSpellsIndex();
+            
+            // Extract possible names: English in parens, French before parens, or raw
+            const englishMatch = rawName.match(/\(([^)]+)\)/);
+            const englishName = englishMatch ? englishMatch[1].trim() : '';
+            const frenchName = rawName.replace(/\([^)]*\)/g, '').trim();
+
+            const candidates = [
+                englishName,
+                frenchName,
+                rawName
+            ].filter(Boolean);
+
+            let matchedListing = null;
+
+            for (const cand of candidates) {
+                const normCand = normalizeSpellKey(cand);
+                if (!normCand) continue;
+
+                // 1. Exact match on Name
+                matchedListing = index.find(l => normalizeSpellKey(l.Name) === normCand);
+                if (matchedListing) break;
+
+                // 2. Exact match on Id suffix (e.g. "phb.bless" -> "bless")
+                matchedListing = index.find(l => {
+                    const idPart = (l.Id || '').split('.').pop();
+                    return normalizeSpellKey(idPart) === normCand;
+                });
+                if (matchedListing) break;
+
+                // 3. SearchHint match
+                matchedListing = index.find(l => {
+                    const hint = normalizeSpellKey(l.SearchHint || '');
+                    return hint.includes(normCand);
+                });
+                if (matchedListing) break;
+            }
+
+            if (matchedListing) {
+                const spellId = matchedListing.Id;
+                if (spellsDetailsCache[spellId]) {
+                    return spellsDetailsCache[spellId];
+                }
+                try {
+                    const res = await fetch(`/spells/${encodeURIComponent(spellId)}`);
+                    if (res.ok) {
+                        const spellData = await res.json();
+                        if (spellData && spellData.Name) {
+                            spellsDetailsCache[spellId] = spellData;
+                            return spellData;
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`Failed to fetch spell ${spellId}:`, e);
+                }
+            }
+
+            // Fallback: direct fetch attempts by constructed id
+            for (const cand of candidates) {
+                const cleanSlug = cand.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+                if (!cleanSlug) continue;
+                for (const prefix of ['phb', 'srd', 'xphb', 'tce', 'xge']) {
+                    const testId = `${prefix}.${cleanSlug}`;
+                    if (spellsDetailsCache[testId]) return spellsDetailsCache[testId];
+                    try {
+                        const res = await fetch(`/spells/${encodeURIComponent(testId)}`);
+                        if (res.ok) {
+                            const spellData = await res.json();
+                            if (spellData && spellData.Name) {
+                                spellsDetailsCache[testId] = spellData;
+                                return spellData;
+                            }
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            return null;
+        }
+
+        function formatSpellDescriptionHtml(text) {
+            if (!text) return '<p class="italic text-slate-400">Aucune description disponible.</p>';
+            let safe = text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+            safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-slate-900 dark:text-white font-bold">$1</strong>');
+            safe = safe.replace(/\*([^*]+)\*/g, '<em class="italic">$1</em>');
+            const paragraphs = safe.split(/\n\n+/);
+            return paragraphs.map(p => {
+                const trimmed = p.trim();
+                if (trimmed.startsWith('* ')) {
+                    const items = trimmed.split('\n* ').map(it => it.replace(/^\*\s*/, ''));
+                    return `<ul class="list-disc pl-5 space-y-1 my-2">${items.map(it => `<li>${it}</li>`).join('')}</ul>`;
+                }
+                return `<p>${trimmed.replace(/\n/g, '<br/>')}</p>`;
+            }).join('');
+        }
+
+        async function openSpellDetails(rawSpellName) {
+            lastOpenedSpellRawName = rawSpellName;
+            lastOpenedSpell = null;
+
+            const modal = document.getElementById('spellDetailModal');
+            const backdrop = document.getElementById('spellDetailBackdrop');
+            const panel = document.getElementById('spellDetailPanel');
+            const nameEl = document.getElementById('spellDetailName');
+            const levelSchoolEl = document.getElementById('spellDetailLevelSchool');
+            const ritualBadge = document.getElementById('spellDetailRitualBadge');
+            const concBadge = document.getElementById('spellDetailConcBadge');
+            const castingTimeEl = document.getElementById('spellDetailCastingTime');
+            const rangeEl = document.getElementById('spellDetailRange');
+            const durationEl = document.getElementById('spellDetailDuration');
+            const componentsEl = document.getElementById('spellDetailComponents');
+            const descEl = document.getElementById('spellDetailDescription');
+            const concBtn = document.getElementById('spellDetailConcBtn');
+            const classesContainer = document.getElementById('spellDetailClassesContainer');
+            const classesEl = document.getElementById('spellDetailClasses');
+
+            if (!modal || !panel) return;
+
+            // Reset & show loading state
+            nameEl.textContent = rawSpellName;
+            levelSchoolEl.textContent = 'Chargement...';
+            ritualBadge.classList.add('hidden');
+            concBadge.classList.add('hidden');
+            concBtn.classList.add('hidden');
+            classesContainer.classList.add('hidden');
+            castingTimeEl.textContent = '...';
+            rangeEl.textContent = '...';
+            durationEl.textContent = '...';
+            componentsEl.textContent = '...';
+            descEl.innerHTML = '<div class="py-8 flex items-center justify-center text-slate-400 gap-2"><span class="material-symbols-outlined animate-spin">progress_activity</span><span>Recherche du sort dans la base de données...</span></div>';
+
+            // Show modal
+            modal.classList.remove('pointer-events-none');
+            backdrop.classList.remove('opacity-0', 'pointer-events-none');
+            backdrop.classList.add('opacity-100', 'pointer-events-auto');
+
+            panel.classList.remove('translate-y-full', 'md:scale-95', 'md:opacity-0', 'pointer-events-none');
+            panel.classList.add('translate-y-0', 'md:scale-100', 'md:opacity-100', 'pointer-events-auto');
+
+            // Fetch spell data
+            const spell = await findSpellInDb(rawSpellName);
+            lastOpenedSpell = spell;
+
+            if (spell) {
+                const displayName = rawSpellName.includes('(') ? rawSpellName : (spell.Name || rawSpellName);
+                nameEl.textContent = displayName;
+
+                const lvlStr = spell.Level === 0 ? 'Tour de magie (Cantrip)' : `Niveau ${spell.Level}`;
+                const schoolStr = spell.School || '';
+                levelSchoolEl.textContent = schoolStr ? `${lvlStr} • ${schoolStr}` : lvlStr;
+
+                if (spell.Ritual) {
+                    ritualBadge.classList.remove('hidden');
+                } else {
+                    ritualBadge.classList.add('hidden');
+                }
+
+                const durationStr = spell.Duration || 'Instantanée';
+                const isConcentration = /concentration/i.test(durationStr);
+                if (isConcentration) {
+                    concBadge.classList.remove('hidden');
+                    concBtn.classList.remove('hidden');
+                } else {
+                    concBadge.classList.add('hidden');
+                    concBtn.classList.add('hidden');
+                }
+
+                castingTimeEl.textContent = spell.CastingTime || '1 action';
+                rangeEl.textContent = spell.Range || 'Personnelle';
+                durationEl.textContent = durationStr;
+                componentsEl.textContent = spell.Components || '-';
+                componentsEl.title = spell.Components || '';
+
+                descEl.innerHTML = formatSpellDescriptionHtml(spell.Description);
+
+                if (Array.isArray(spell.Classes) && spell.Classes.length > 0) {
+                    classesContainer.classList.remove('hidden');
+                    classesEl.innerHTML = spell.Classes.map(c => `
+                        <span class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px]">${c}</span>
+                    `).join('');
+                } else {
+                    classesContainer.classList.add('hidden');
+                }
+            } else {
+                levelSchoolEl.textContent = 'Sort non indexé';
+                castingTimeEl.textContent = '-';
+                rangeEl.textContent = '-';
+                durationEl.textContent = '-';
+                componentsEl.textContent = '-';
+                descEl.innerHTML = '<p class="italic text-slate-400">La description complète de ce sort n\'a pas pu être trouvée dans la base de données locale.</p>';
+            }
+        }
+
+        function closeSpellModal() {
+            const modal = document.getElementById('spellDetailModal');
+            const backdrop = document.getElementById('spellDetailBackdrop');
+            const panel = document.getElementById('spellDetailPanel');
+            if (!modal || !panel) return;
+
+            backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            backdrop.classList.add('opacity-0', 'pointer-events-none');
+
+            panel.classList.remove('translate-y-0', 'md:scale-100', 'md:opacity-100', 'pointer-events-auto');
+            panel.classList.add('translate-y-full', 'md:scale-95', 'md:opacity-0', 'pointer-events-none');
+
+            setTimeout(() => {
+                modal.classList.add('pointer-events-none');
+            }, 300);
+        }
+
+        function activateSpellConcentration() {
+            const spellTitle = lastOpenedSpell?.Name || lastOpenedSpellRawName;
+            if (!spellTitle) return;
+            const charKey = getCharacterKey(currentDetailsName);
+            if (!characterConcentration[charKey]) {
+                characterConcentration[charKey] = { active: false, spell: '' };
+            }
+            characterConcentration[charKey].active = true;
+            characterConcentration[charKey].spell = spellTitle;
+            updateConcentrationUI();
+            showToast(`Concentration active sur : ${spellTitle}`);
+            closeSpellModal();
         }
 
         function toggleSpellSlot(lvl, idx, currentVal) {
@@ -2611,6 +2970,16 @@
         document.addEventListener('DOMContentLoaded', () => {
             // Need a tiny delay to ensure fonts/layout are calculated for the correct flex height
             setTimeout(() => switchView('combat'), 100);
+        });
+
+        // Global key listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeSpellModal();
+                closeDiceRollModal();
+                closeDiceResult();
+                closeHealPicker();
+            }
         });
 
     </script>
