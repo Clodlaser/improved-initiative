@@ -452,10 +452,9 @@
 
           const imgUrl = c?.img || c?.image || c?.ImageURL || '';
           const initial = esc((name.charAt(0) || '?').toUpperCase());
-          const fallbackTag = `<span class="avatarFallback">${initial}</span>`;
           const avatarHtml = `<div class="avatarWrap">${imgUrl
-            ? `<img class="avatar${isDead ? ' deadAvatar' : ''}" src="${esc(imgUrl)}" alt="" onerror="this.outerHTML='${fallbackTag}'" />`
-            : fallbackTag}</div>`;
+            ? `<img class="avatar${isDead ? ' deadAvatar' : ''}" src="${esc(imgUrl)}" alt="" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='flex';" /><span class="avatarFallback" style="display:none">${initial}</span>`
+            : `<span class="avatarFallback">${initial}</span>`}</div>`;
 
           let barHtml = '';
           if (!isDead) {
