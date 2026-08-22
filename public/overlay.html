@@ -130,7 +130,7 @@
     .row {
       position: relative;
       display: grid;
-      grid-template-columns: auto minmax(110px, 1fr) minmax(140px, 240px) max-content;
+      grid-template-columns: 22px minmax(110px, 1fr) minmax(140px, 240px) max-content;
       align-items: center;
       column-gap: 6px;
       margin: 3px 0;
@@ -158,6 +158,33 @@
       background: rgba(0, 0, 0, .35);
       box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
       transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease
+    }
+
+    .avatarFallback {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 800;
+      background: rgba(255, 255, 255, .1);
+      border: 1px solid rgba(255, 255, 255, .2);
+      color: rgba(255, 255, 255, .85);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+    }
+
+    .row.pc .avatarFallback {
+      background: rgba(0, 255, 180, .15);
+      border-color: rgba(0, 255, 180, .35);
+      color: #00ffb4;
+    }
+
+    .row.npc .avatarFallback {
+      background: rgba(255, 80, 80, .15);
+      border-color: rgba(255, 80, 80, .35);
+      color: #ff9999;
     }
 
     .deadAvatar {
@@ -424,9 +451,11 @@
           const isDead = cur <= 0;
 
           const imgUrl = c?.img || c?.image || c?.ImageURL || '';
-          const avatarHtml = imgUrl
-            ? `<div class="avatarWrap"><img class="avatar${isDead ? ' deadAvatar' : ''}" src="${esc(imgUrl)}" alt="" onerror="this.parentElement.style.display='none'" /></div>`
-            : `<div class="avatarWrap" style="display:none"></div>`;
+          const initial = esc((name.charAt(0) || '?').toUpperCase());
+          const fallbackTag = `<span class="avatarFallback">${initial}</span>`;
+          const avatarHtml = `<div class="avatarWrap">${imgUrl
+            ? `<img class="avatar${isDead ? ' deadAvatar' : ''}" src="${esc(imgUrl)}" alt="" onerror="this.outerHTML='${fallbackTag}'" />`
+            : fallbackTag}</div>`;
 
           let barHtml = '';
           if (!isDead) {
